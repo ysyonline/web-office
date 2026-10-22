@@ -1,0 +1,24 @@
+# 换行符：仓库内一律 LF，不受各人 core.autocrlf 影响（Windows 开发者机器上
+# core.autocrlf=true 是常见默认值，若不锁定会让同一文件在不同机器上反复产生全文件 diff）。
+* text=auto eol=lf
+
+# Windows 脚本必须 CRLF，否则 cmd.exe 解析会出问题
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二进制资源不做任何转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.pdf binary
+*.zip binary
+
+# spike 下的 vendor 是压缩后的第三方 bundle（单文件 1MB 级、无源码可读性），
+# 保持字节原样：不转换换行、不参与 diff（否则任何一次改动都是整文件重写）。
+spike/**/src/vendor/** -text -diff

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>formula-runtime-spike</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; }
+  #app { width: 100vw; height: 100vh; }
+  /* Univer design tokens (minimal, from @univerjs/design/lib/index.css) */
+</style>
+</head>
+<body>
+<div id="app"></div>
+<!-- 裸导入映射由 browser-probe.mjs 在导航前注入（import map 必须先于模块加载） -->
+<script type="module" src="./browser-probe-page.mjs"></script>
+</body>
+</html>

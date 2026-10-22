@@ -1,0 +1,10 @@
+# 既有文档与留档不进格式化范围（重构期不动历史文本，避免把评审记录搅成一锅 diff）。
+docs/
+spike/
+.workbuddy/
+node_modules/
+dist/
+build/
+coverage/
+pnpm-lock.yaml
+*.tsbuildinfo

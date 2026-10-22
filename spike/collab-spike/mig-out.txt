@@ -1,0 +1,15 @@
+﻿== M1 缁撴瀯 MUTATION 鍙嫤鎴?+ 鍙傛暟瀹屽 ==
+  [PASS] M1a InsertRowCommand 鎵ц鎴愬姛锛堢 0 琛屾彃鍏ワ紝Direction.UP锛?  [PASS] M1b onCommandExecuted 鎷︽埅鍒?sheet.mutation.insert-row
+  [PASS] M1c mutation params 鍚畬鏁?range锛坰tartRow=0,endRow=0锛?== M2 閿€煎榻愶紙杩佺Щ鍣ㄥ凡闅?mutation 瑙﹀彂锛?==
+  [PASS] M2a 缂撳瓨鍊?0.087 浣嶄簬 row=5锛?->5锛岄殢琛屼笅绉伙級  <pos=5,0>
+  [PASS] M2b 妗ｆ閿凡杩佺Щ鍒?row=5锛堜笌缂撳瓨鍊煎悓鏍硷級  <key=(5,0) pos=(5,0)>
+  [PASS] M2c 鏉＄洰鍐呭瀹屾暣杩佺Щ锛坒 鍘熸枃 + v 鏍￠獙鍊奸殢琛屾惡甯︼級  <{"f":"=IRR(A1:A4)","v":0.087,"fn":"IRR"}>
+== M3 妗ｆ杩佺Щ浜嬪姟鍘熷瓙鎬?==
+  [PASS] M3a 涓€娆＄粨鏋?op 鐨勬。妗堣縼绉绘伆濂戒骇鐢?1 涓?update 甯э紙鍗曚簨鍔★級  <frames=1>
+== V1 瀵煎嚭杩樺師鍓嶇疆鏍￠獙锛堝厹搴曪紝杩佺Щ缂哄け鏃朵笉鍐欓敊鏍硷級 ==
+  [PASS] V1a 杩佺Щ姝ｅ父鏃讹細鐩爣鏍煎綋鍓?v === 妗ｆ v -> 鍏佽杩樺師 f  <cell.v=0.087 entry.v=0.087>
+  [PASS] V1b 杩佺Щ缂哄け鍙嶄緥锛氭棫閿?row4 褰撳墠 v=44 != 妗ｆ v=0.087 -> 鎷掔粷杩樺師骞朵涪寮冩潯鐩?== M4 undo 鍙嶅悜杩佺Щ锛堣瘎瀹′汉闄烽槺鐢ㄤ緥鐨勯槻绾匡級 ==
+  [PASS] M4a undo 鎵ц鎴愬姛锛堟棤澶寸幆澧冮』鍏?focusUnit锛?  [PASS] M4b undo 鍚?cellData 鍥為€€锛?.087 鍥炲埌 row=4锛?  [PASS] M4c undo 瑙﹀彂鐨?remove-rows 琚嫤鎴苟鍙嶅悜杩佺Щ妗ｆ閿埌 row=4锛堜笌 cellData 涓€鑷达紝闈炵宸у榻愶級  <key=(4,0) pos=(4,0)>
+  [PASS] M4d undo 鐨勬。妗堣縼绉荤粡鍚屼竴 Y.Doc 浜嬪姟浼犳挱锛坲pdate 甯ф暟 >= 1 鍗虫湁浼犳挱锛屾澶勯獙璇佹伆濂?1锛? <frames=1>
+
+==== archive-migration-probe: 13/13 PASS ====

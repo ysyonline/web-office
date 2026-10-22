@@ -1,0 +1,24 @@
+# pnpm 11 配置模型（ADR-005 v2）：非「注册源/认证」类设置一律写在此处，写入 .npmrc 在 pnpm 11 下不生效。
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# 版本不符必须显式失败；默认值 download 在离线/信创环境等于一次无声联网（ADR-005 致命细节）。
+pmOnFail: error
+# 严格 engines：node >=22.13 <23 不满足即拒绝安装。
+engineStrict: true
+nodeLinker: isolated
+# 版本锚定从「文档纪律」升级为包管理器行为。
+saveExact: true
+# 必须关掉：否则 @nestjs/swagger 的 peer 会把 class-validator/class-transformer 静默装回依赖树，
+# 击穿「zod 单一 schema 源」（P3-001 裁决 ②）。
+autoInstallPeers: false
+# 构建脚本白名单（pnpm 11 取代 onlyBuiltDependencies）。
+# @scarf/scarf 显式关：swagger-ui-dist 的传递依赖带 postinstall 外联 scarf.sh。
+strictDepBuilds: true
+allowBuilds:
+  esbuild: true
+  '@scarf/scarf': false
+# catalog 本包只登记 @univerjs/*；待 P3-030 引入时按实况补条目，不留空 catalog。
+# catalog:
+#   '@univerjs/*': 1.0.2

@@ -1,0 +1,17 @@
+{
+  "name": "@wo/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "工程化配置单一落点：tsconfig 三段、ESLint flat preset、Prettier 配置、自定义 P0 规则。零运行时代码、零依赖。",
+  "exports": {
+    "./eslint-preset": "./eslint-preset.js",
+    "./prettier": "./prettier.config.js",
+    "./tsconfig/base": "./tsconfig.base.json",
+    "./tsconfig/web": "./tsconfig.web.json",
+    "./tsconfig/server": "./tsconfig.server.json"
+  },
+  "scripts": {
+    "test": "node --test rules"
+  }
+}

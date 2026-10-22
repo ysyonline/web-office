@@ -1,0 +1,268 @@
+{
+  "$meta": {
+    "product": "web-office（信创私有化在线电子表格）",
+    "version": "1.0.0",
+    "spec": "Spec-web-office-v1.md §8",
+    "register": "product",
+    "axes": { "variance": 3, "motion": 3, "density": 7 },
+    "iconLibrary": "lucide-react",
+    "layers": "A1-primitive → A2-semantic → B-slot-component → C-extension"
+  },
+
+  "A1_primitive": {
+    "color": {
+      "emerald": {
+        "50":  { "value": "#ECFDF5", "type": "color" },
+        "100": { "value": "#D1FAE5", "type": "color" },
+        "200": { "value": "#A7F3D0", "type": "color" },
+        "300": { "value": "#6EE7B7", "type": "color" },
+        "400": { "value": "#34D399", "type": "color" },
+        "500": { "value": "#10B981", "type": "color" },
+        "600": { "value": "#059669", "type": "color", "comment": "品牌主色基准值" },
+        "700": { "value": "#047857", "type": "color" },
+        "800": { "value": "#065F46", "type": "color" },
+        "900": { "value": "#064E3B", "type": "color" }
+      },
+      "neutral": {
+        "0":   { "value": "#FFFFFF", "type": "color" },
+        "50":  { "value": "#F9FAFB", "type": "color" },
+        "100": { "value": "#F3F4F6", "type": "color" },
+        "150": { "value": "#F1F5F9", "type": "color", "comment": "表头底" },
+        "200": { "value": "#E5E7EB", "type": "color" },
+        "250": { "value": "#E2E8F0", "type": "color", "comment": "网格线/选中行头底" },
+        "300": { "value": "#D1D5DB", "type": "color" },
+        "400": { "value": "#9CA3AF", "type": "color" },
+        "500": { "value": "#6B7280", "type": "color" },
+        "600": { "value": "#64748B", "type": "color", "comment": "行列头文字" },
+        "700": { "value": "#374151", "type": "color" },
+        "900": { "value": "#111827", "type": "color" }
+      },
+      "red":    { "500": { "value": "#EF4444", "type": "color" }, "600": { "value": "#DC2626", "type": "color" }, "700": { "value": "#B91C1C", "type": "color" }, "50": { "value": "#FEF2F2", "type": "color" } },
+      "amber":  { "500": { "value": "#F59E0B", "type": "color" }, "600": { "value": "#D97706", "type": "color" }, "700": { "value": "#B45309", "type": "color" }, "50": { "value": "#FFFBEB", "type": "color" } },
+      "green":  { "500": { "value": "#22C55E", "type": "color" }, "600": { "value": "#16A34A", "type": "color" }, "700": { "value": "#15803D", "type": "color" }, "50": { "value": "#F0FDF4", "type": "color" } },
+      "blue":   { "500": { "value": "#3B82F6", "type": "color" }, "600": { "value": "#2563EB", "type": "color" }, "50": { "value": "#EFF6FF", "type": "color" } },
+      "collab": {
+        "comment": "协同光标/选区/名字标签 8 色高可辨识度调色板，刻意避开品牌绿 #059669 与语义红",
+        "1": { "value": "#2563EB", "type": "color", "name": "blue" },
+        "2": { "value": "#E11D48", "type": "color", "name": "rose" },
+        "3": { "value": "#F97316", "type": "color", "name": "orange" },
+        "4": { "value": "#D97706", "type": "color", "name": "amber" },
+        "5": { "value": "#8B5CF6", "type": "color", "name": "violet" },
+        "6": { "value": "#0891B2", "type": "color", "name": "cyan" },
+        "7": { "value": "#DB2777", "type": "color", "name": "pink" },
+        "8": { "value": "#65A30D", "type": "color", "name": "lime" }
+      }
+    },
+    "font": {
+      "display": { "value": "'Inter', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif", "type": "fontFamily" },
+      "body":    { "value": "'Inter', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif", "type": "fontFamily" },
+      "mono":    { "value": "'JetBrains Mono', 'Fira Code', Consolas, monospace", "type": "fontFamily" }
+    }
+  },
+
+  "A2_semantic": {
+    "color": {
+      "bg":      { "value": "{A1_primitive.color.neutral.50}",  "type": "color" },
+      "surface": { "value": "{A1_primitive.color.neutral.0}",   "type": "color" },
+      "fg":      { "value": "{A1_primitive.color.neutral.900}", "type": "color" },
+      "muted":   { "value": "{A1_primitive.color.neutral.500}", "type": "color" },
+      "border":  { "value": "{A1_primitive.color.neutral.200}", "type": "color" },
+      "accent":        { "value": "{A1_primitive.color.emerald.600}", "type": "color" },
+      "accentOn":      { "value": "#FFFFFF", "type": "color" },
+      "accentHover":   { "value": "{A1_primitive.color.emerald.700}", "type": "color" },
+      "accentActive":  { "value": "{A1_primitive.color.emerald.800}", "type": "color" },
+      "accentSubtle":  { "value": "{A1_primitive.color.emerald.50}",  "type": "color", "comment": "浅底选中态/标签底" },
+      "accentSubtleHover": { "value": "{A1_primitive.color.emerald.100}", "type": "color" },
+      "success": { "value": "{A1_primitive.color.green.600}",  "type": "color" },
+      "successBg": { "value": "{A1_primitive.color.green.50}", "type": "color" },
+      "warn":    { "value": "{A1_primitive.color.amber.600}",  "type": "color" },
+      "warnBg":  { "value": "{A1_primitive.color.amber.50}",   "type": "color" },
+      "danger":  { "value": "{A1_primitive.color.red.600}",    "type": "color" },
+      "dangerBg": { "value": "{A1_primitive.color.red.50}",    "type": "color" },
+      "info":    { "value": "{A1_primitive.color.blue.600}",   "type": "color" },
+      "infoBg":  { "value": "{A1_primitive.color.blue.50}",    "type": "color" }
+    },
+    "fontSize": {
+      "xs":   { "value": "0.75rem",   "px": 12, "type": "dimension", "comment": "行列头/辅助文字/徽章" },
+      "sm":   { "value": "0.8125rem", "px": 13, "type": "dimension", "comment": "正文/单元格默认字号" },
+      "base": { "value": "0.875rem",  "px": 14, "type": "dimension", "comment": "表单/按钮/列表正文" },
+      "lg":   { "value": "1rem",      "px": 16, "type": "dimension", "comment": "页面标题/对话框标题" },
+      "xl":   { "value": "1.25rem",   "px": 20, "type": "dimension", "comment": "登录页主标题" }
+    },
+    "fontWeight": {
+      "regular":  { "value": 400, "type": "fontWeight", "comment": "正文/说明" },
+      "medium":   { "value": 510, "type": "fontWeight", "comment": "按钮/表头/小标题" },
+      "semibold": { "value": 590, "type": "fontWeight", "comment": "页面标题/对话框标题" }
+    },
+    "lineHeight": {
+      "tight": { "value": 1.25, "type": "number" },
+      "body":  { "value": 1.5,  "type": "number" },
+      "cell":  { "value": 1.4,  "type": "number" }
+    },
+    "space": {
+      "0":  { "value": "0",     "type": "dimension" },
+      "1":  { "value": "4px",   "type": "dimension" },
+      "2":  { "value": "8px",   "type": "dimension" },
+      "3":  { "value": "12px",  "type": "dimension" },
+      "4":  { "value": "16px",  "type": "dimension" },
+      "5":  { "value": "20px",  "type": "dimension" },
+      "6":  { "value": "24px",  "type": "dimension" },
+      "8":  { "value": "32px",  "type": "dimension" },
+      "10": { "value": "40px",  "type": "dimension" },
+      "12": { "value": "48px",  "type": "dimension" }
+    },
+    "radius": {
+      "sm":   { "value": "4px",    "type": "dimension", "comment": "徽章/标签" },
+      "md":   { "value": "6px",    "type": "dimension", "comment": "按钮/输入框/工具栏按钮" },
+      "lg":   { "value": "8px",    "type": "dimension", "comment": "卡片/对话框" },
+      "pill": { "value": "9999px", "type": "dimension", "comment": "头像/状态点" }
+    },
+    "shadow": {
+      "none":   { "value": "none", "type": "boxShadow" },
+      "xs":     { "value": "0 1px 2px rgba(17, 24, 39, 0.05)", "type": "boxShadow" },
+      "raised": { "value": "0 1px 2px rgba(17,24,39,0.04), 0 4px 8px rgba(17,24,39,0.06)", "type": "boxShadow", "comment": "下拉菜单/右键菜单/对话框" },
+      "overlay": { "value": "0 8px 24px rgba(17, 24, 39, 0.12)", "type": "boxShadow", "comment": "模态遮罩层上的对话框" }
+    },
+    "motion": {
+      "fast":   { "value": "150ms", "type": "duration", "comment": "hover/选中态收敛值" },
+      "base":   { "value": "200ms", "type": "duration", "comment": "下拉展开/toast" },
+      "slow":   { "value": "300ms", "type": "duration", "comment": "对话框进入" },
+      "easing": { "value": "cubic-bezier(0.2, 0, 0, 1)", "type": "cubicBezier" }
+    },
+    "focusRing": { "value": "0 0 0 2px {A1_primitive.color.neutral.0}, 0 0 0 4px rgba(5, 150, 105, 0.35)", "type": "boxShadow" }
+  },
+
+  "B_slot_component": {
+    "button": {
+      "primary": {
+        "bg": "{A2_semantic.color.accent}", "text": "{A2_semantic.color.accentOn}",
+        "bgHover": "{A2_semantic.color.accentHover}", "bgActive": "{A2_semantic.color.accentActive}",
+        "disabledBg": "{A1_primitive.color.neutral.100}", "disabledText": "{A1_primitive.color.neutral.400}",
+        "radius": "{A2_semantic.radius.md}", "height": "32px", "paddingX": "{A2_semantic.space.3}", "fontSize": "{A2_semantic.fontSize.base}", "fontWeight": "{A2_semantic.fontWeight.medium}"
+      },
+      "secondary": {
+        "bg": "{A2_semantic.color.surface}", "text": "{A1_primitive.color.neutral.700}", "border": "{A2_semantic.color.border}",
+        "bgHover": "{A1_primitive.color.neutral.50}", "radius": "{A2_semantic.radius.md}", "height": "32px"
+      },
+      "ghost": {
+        "bg": "transparent", "text": "{A1_primitive.color.neutral.700}",
+        "bgHover": "{A1_primitive.color.neutral.100}", "radius": "{A2_semantic.radius.md}", "height": "32px"
+      },
+      "danger": {
+        "bg": "{A2_semantic.color.danger}", "text": "#FFFFFF", "bgHover": "{A1_primitive.color.red.700}", "radius": "{A2_semantic.radius.md}", "height": "32px"
+      }
+    },
+    "toolbarButton": {
+      "comment": "表格编辑器工具栏内图标按钮",
+      "size": "28px", "iconSize": "16px", "radius": "{A2_semantic.radius.sm}",
+      "bg": "transparent", "bgHover": "{A1_primitive.color.neutral.100}", "bgActive": "{A1_primitive.color.neutral.200}",
+      "bgToggled": "{A2_semantic.color.accentSubtle}", "textToggled": "{A2_semantic.color.accent}",
+      "disabledText": "{A1_primitive.color.neutral.300}"
+    },
+    "input": {
+      "bg": "{A2_semantic.color.surface}", "border": "{A1_primitive.color.neutral.300}", "text": "{A2_semantic.color.fg}",
+      "placeholder": "{A1_primitive.color.neutral.400}",
+      "borderHover": "{A1_primitive.color.neutral.400}",
+      "focusRing": "{A2_semantic.focusRing}",
+      "errorBorder": "{A2_semantic.color.danger}",
+      "disabledBg": "{A1_primitive.color.neutral.100}", "disabledText": "{A1_primitive.color.neutral.400}",
+      "radius": "{A2_semantic.radius.md}", "height": "32px", "paddingX": "{A2_semantic.space.3}", "fontSize": "{A2_semantic.fontSize.base}"
+    },
+    "dropdown": {
+      "bg": "{A2_semantic.color.surface}", "border": "{A2_semantic.color.border}", "shadow": "{A2_semantic.shadow.raised}",
+      "radius": "{A2_semantic.radius.lg}", "itemHeight": "32px", "itemPaddingX": "{A2_semantic.space.3}",
+      "itemHoverBg": "{A1_primitive.color.neutral.100}", "itemSelectedBg": "{A2_semantic.color.accentSubtle}", "itemSelectedText": "{A2_semantic.color.accent}"
+    },
+    "contextMenu": {
+      "inherits": "dropdown", "minWidth": "180px",
+      "dangerItemText": "{A2_semantic.color.danger}", "dangerItemHoverBg": "{A2_semantic.color.dangerBg}"
+    },
+    "dialog": {
+      "bg": "{A2_semantic.color.surface}", "radius": "{A2_semantic.radius.lg}", "shadow": "{A2_semantic.shadow.overlay}",
+      "overlay": "rgba(17, 24, 39, 0.4)", "width": "480px", "padding": "{A2_semantic.space.6}",
+      "titleFontSize": "{A2_semantic.fontSize.lg}", "titleFontWeight": "{A2_semantic.fontWeight.semibold}"
+    },
+    "toast": {
+      "bg": "{A1_primitive.color.neutral.900}", "text": "#FFFFFF", "radius": "{A2_semantic.radius.md}",
+      "padding": "8px 12px", "fontSize": "{A2_semantic.fontSize.sm}", "duration": "3000ms",
+      "variantBorder": { "success": "{A2_semantic.color.success}", "warn": "{A2_semantic.color.warn}", "error": "{A2_semantic.color.danger}" }
+    },
+    "table": {
+      "headerBg": "{A1_primitive.color.neutral.150}", "headerText": "{A1_primitive.color.neutral.600}",
+      "rowBorder": "{A1_primitive.color.neutral.200}", "rowHoverBg": "{A1_primitive.color.neutral.50}",
+      "cellPadding": "0 12px", "rowHeight": "40px"
+    }
+  },
+
+  "C_extension": {
+    "comment": "电子表格编辑器专属扩展 Token",
+    "grid": {
+      "lineColor":       { "value": "{A1_primitive.color.neutral.250}", "type": "color" },
+      "headerBg":        { "value": "{A1_primitive.color.neutral.150}", "type": "color" },
+      "headerText":      { "value": "{A1_primitive.color.neutral.600}", "type": "color" },
+      "headerSelectedBg": { "value": "{A1_primitive.color.neutral.250}", "type": "color" },
+      "headerSelectedText": { "value": "{A2_semantic.color.accent}", "type": "color" },
+      "headerHoverBg":   { "value": "{A1_primitive.color.neutral.200}", "type": "color" },
+      "cellFont":        { "value": "{A1_primitive.font.mono}", "type": "fontFamily" },
+      "cellFontSize":    { "value": "{A2_semantic.fontSize.sm}", "type": "dimension" },
+      "selectionBorder": { "value": "{A2_semantic.color.accent}", "type": "color", "comment": "选中区域 2px 描边" },
+      "selectionFill":   { "value": "rgba(5, 150, 105, 0.06)", "type": "color" },
+      "fillHandle":      { "value": "{A2_semantic.color.accent}", "type": "color", "comment": "右下角填充柄 6×6 方块" },
+      "resizeGuide":     { "value": "{A2_semantic.color.accent}", "type": "color", "comment": "行列拖拽调宽 1px 参考线" }
+    },
+    "sheetTab": {
+      "text":            { "value": "{A1_primitive.color.neutral.600}", "type": "color" },
+      "hoverBg":         { "value": "{A1_primitive.color.neutral.100}", "type": "color" },
+      "activeBg":        { "value": "{A1_primitive.color.neutral.250}", "type": "color" },
+      "activeText":      { "value": "{A2_semantic.color.accent}", "type": "color" },
+      "activeUnderline": { "value": "{A2_semantic.color.accent}", "type": "color", "comment": "2px 下划线" }
+    },
+    "collab": {
+      "selectionFillOpacity": { "value": 0.1, "type": "number", "comment": "协作者选区 = 其光标色 10% 透明填充" },
+      "cursorBorderWidth": { "value": "2px", "type": "dimension" },
+      "nameTagRadius": { "value": "{A2_semantic.radius.sm}", "type": "dimension" },
+      "nameTagFontSize": { "value": "{A2_semantic.fontSize.xs}", "type": "dimension" },
+      "maxVisibleNameTags": { "value": 4, "type": "number", "comment": "超过 4 人时名字标签隐藏，仅显示彩色光标" },
+      "avatarSize": { "value": "24px", "type": "dimension" },
+      "avatarOverlap": { "value": "-6px", "type": "dimension" },
+      "maxVisibleAvatars": { "value": 4, "type": "number", "comment": "超出折叠为 +N 圆标" }
+    },
+    "saveIndicator": {
+      "savedDot":   { "value": "{A2_semantic.color.success}", "type": "color" },
+      "savingColor": { "value": "{A2_semantic.color.muted}", "type": "color" },
+      "offlineColor": { "value": "{A2_semantic.color.warn}", "type": "color" }
+    },
+    "readonlyBanner": {
+      "comment": "License 缺失/过期/超席只读提示条（挂应用布局根、标题栏栈之外）",
+      "height": { "value": "32px", "type": "dimension" },
+      "bg": { "value": "{A2_semantic.color.warnBg}", "type": "color" },
+      "border": { "value": "{A2_semantic.color.warn}", "type": "color", "comment": "仅 1px 下边框，非左边框" },
+      "text": { "value": "{A1_primitive.color.amber.700}", "type": "color" }
+    }
+  },
+
+  "layout": {
+    "titleBar":    { "value": "44px", "type": "dimension" },
+    "toolbar":     { "value": "40px", "type": "dimension" },
+    "formulaBar":  { "value": "32px", "type": "dimension" },
+    "headerTotal": { "value": "116px", "type": "dimension", "comment": "44+40+32，硬上限 120px" },
+    "rowHeaderHeight":   { "value": "24px", "type": "dimension" },
+    "columnHeaderWidth": { "value": "64px", "type": "dimension" },
+    "sheetBar":    { "value": "36px", "type": "dimension" },
+    "statusBar":   { "value": "28px", "type": "dimension" },
+    "sidebarAdmin": { "value": "200px", "type": "dimension", "comment": "管理后台左侧导航" },
+    "containerMax": { "value": "1200px", "type": "dimension" }
+  },
+
+  "zIndex": {
+    "base":        { "value": 0,    "type": "number" },
+    "grid":        { "value": 10,   "type": "number" },
+    "gridHeader":  { "value": 20,   "type": "number" },
+    "sticky":      { "value": 1100, "type": "number", "comment": "标题栏/工具栏吸顶" },
+    "dropdown":    { "value": 1200, "type": "number" },
+    "contextMenu": { "value": 1250, "type": "number" },
+    "modal":       { "value": 1300, "type": "number" },
+    "toast":       { "value": 1400, "type": "number" },
+    "tooltip":     { "value": 1500, "type": "number" }
+  }
+}

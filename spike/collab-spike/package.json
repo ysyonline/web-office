@@ -1,0 +1,19 @@
+{
+  "name": "collab-spike",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Univer Command/Mutation -> Yjs CRDT mapping spike",
+  "type": "module",
+  "scripts": {
+    "spike": "node src/spike.mjs"
+  },
+  "dependencies": {
+    "@univerjs/core": "1.0.2",
+    "@univerjs/engine-formula": "1.0.2",
+    "@univerjs/engine-render": "1.0.2",
+    "@univerjs/presets": "^1.0.2",
+    "@univerjs/sheets": "1.0.2",
+    "@univerjs/sheets-formula": "1.0.2",
+    "yjs": "^13.6.0"
+  }
+}

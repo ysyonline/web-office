@@ -1,0 +1,1526 @@
+openapi: 3.0.3
+info:
+  title: web-office API（信创私有化在线电子表格）
+  version: 1.0.0
+  description: |
+    依据 Spec-web-office-v1.md 第 5 章「API 端点清单（锁定）」细化的接口契约，前后端联调唯一依据。
+    规则：
+    - 成功响应直接返回业务数据（2xx），错误响应统一结构 {code, message, detail}。
+    - 认证：Bearer JWT（access 15min）+ refresh token（7d，仅 /api/v1/auth/refresh 与登出使用）。
+    - 所有端点带版本前缀 /api/v1；WebSocket 协同端点为 /ws/collab/{fileId}（见 x-websocket 协议约定）。
+    - 业务错误码分段：1xxx 认证 / 2xxx 文件与快照 / 3xxx 导入导出 / 4xxx 协同 / 5xxx License / 6xxx SSO / **7xxx 请求校验（均 → HTTP 400）** / 9xxx 服务端。
+    - **契约事实源声明（P3-001 裁决，2026-10-22）：本文件是 API 契约的唯一事实源。** 后端 @nestjs/swagger 装饰器生成的产物从属于本文件，由 zod schema（`packages/shared`）经 `z.toJSONSchema(schema, { target: 'openapi-3.0' })` 提供校验规则；两者由 CI 的 G1 contract-diff 强制相等。**任何改动必须先改本文件、再同步代码，并经 contract-diff 验证；不得反向以代码产物覆盖本文件。**
+
+servers:
+  - url: https://{gateway-host}
+    description: 生产（Nginx+Tongsuo TLCP 网关终结国密 HTTPS，内网）
+    variables:
+      gateway-host:
+        default: localhost
+  - url: http://localhost:3000
+    description: 本地开发
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: auth
+  - name: users
+  - name: sso
+  - name: files
+  - name: import-export
+  - name: share
+  - name: audit
+  - name: license
+  - name: system
+  - name: collab
+
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      summary: 登录（SM3 加盐口令校验）
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: 凭证错误（连续 5 次锁定 15 分钟，AC-02）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 1001
+                message: 用户名或密码错误
+                detail: { remainingAttempts: 3 }
+        '423':
+          description: 账号锁定中
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 1002
+                message: 账号已锁定
+                detail: { unlockAt: '2026-10-21T12:00:00Z' }
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [auth]
+      summary: 刷新 access token
+      security:
+        - refreshTokenBody: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: 刷新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: refresh token 无效/已吊销/过期
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 1003
+                message: refresh token 无效
+                detail: ''
+
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: 登出（吊销 refresh token）
+      responses:
+        '204':
+          description: 登出成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/auth/me:
+    get:
+      tags: [auth]
+      summary: 当前用户信息
+      responses:
+        '200':
+          description: 用户信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/users:
+    get:
+      tags: [users]
+      summary: 用户列表（admin，分页 + 关键字）
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: keyword
+          in: query
+          description: 用户名/显示名模糊搜索
+          schema:
+            type: string
+            maxLength: 64
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, locked, disabled]
+      responses:
+        '200':
+          description: 用户列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserAdminResponse'
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  hasMore: { type: boolean }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [users]
+      summary: 管理员建号（初始口令 PBKDF2-SM3 存储）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: 建号成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdminResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: 用户名已存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 1006
+                message: 用户名已存在
+                detail: ''
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [users]
+      summary: 用户详情（admin，含锁定/禁用状态）
+      responses:
+        '200':
+          description: 用户详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdminResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 1007
+                message: 用户不存在
+                detail: ''
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    patch:
+      tags: [users]
+      summary: 更新用户（display_name / 角色 / status）
+      description: |
+        等保约束：不提供物理删除端点——账号全生命周期可追溯是等保审计要求；
+        停用走 status='disabled'（disabled 用户登录被拒且已有 JWT/WebSocket 会话即时失效）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: 已更新
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdminResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 1007
+                message: 用户不存在
+                detail: ''
+        '422':
+          description: 非法操作（如禁用/降级最后一个 admin 账号）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 1008
+                message: 不允许禁用最后一个管理员
+                detail: ''
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/users/{id}/unlock:
+    post:
+      tags: [users]
+      summary: 管理员解锁（AC-02：locked_until 置空 + failed_attempts 清零）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 已解锁
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdminResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 1007
+                message: 用户不存在
+                detail: ''
+        '409':
+          description: 账号未处于锁定状态，无需解锁
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 1009
+                message: 账号未锁定
+                detail: ''
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/sso/{type}/callback:
+    post:
+      tags: [sso]
+      summary: SSO 回调（ldap/oauth2/cas，AC-10）
+      security: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [ldap, oauth2, cas]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SsoCallbackRequest'
+      responses:
+        '200':
+          description: 认证成功，建立本地会话并映射用户（返回同 login）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: 协议校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 6001
+                message: SSO 票据校验失败
+                detail: { type: cas }
+        '400':
+          description: 协议未启用或参数缺失
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 6002
+                message: SSO 协议未启用
+                detail: { type: cas }
+
+  /api/v1/sso/config:
+    get:
+      tags: [sso]
+      summary: 读取 SSO 配置（admin）
+      responses:
+        '200':
+          description: SSO 配置列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SsoConfig'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      tags: [sso]
+      summary: 写入 SSO 配置（admin）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SsoConfig'
+      responses:
+        '200':
+          description: 已保存
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SsoConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: 配置字段校验失败（如 LDAP 地址不可达格式错误）。**detail 结构与 7001 一致**（P3-001 对齐，避免前端写两套解析）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 6003
+                message: 配置校验失败
+                detail:
+                  errors:
+                    - field: config.url
+                      rule: invalid_format
+                      message: LDAP 地址格式非法
+
+  /api/v1/files:
+    get:
+      tags: [files]
+      summary: 文件列表（分页 + 关键词）
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: keyword
+          in: query
+          description: 文件名模糊搜索（ILIKE，<1 万条量级直接走数据库）
+          schema:
+            type: string
+            maxLength: 100
+      responses:
+        '200':
+          description: 文件列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [files]
+      summary: 新建文件（初始空 Univer snapshot）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '402':
+          description: License 过期/超席，写操作降级只读（AC-09）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 5001
+                message: License 无效，系统只读
+                detail: { reason: expired }
+
+  /api/v1/files/{id}:
+    parameters:
+      - $ref: '#/components/parameters/FileId'
+    patch:
+      tags: [files]
+      summary: 重命名
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileRenameRequest'
+      responses:
+        '200':
+          description: 已重命名
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [files]
+      summary: 软删除（deleted_at 置位）
+      responses:
+        '204':
+          description: 已删除
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/files/{id}/snapshot:
+    parameters:
+      - $ref: '#/components/parameters/FileId'
+    get:
+      tags: [files]
+      summary: 取最新服务端物化快照（gzip 压缩，含水位线 baseSeq）
+      responses:
+        '200':
+          description: 最新快照（服务端从 Yjs doc 物化生成，非客户端上传）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [files]
+      summary: 触发服务端物化快照点（无请求体；快照仅由服务端从权威 Yjs doc 生成）
+      description: |
+        归属权契约（ADR-001 修订）：快照只能由服务端无头 Univer 从 Yjs doc 物化生成，
+        客户端无快照上传通道——杜绝坏客户端污染权威数据。
+        物化原子性：生成快照与记录水位线 base_seq 在同一数据库事务内完成。
+      responses:
+        '201':
+          description: 物化完成
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: integer
+                    format: int64
+                    example: 12
+                  baseSeq:
+                    type: integer
+                    format: int64
+                    description: 本快照物化时已消费的 yjs_updates 最大 seq（水位线）
+                    example: 3456
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 该文件已有物化任务进行中（幂等保护）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 2005
+                message: 快照物化进行中
+                detail: ''
+        '413':
+          description: 快照超过上限（gzip 后 32MB）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 2003
+                message: 快照过大
+                detail: { limitMB: 32, basis: gzip }
+
+  /api/v1/files/{id}/import:
+    post:
+      tags: [import-export]
+      summary: 上传 xlsx/csv 触发后端解析任务（<=10MB，AC-07）
+      description: |
+        导入与活跃协同互斥协议（P1-6）：
+        1. 导入任务解析完成、回写目标文件前，服务端检查该文件的活跃协同连接；
+        2. 若无活跃连接：直接物化新快照（version+1），完成后返回；
+        3. 若有活跃连接：先对该文件物化当前 Yjs doc 快照（保存现场）——随后以结构通道
+           广播 [CONTROL] doc-rebuild 指令——客户端收到后断开当前 doc 会话，按加载协议
+           （snapshot@base_seq + seq>base_seq 增量）重新加载重建后的文档；
+        4. 互斥窗口内（解析完成至 doc-rebuild 广播完成）服务端拒收该文件的新协同 UPDATE（close 4409 语义复用），
+           防止重建期间新写入丢失；
+        5. doc-rebuild 后第一个物化快照的 base_seq 从 0 重新计数（文档已重建，与旧增量链断裂）。
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: .xlsx/.csv，上限 10MB
+      responses:
+        '202':
+          description: 解析任务已入队
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  taskId:
+                    type: string
+                    format: uuid
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          description: 超过 10MB 上限，拒绝
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 3001
+                message: 文件超过 10MB 上限
+                detail: { sizeMB: 23.4, limitMB: 10 }
+        '422':
+          description: 格式不支持
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 3002
+                message: 仅支持 .xlsx/.csv
+                detail: ''
+
+  /api/v1/import/{taskId}:
+    get:
+      tags: [import-export]
+      summary: 解析任务状态/结果（轮询，间隔 >=1s）
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 任务状态
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportTaskStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/files/{id}/export:
+    get:
+      tags: [import-export]
+      summary: 导出下载（xlsx/csv，AC-08）
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [xlsx, csv]
+      responses:
+        '200':
+          description: 文件流
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/files/{id}/share:
+    post:
+      tags: [share]
+      summary: 创建分享权限（P1，view/edit）
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareCreateRequest'
+      responses:
+        '201':
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 该 (fileId,userId) 分享已存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 2004
+                message: 分享已存在
+                detail: ''
+
+  /api/v1/audit-logs:
+    get:
+      tags: [audit]
+      summary: 审计日志查询（admin，分页 + 过滤，AC-11）
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: userId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: action
+          in: query
+          schema:
+            type: string
+            example: file.create
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: 审计日志列表（只读、不可删改）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/license/activate-request:
+    post:
+      tags: [license]
+      summary: 生成激活申请码（机器指纹：CPU/主板序列号哈希）
+      security: []
+      responses:
+        '200':
+          description: 申请码（离线流程：客户将申请码线下交给供应商换发 License 文件）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestCode:
+                    type: string
+                    description: 机器指纹申请码（含指纹摘要，防篡改）
+
+  /api/v1/license/install:
+    post:
+      tags: [license]
+      summary: 安装 License 文件（服务端内置 SM2 公钥验签，AC-09）
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [licenseFile]
+              properties:
+                licenseFile:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 验签通过并安装
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [valid]
+                  seats:
+                    type: integer
+                  expiresAt:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          description: SM2 验签失败或机器指纹不匹配
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 5002
+                message: License 验签失败
+                detail: { reason: fingerprint-mismatch }
+
+  /api/v1/license/status:
+    get:
+      tags: [license]
+      summary: License 状态（席位/到期/并发计量）
+      responses:
+        '200':
+          description: 当前状态
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  seats:
+                    type: integer
+                    example: 50
+                    description: 已授权席位数（席位口径见 /ws/collab x-websocket：并发编辑会话去重用户数，查看会话不占席）
+                  used:
+                    type: integer
+                    example: 12
+                    description: 当前占用席位数（= currentConcurrent，编辑会话去重计数）
+                  currentConcurrent:
+                    type: integer
+                    example: 12
+                    description: 当前并发编辑用户数（实时计量）
+                  peakConcurrent:
+                    type: integer
+                    example: 47
+                    description: 历史峰值并发编辑用户数（连接建立时创新高即更新 licenses.peak_concurrent）
+                  expiresAt:
+                    type: string
+                    format: date-time
+                  valid:
+                    type: boolean
+
+  /api/v1/ws/ticket:
+    post:
+      tags: [collab]
+      summary: 用 JWT 换取一次性 WebSocket 握手 ticket（P0-3 ①）
+      description: |
+        存在性理由：浏览器 WS API 无法自定义 Authorization Header，token 若放 query 会落入
+        Nginx access log（等保审计对象，15min 有效期内可被日志读取者重放）。
+        机制：服务端生成 5 秒有效、单次使用的一次性 ticket（内存态、用后即焚），
+        WS 握手用 ticket 完成认证；ticket 泄漏的可重放窗口从 15 分钟缩至 5 秒且单次。
+      responses:
+        '200':
+          description: ticket 已签发
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket:
+                    type: string
+                    description: 一次性 ticket，5 秒有效，仅可用于一次 WS 握手
+                  expiresIn:
+                    type: integer
+                    example: 5
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/health:
+    get:
+      tags: [system]
+      summary: 健康检查（公开，无认证）
+      security: []
+      responses:
+        '200':
+          description: 存活
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+
+  /ws/collab/{fileId}:
+    get:
+      tags: [collab]
+      summary: Yjs 协同 WebSocket 端点（协议见 x-websocket，OpenAPI 3.0 不承载 WS，此节点为契约锚点）
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+        - name: ticket
+          in: query
+          required: true
+          description: 一次性握手 ticket（POST /api/v1/ws/ticket 以 JWT 换取，5 秒有效单次使用）。JWT 直连 query 的旧方案已废弃——token 落 Nginx access log 构成等保审计面内的 15 分钟重放窗口。
+          schema:
+            type: string
+      responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '101':
+          description: 升级为 WebSocket（其余状态码经 WS 关闭帧返回，见 x-websocket）
+      x-websocket:
+        handshake: |
+          0. 客户端先 POST /api/v1/ws/ticket（Bearer JWT）换取一次性 ticket（5s 有效），
+             随后连接 wss://<网关>/ws/collab/{fileId}?ticket=<ticket>；
+             ticket 校验失败/过期/已用 即 close 4401。用后即焚，重复使用第二次即拒绝。
+          1. 服务端校验 ticket 对应的用户身份与该文件的编辑权限；失败则以 close code 4401（未认证）/ 4403（无权限）关闭。
+          2. 连接建立后服务端立即执行「加载协议」：
+             a. 取该文件最新已物化快照 snapshot@base_seq（file_snapshots 最大 version 行）；
+             b. 发送 [LOAD] 帧（应用层自定义帧，见 frame-protocol）：{ version, baseSeq, snapshot(gzip+Base64) }；
+             c. 紧接着发送 [SYNC_STEP1] 并在客户端应答的 [SYNC_STEP2]（差量 update）中补齐 seq > base_seq 的增量；
+             d. 增量顺序保证：服务端按 seq 升序投递 yjs_updates 中 seq > base_seq 的记录 + 广播在线增量。
+          加载协议（固定语义）：snapshot@base_seq + updates WHERE seq > base_seq。
+          重连场景：客户端断线重连后重新换 ticket 并重复上述 0-2（幂等：Yjs 差量同步天然去重，重放的 update 不改变文档状态）；
+          若期间服务端已物化新快照，客户端自动获得新 version/baseSeq，旧增量无需重放。
+          物化与写入并发：物化事务持有该文件写锁，期间到达的 update 计入 base_seq 之后的增量（事务边界即水位线），
+          不存在边界增量丢失。
+          会话失效（P0-3 ②）：用户登出 / 账号被锁定或禁用 / refresh token 吊销时，服务端向该用户全部活跃 WS
+          发送 [CONTROL] session-invalidated 并 close 4411；协同服务每 60s 周期 re-validate：
+          重新校验在线连接对应用户的 status（active）与签发 ticket 的 JWT 会话吊销状态，失配即踢出。
+          连接角色与席位（最终口径，PM 商务备案 2026-10-21）：
+          - WS 建连时客户端携带本次会话权限（view|edit，来自文件分享/所有者权限判定）；
+          - 席位 = 并发「编辑会话」去重用户数（user_id 去重，同用户多标签/多文件计 1 席）；**查看会话不占席**；
+          - viewer 与 editor 走同一 WS 通道：服务端按角色过滤上行（viewer 仅收 update 流 + awareness，
+            支撑「他人光标可见」；viewer 的 UPDATE 上行被拒 4403）；
+          - 超席行为：新的 edit 连接自动降级 view（提示可显示）；已有编辑会话不中断；
+          - view -> edit 升级走 [ROLE_UPGRADE] 帧（服务端判席后 ack/reject，见 frame-protocol），升级瞬间占席；
+          - 60s 断线宽限：编辑用户断线后 60s 内重连不重复占席（防席位闪烁），宽限过后释放席位；
+          - 峰值计量：进程内实现（单写者单实例 Map 计数，不依赖 Redis——Redis 属 ADR-004 扩容范畴），
+            连接建立时创新高更新 licenses.peak_concurrent，经 GET /api/v1/license/status 的
+            currentConcurrent/peakConcurrent 暴露。
+        frame-protocol: |
+          所有帧均为二进制（ArrayBuffer），遵循 Yjs 同步协议（lib0 编码），帧头 1 字节类型：
+          - 0x00 SYNC：Yjs sync 协议消息（sync step1/step2/update 子类型由 lib0 内部字节区分）
+            - SYNC_STEP1: state vector 请求
+            - SYNC_STEP2: 差量 update
+            - UPDATE: 增量 update（本产品自定义：客户端 mutation 出站统一走 UPDATE 帧）
+          - 0x01 AWARENESS：y-protocols awareness 状态（光标/选区/在线用户，JSON 经 lib0 编码）
+          - 0x02 PING（应用层心跳，30s 间隔，90s 无响应断开）
+          - 0x03 LOAD（应用层，握手阶段服务端下发）：{ version, baseSeq, snapshot } 快照载荷（gzip+Base64）
+          - 0x04 CONTROL（应用层，服务端下发控制指令）：
+            - doc-rebuild（导入互斥协议，见 /files/{id}/import 端点说明）
+            - session-invalidated（会话失效：随 4411 关闭帧前置下发，客户端应清本地会话并引导重登）
+            - role-upgrade-ack / role-upgrade-reject（客户端申请 view->edit 升级的应答，见下）
+          - 0x05 ROLE_UPGRADE（应用层，客户端 -> 服务端）：{ targetRole: 'edit' }
+            —— 查看用户申请升级编辑。服务端判席：有空席即升级并回发 role-upgrade-ack（此后该连接按
+            编辑角色过滤上行、计入席位）；满席回发 role-upgrade-reject（连接保持 view 角色，不中断），
+            前端提示「席位已满，保持只读」。防绕过关键：**升级瞬间占席**，不存在「先 edit 后补占」窗口。
+          文本帧不使用；Ping/Pong 之外服务端不主动下推非 Yjs 数据。
+        message-flow: |
+          C -> S [UPDATE]       客户端 mutation -> Yjs update（单元格内容通道 + 结构操作通道，见 spike REPORT.md 第 3 节）
+          C <- S [UPDATE]       服务端广播其他客户端的 update（不含回声）
+          C <-> S [SYNC_STEP1/2] 重连/首连时的差量同步（断线重连由 y-websocket 语义保证幂等）
+          C -> S [AWARENESS]    光标/选区变更（不落库、不进快照）
+          C <- S [AWARENESS]    广播协作者光标（8 色调色板由 Design Token 定义）
+        server-responsibilities: |
+          - 每文件维护权威 Yjs Doc（MVP 单实例进程内广播 CollabBus；多实例引入 Redis pub/sub 属 ADR-004 扩容范畴）。
+          - UPDATE 落库 yjs_updates（BLOB，含 origin/created_by，供审计留痕与快照重建）。落库时序（v1.1，对应 Spec §10/AC-15）：
+            write-through——先事务提交、后广播/确认；允许 group-commit 合并提交，攒批刷新上界 <= 1 秒或 <= 50 条
+            （先到为准，即 kill -9/OOM 的 RPO 上界），禁止无上界内存攒批；seq 允许单事务号段预分配（<=1000/段）。
+          - 优雅关闭（v1.1，对应 Spec §10）：SIGTERM/SIGINT 触发序列——拒新 WS/HTTP 连接 -> 存量帧广播排空 ->
+            攒批最后一次 flush -> WS close 1000，总 drain 预算 <= 30 秒；优雅关闭不强制物化快照（增量已 write-through
+            持久化，重启按加载协议无损重建；物化只是日志压缩，30min/500 条为物化节流参数而非数据丢失窗口）。
+          - 结构操作通道按到达顺序定序后广播（spike REPORT.md 坑 4.3）。
+          - 快照物化触发（P1-1 节流口径）：距上一快照 >= 30min / 该文件累计新 update >= 500 条 / 客户端显式保存点
+            ——三类才物化，物化产生有语义的版本节点（供 P1 版本历史回滚），高频微编辑不物化。
+          - 会话守护（P0-3 ②）：登出/锁定/禁用即时踢出（session-invalidated + 4411）+ 60s 周期 re-validate。
+          - 席位判定：席位 = 并发协同编辑用户数（同一 userId 的多标签页/多文件连接去重后计 1 席）；
+            只读会话不占席（viewer 走同一 WS 通道，服务端按角色过滤上行——仅收 update 流与 awareness，
+            支撑他人光标可见；只读用户发编辑 UPDATE 时 close 4403）。
+            防绕过（Spec §10 锁定口径）：view->edit 转换瞬间即占席，满席时拒绝转编辑（保持只读并明确提示）。
+            超席时拒绝新的「新用户编辑首连」（close 4409），既有编辑连接不中断、新用户降级只读；
+            计量带 60s 断线宽限（防网络抖动导致席位闪烁）；席位计量为进程内实现（单写者单实例，
+            ADR-004 多实例时演进）。
+          - 连接防滥用（独立于席位判定）：同账号同文件连接数 >= 3 即拒绝新连接（close 4410）——
+            席位按用户去重计席，4410 按连接数计，两者口径不同且互不替代。
+        close-codes:
+          '4401': 未认证（ticket 无效/过期/已用；或周期 re-validate 失败）
+          '4403': 无该文件编辑权限（只读用户收到 UPDATE 帧时也以此码关闭）
+          '4409': License 无效/超席，只读降级（席位口径见 server-responsibilities）
+          '4410': 同账号同文件连接数超限（>=3）——防滥用上限，按连接数计；与席位判定（按编辑用户去重、查看不占席、ROLE_UPGRADE 升级瞬间占席）为两套独立口径，互不替代
+          '4411': 会话失效（登出/锁定/禁用/token 吊销；前置 session-invalidated 控制帧）
+          '4412': 服务端资源上限（活跃 doc 数达单实例上限 100，拒绝新连接并提示稍后重试/联系管理员扩容；容量保护，与席位判定独立）
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    refreshTokenBody:
+      type: apiKey
+      in: body
+      description: refresh token 通过请求体 {refreshToken} 携带，吊销制
+
+  parameters:
+    FileId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    Unauthorized:
+      description: 未认证 / token 过期
+      headers:
+        X-Request-Id:
+          description: 本次请求的追踪 id（与 detail.requestId 同源）
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 1004
+            message: 未认证或 token 已过期
+            detail: ''
+    Forbidden:
+      description: 无权限（非 admin 或 License 只读降级）
+      headers:
+        X-Request-Id:
+          description: 本次请求的追踪 id（与 detail.requestId 同源）
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 1005
+            message: 无权限
+            detail: { requiredRole: admin }
+    NotFound:
+      description: 资源不存在
+      headers:
+        X-Request-Id:
+          description: 本次请求的追踪 id（与 detail.requestId 同源）
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 2001
+            message: 文件不存在
+            detail: ''
+    BadRequest:
+      description: 请求校验失败（7xxx 段）。写端点与带 query 的列表端点统一引用本响应
+      headers:
+        X-Request-Id:
+          description: 本次请求的追踪 id（与 detail.requestId 同源，便于网关/运维侧检索）
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 7001
+            message: 请求参数校验失败
+            detail:
+              errors:
+                - field: password
+                  rule: too_small
+                  message: 口令长度至少 8 位
+                - field: (root)
+                  rule: unrecognized_keys
+                  message: 存在未允许的字段
+
+  schemas:
+    Error:
+      type: object
+      description: 统一错误结构（Spec 第 10 章：{code,message,detail}）
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          description: 业务错误码（非 HTTP 状态码）；0 表示成功不出现在错误体中
+        message:
+          type: string
+          description: 人类可读描述（中文）
+        detail:
+          description: |
+            结构化补充信息，类型不固定（对象/字符串/null）。
+            - **code 为 7001/6003（校验类）时固定为 `{ errors: [{ field, rule, message }] }`**：
+              `field` 为点路径（数组下标写作 `rows[1].cells[0]`），根级/整体类型错误固定为字面量 `(root)`；
+              `rule` 取 zod issue code（11 个字面量之一）；`message` 必须是中文。
+            - **code 为 9001 时固定为 `{ requestId }`**（同一 id 同时由 `X-Request-Id` 响应头返回），供运维按 id 检索日志。
+          nullable: true
+          example:
+            errors:
+              - field: password
+                rule: too_small
+                message: 口令长度至少 8 位
+      # detail 形态随 code 变化；此处显式声明各形态的 schema，使结构可被机器校验（G1）
+      x-detail-variants:
+        '7001 / 6003（校验类）':
+          $ref: '#/components/schemas/ValidationErrorDetail'
+        '9001（服务端内部错误）':
+          description: detail 固定为 { requestId }，同一 id 由 X-Request-Id 响应头返回
+
+    ValidationErrorDetail:
+      type: object
+      description: 校验类错误的 detail 形态（7001 / 6003）
+      required: [errors]
+      properties:
+        errors:
+          type: array
+          description: 逐字段错误明细；前端按 field 映射到字段下方，field === '(root)' 走 Toast
+          items:
+            $ref: '#/components/schemas/ValidationErrorItem'
+      additionalProperties: false
+
+    ValidationErrorItem:
+      type: object
+      description: 校验错误明细项（7xxx / 6003 的 detail.errors[] 元素）
+      required: [field, rule, message]
+      properties:
+        field:
+          type: string
+          description: 字段点路径；根级或请求体整体类型错误为字面量 (root)
+          example: rows[1].cells[0]
+        rule:
+          type: string
+          description: 校验规则标识（zod issue code）
+          example: too_small
+        message:
+          type: string
+          description: 中文可读描述，直接呈现给用户
+          example: 口令长度至少 8 位
+      additionalProperties: false
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 64
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: 明文传输（通道由 TLCP/TLS 保护），服务端 SM3+盐校验
+      additionalProperties: false
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT，15min 有效
+        refreshToken:
+          type: string
+          description: 7d 有效，服务端存 hash 可吊销
+        user:
+          $ref: '#/components/schemas/UserResponse'
+
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+      additionalProperties: false
+
+    RefreshResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [admin, member]
+        ssoProvider:
+          type: string
+          nullable: true
+
+    UserAdminResponse:
+      type: object
+      description: 管理端用户视图（比自助视图多状态与安全字段）
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [admin, member]
+        status:
+          type: string
+          enum: [active, locked, disabled]
+        lockedUntil:
+          type: string
+          format: date-time
+          nullable: true
+        failedAttempts:
+          type: integer
+        ssoProvider:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          description: 最近一次资料/角色/状态变更时间（与 schema.md §3.1 users.updated_at 对齐）
+
+    UserCreateRequest:
+      type: object
+      required: [username, displayName, role]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 64
+        displayName:
+          type: string
+          maxLength: 128
+        role:
+          type: string
+          enum: [admin, member]
+        initialPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: 可选；缺省时服务端生成随机一次性初始口令并在响应后不再可见（等保口令策略：首次登录强制改密）
+      x-field-mapping:
+        target: password
+        note: 对外契约字段名为 initialPassword（避免与登录口令语义混淆），服务端映射到 Spec §5 建号请求体的 password；前端禁止以 password 为键发请求
+      additionalProperties: false
+
+    UserUpdateRequest:
+      type: object
+      description: 部分更新；不提供 username 修改与物理删除
+      properties:
+        displayName:
+          type: string
+          maxLength: 128
+        role:
+          type: string
+          enum: [admin, member]
+        status:
+          type: string
+          enum: [active, disabled]
+          description: 禁用即等保意义上的账号停用；不可在此解锁（解锁走 /users/:id/unlock）
+      additionalProperties: false
+
+    SsoCallbackRequest:
+      type: object
+      description: 协议相关凭证（ldap 为服务端代理绑定验证后直接调用；oauth2 为 code+state；cas 为 ticket+service）
+      properties:
+        code:
+          type: string
+          description: oauth2 授权码
+        state:
+          type: string
+        ticket:
+          type: string
+          description: CAS 票据
+      additionalProperties: false
+
+    SsoConfig:
+      type: object
+      required: [type, enabled]
+      properties:
+        type:
+          type: string
+          enum: [ldap, oauth2, cas]
+        enabled:
+          type: boolean
+        config:
+          type: string
+          description: JSON 字符串（禁用 PG 专有特性，text 列存储）；结构按协议定义，服务端 schema 校验
+      additionalProperties: false
+
+    FileCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+      additionalProperties: false
+
+    FileRenameRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+      additionalProperties: false
+
+    FileResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        ownerId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+          description: 最新快照版本号
+
+    FileListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileResponse'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        hasMore:
+          type: boolean
+
+    SnapshotResponse:
+      type: object
+      properties:
+        snapshot:
+          type: string
+          description: Univer IWorkbookData 经 gzip 压缩再 Base64 的字符串（服务端物化产物；上限 gzip 后 32MB，体积依据见 spike REPORT 附录 A）
+        version:
+          type: integer
+          format: int64
+        baseSeq:
+          type: integer
+          format: int64
+          description: 水位线——物化该快照时已消费的 yjs_updates 最大 seq；加载协议据此回放 seq > baseSeq 的增量
+
+    # SnapshotSaveRequest：已于 2026-10-22 删除（P3-001 裁决第 7 项）。
+    # 原为孤儿 schema——快照按 Spec §5 仅由服务端物化，POST /files/{id}/snapshot 无请求体，
+    # 契约描述亦已写明「任何实现不得接受客户端快照上传」。保留会误导实现期照它写 DTO，故删。
+    # CI G1 对「无任何端点 $ref 的 components.schemas」一律 fail，不留 warn 档。
+
+    ImportTaskStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, parsing, done, failed]
+        error:
+          type: string
+          nullable: true
+          description: failed 时的原因（如样式不支持的降级说明）
+        fileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: done 时解析产物归属的文件 id
+
+    ShareCreateRequest:
+      type: object
+      required: [userId, perm]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        perm:
+          type: string
+          enum: [view, edit]
+      additionalProperties: false
+
+    ShareResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        perm:
+          type: string
+          enum: [view, edit]
+        createdAt:
+          type: string
+          format: date-time
+
+    AuditLogListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              userId:
+                type: string
+                format: uuid
+              action:
+                type: string
+                example: file.snapshot.save
+              targetType:
+                type: string
+                example: file
+              targetId:
+                type: string
+              detail:
+                type: string
+                description: JSON 字符串（text 列存储）
+              ip:
+                type: string
+              createdAt:
+                type: string
+                format: date-time
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        hasMore:
+          type: boolean
+
+x-error-code-registry:
+  description: 业务错误码分段（detail 为补充信息，可为空）
+  codes:
+      '1001': 凭证错误（含剩余尝试次数）
+      '1002': 账号锁定（等保：5 次失败锁 15 分钟）
+      '1003': refresh token 无效/过期/已吊销
+      '1004': 未认证或 access token 过期
+      '1005': 无权限（角色不足）
+      '1006': 用户名已存在
+      '1007': 用户不存在
+      '1008': 非法用户操作（禁用/降级最后一个 admin）
+      '1009': 账号未锁定（解锁无意义）
+      '2001': 文件不存在
+      '2002': 文件名冲突或非法
+      '2003': 快照超过上限（gzip 后 32MB）
+      '2004': 分享已存在
+      '2005': 快照物化进行中（幂等保护）
+      '3001': 导入文件超 10MB
+      '3002': 导入格式不支持
+      '3003': 解析失败（xlsx 结构异常）
+      '4001': 协同连接未认证（WS close 4401 对应）
+      '4002': 协同无编辑权限（WS close 4403 对应）
+      '5001': License 缺失/过期/超席（只读降级）
+      '5002': License 验签失败/指纹不匹配
+      '6001': SSO 票据/凭证校验失败
+      '6002': SSO 协议未启用
+      '6003': SSO 配置校验失败
+      # ---- 7xxx 请求校验（P3-001 裁决，2026-10-22 放行；均 → HTTP 400）----
+      '7001': 请求体/参数校验失败（detail.errors[] 逐字段）
+      '7002': 查询参数越界（分页/排序/筛选条件非法）
+      '7003': JSON / multipart 载荷非法（解析失败或 Content-Type 不匹配）
+      '7004': 路径参数格式非法（如 id 非 uuid）
+      '9001': 服务端内部错误
+      '9002': 依赖不可用（数据库/Redis）

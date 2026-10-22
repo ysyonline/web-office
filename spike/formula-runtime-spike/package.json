@@ -1,0 +1,31 @@
+{
+  "name": "formula-runtime-spike",
+  "version": "0.1.0",
+  "private": true,
+  "description": "P3-002 formula runtime spike: browser-rendered Univer behavior + formula archive sidecar end-to-end (TASK.md B1-B12)",
+  "type": "module",
+  "scripts": {
+    "browser": "node src/browser-probe.mjs",
+    "jsdom": "node src/jsdom-smoke.mjs",
+    "latency": "node src/calc-latency-probe.mjs"
+  },
+  "dependencies": {
+    "@univerjs/core": "1.0.2",
+    "@univerjs/design": "1.0.2",
+    "@univerjs/engine-formula": "1.0.2",
+    "@univerjs/engine-render": "1.0.2",
+    "@univerjs/icons": "^1.0.2",
+    "@univerjs/sheets": "1.0.2",
+    "@univerjs/sheets-formula": "1.0.2",
+    "@univerjs/sheets-formula-ui": "1.0.2",
+    "@univerjs/sheets-ui": "1.0.2",
+    "@univerjs/ui": "1.0.2",
+    "esbuild": "^0.24.0",
+    "jsdom": "^26.1.0",
+    "playwright": "^1.48.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "rxjs": "^7.8.1",
+    "yjs": "^13.6.0"
+  }
+}

@@ -1,0 +1,16 @@
+﻿[Q1] IWorkbookData.resources 涓哄悎娉曞瓧娈?鈥斺€?瑙?typedef.d.ts:72
+
+[Q2] 鏈敞鍐?hook 鐨勮嚜瀹氫箟 resources 鑳藉惁闅?save() 璇诲嚭锛?  resources 椤跺眰瀛樺湪: true
+  archive 鏉＄洰瀛樺湪   : true
+  鏉＄洰鏁?            : 3
+  A5 妗ｆ鍘熸枃        : {"f":"=IRR(A1:A4)","v":0.087,"fn":"IRR"}
+
+[Q3] 缁忓巻涓€娆?鐗╁寲->鍔犺浇->鍐嶇墿鍖?寰€杩斿悗鏄惁瀛樻椿锛?  寰€杩斿悗 archive 瀛樺湪: true
+  寰€杩斿悗鏉＄洰鏁?      : 3
+  寰€杩斿悗 A5 妗ｆ鍘熸枃 : {"f":"=IRR(A1:A4)","v":0.087,"fn":"IRR"}
+
+[闄刔 鍓?f 鏍煎湪寰€杩斿悗鏄惁琚啓鍥?f锛堝簲涓烘棤 f锛?  row4 col0: {"v":0.087,"t":2}
+  row2 col2: {"v":42,"t":2}
+  row99 col25: {"v":7,"t":2}
+
+[done]
