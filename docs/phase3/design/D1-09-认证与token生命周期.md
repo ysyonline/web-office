@@ -1,9 +1,9 @@
 # D1-09 认证与 token 生命周期
 
 > 卡号：D1-09 | 工时 2.4h（2 包 × 1.2h）| 泳道 BE | 里程碑 M1→B2 前置 | 需求域 R7 设计层
-> 消费方（首包）：**P3-035**（API 客户端 + 401 自动刷新 + 并发去重）、**P3-040**（口令服务）；设计意图覆盖 P3-041/042/044/060/070（auth 四端点、锁定、用户管理、登录页、WS ticket，共 43 包）
+> 消费方（首包）：**P3-035**（API 客户端 + 401 自动刷新 + 并发去重）、**P3-040**（口令服务）；设计意图覆盖 P3-035/040/041/042/044/060/070（API 客户端、口令服务、auth 四端点、锁定、用户管理、登录页、WS ticket，共 52 包——复评轮修订：原枚举 5 项 38 包 vs 总数 43（含 P3-040 漏 P3-035），与 DESIGN-LAYER §3.1 列表及机读 52 对齐）
 > 主要出处：Spec §4 认证行（15min/7d）与 §10 WS 安全行、openapi（auth 三端点 + ws/ticket + x-websocket handshake/会话失效/close-codes）、schema.md §3.1/§3.2（users 状态字段、refresh_tokens 吊销制）、OPEN-DECISIONS 等保配套条（首登改密随 M3 落）
-> 状态：v1.0 已完成（D1-09-01/02 收口 2026-10-22）
+> 状态：**v1.1**（2026-10-22 复评轮挑刺修订：头部覆盖对齐 DESIGN-LAYER §3.1 七项 52 包（原 38/43 两数都不对）/ HS256 补标「本卡新定」；v1.0 于 D1-09-01/02 收口）| 评审记录见 REVIEW-INDEX「D1-09 挑刺审查线程」段
 
 ---
 
@@ -11,7 +11,7 @@
 
 | 项 | 定义 | 出处 |
 |---|---|---|
-| token 对 | login/SSO 回调返回 `{ accessToken, refreshToken, user }`；access = JWT（HS256/`WO_JWT_SECRET`，claims 仅 `sub`(userId)/`role`/`iat`/`exp`，**无 jti**——access 无吊销通道，失效靠 TTL + 状态 guard）；refresh = 随机 256bit 不透明串，服务端只存 `SM3(token)` | openapi LoginResponse + schema.md §3.2（token_hash SM3） |
+| token 对 | login/SSO 回调返回 `{ accessToken, refreshToken, user }`；access = JWT（**HS256**/`WO_JWT_SECRET`，claims 仅 `sub`(userId)/`role`/`iat`/`exp`，**无 jti**——access 无吊销通道，失效靠 TTL + 状态 guard；**HS256 为本卡新定**（v1.1 补标）：Spec §4 / openapi / schema 三处只写「JWT」未锚定算法，本卡显式补齐——国密 JWT（SM2/SM3）若后续入契约须走解冻流程）；refresh = 随机 256bit 不透明串，服务端只存 `SM3(token)` | openapi LoginResponse + schema.md §3.2（token_hash SM3）+ **本卡新定**（HS256） |
 | **「refresh 轮换」口径（本卡核心澄清）** | 任务书与台账「refresh 轮换」的契约一致读法 = **登录边界换发 + 吊销制**：login 签发新 refresh、logout/改密吊销旧 refresh；**`/auth/refresh` 不换发新 refresh token**（契约 RefreshResponse 仅 `{accessToken}`，逐次轮换需三处契约联动改动——RefreshResponse 加字段 + refresh_tokens 加 family 列 + 重放检测语义，不在本卡私改）。附带收益：多标签页并发 refresh 用同一 token 均成功（token 不被消耗），单飞只是**优化**不是正确性前提 | 本卡澄清（依据 openapi RefreshResponse 形状） |
 | refresh_tokens 语义 | 1:N（一用户多设备各持一条）；`revoked_at` 非空即失效；吊销粒度：**logout = 该用户全量吊销**（契约 logout 无请求体、仅 Bearer JWT，服务端无从区分设备——单设备登出 MVP 不做）；改密 = 全量吊销 | schema.md §3.2 + openapi logout 形状推导 |
 | WS ticket | `POST /ws/ticket`（Bearer access）→ `{ticket, expiresIn:5}`；内存态、5s、单次（用后即焚，重放第二次即 close 4401）。**签发时不做隐式刷新**：access 无效直接 401+1004，客户端先走标准刷新再换 ticket——禁止服务端在 ticket 端点内静默刷新（否则握手路径绕过单飞去重，多标签页同时建连即连接风暴） | openapi ws/ticket + x-websocket handshake + DESIGN-LAYER §3.2 条 3 |
