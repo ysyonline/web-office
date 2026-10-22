@@ -26,3 +26,13 @@
 - 坑：块注释内不写 glob（`**/` 会提前闭合注释）；`node --test <目录>` 在 Windows 不递归 `.ts`，要显式列文件。
 - 包级锚点台账 = `docs/phase3/ANCHORS.md`（一包一行：产出物路径/检查命令/通过判据），派单前先填这里。
 - **仓库已纳入 git**（2026-10-22 首提交 `5c1d433`，main，156 文件）：`.gitattributes` 锁 LF（`* text=auto eol=lf`）+ 本仓库 `core.autocrlf=false`（本机全局是 true）；`spike/**/src/vendor/**` 标 `-text -diff`；`.workbuddy/trash/` 不入库。**按用户纪律只提交不推送，且不主动加远端。**
+- **Security Center 是路径级规则、不随脱离沙箱解除**（2026-10-23 多次实测）：`docs/phase3/design/D1-*.md` 与 `docs/review/*` 的 read/mv/rm 被禁，**`git add` 也会被拒**（git 需读文件做 hash），所以这些目录下的卡**改得动但入不了库**，需用户手动 add。判据：报错形如 `Blocked by Security Center rules: read <绝对路径>`。**不要重试等价手段**，直接转用户手动处理。
+
+## 国密 SM2 签验链路（2026-10-23 代码放行轮落盘）
+
+- **选型**：SM2 一律走 **sm-crypto `0.5.7`（精确版本，禁 `^`/`~`）**，**Node 原生 crypto 禁用于 SM2**（无 ZA/distid，与 GM/T 不互通，是 P0-1 假阳性根因）。依赖面断言 D 已加白名单 + 精确版本锚（V-DEPSM 的 fail 条件）。
+- **四口径**（签发与验签两侧共用 `packages/shared/src/license/sm2-constants.ts` 单一定义点，禁止两处写字面量）：SM2-with-SM3 含 ZA（`hash` 不得关）/ distid `1234567812345678`（sm-crypto 参数名是 `userId` 不是 `id`）/ 标准 DER（`{der:true}`，禁手写 ASN.1）/ canonical JSON（键字典序递归排序、禁浮点、以**字节**入参）。
+- **两个易踩的 CLI 口径**（本机 OpenSSL 3.5 实测）：① `openssl pkeyutl -rawin -digest sm3 -pkeyopt distid:` **传 ASCII 原文**，传 hex 编反而验不过；② 自造公钥 SPKI PEM 时 BIT STRING 长度字节是 **0x42**（1 字节 unused-bits + 65 字节点），写 0x43 → openssl 报 "ASN1 too long" 且公钥解析全失败。
+- **断言链**：`node scripts/gm-crypto-probe.mjs` = G1~G8（G1/G2/G3 是启动断言，G4~G8 CI 级），**12/12 PASS**。G3 必须是「标准向量验签 + 篡改反断言」而非自签自验；G8 实证 sm-crypto ↔ OpenSSL 标准路径互通（Q1 选型从判断升级为 CI 可复跑断言）。
+- **签发**：`scripts/issue-license.mjs`（离线 CLI，`--key-file` 或 `WO_LICENSE_PRIVATE_KEY`；R1 私钥泄漏拦截已挂 fail 条件：输出流含私钥即 exit 2）。`--gen-fixture` 产出 G3 fixture 入 `scripts/fixtures/sm2-standard-vector.json`（私钥不出进程）。
+- **环境**：Node 22.22.2 可直接 `import .ts`（type stripping 默认开）→ 脚本能直接 import shared 的 TS 常量，无需先 build，这是「单一定义点」能落地的前提。Windows 下 file URL 必须带盘符冒号（`file:///D:/...`）。
