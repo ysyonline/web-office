@@ -143,12 +143,27 @@ def parse_reviews(cards):
     return reviewed
 
 
+def is_open_line(line):
+    """状态单元格以 OPEN 开头即计为未决。
+
+    不能只匹配 `| OPEN |`：登记册里有历史行写成 `**OPEN**（补充说明）`，
+    精确匹配会少算一条（2026-10-22 实测：精确匹配 31，实际 32）。
+    单元格剥掉 `*` 后判前缀，兼容 `**OPEN**` 与 `OPEN`。
+    """
+    if not line.startswith("|"):
+        return False
+    cells = line.rstrip().rstrip("|").split("|")
+    if len(cells) < 2:
+        return False
+    return cells[-1].strip().replace("*", "").startswith("OPEN")
+
+
 def parse_open(items):
     """按工作项ID 统计未决条目数（只数 OPEN 行）。"""
     txt = read(OPEN)
     counts, details = {}, {}
     for line in txt.split("\n"):
-        if not line.rstrip().endswith("| OPEN |"):
+        if not is_open_line(line):
             continue
         ids = set(re.findall(r"(P3-\d{3}|D1-\d{2})", line))
         for wid in ids:
@@ -264,7 +279,7 @@ def main():
         "coveredItems": covered_items, "coveredPkgs": covered_pkgs,
         "coveredHours": covered_hours, "noCardItems": no_card_items, "noCardPkgs": no_card_pkgs,
         "qa": qa,
-        "openTotal": sum(1 for l in read(OPEN).split("\n") if l.rstrip().endswith("| OPEN |")),
+        "openTotal": sum(1 for l in read(OPEN).split("\n") if is_open_line(l)),
         "sources": [
             "docs/phase3/backlog.csv（工作项/包/工时/状态/依赖）",
             "docs/phase3/DESIGN-LAYER.md §3.1（13 卡覆盖关系）",
