@@ -1,6 +1,6 @@
 # web-office 文档审核索引
 
-> 生成：2026-10-21 | 更新：2026-10-22（**P3-001 工程化基线评审完成轮 + openapi 8 项放行落盘**；P3-002 已于凌晨完成；**D1-13 卡 v1.7 已完成；P3-010-01/02 已交付 monorepo 与 ESLint/Prettier 基线（19/722 包）**，B1 派发前沿 8 包；4 份中间评审文档已归档清理）| 用途：用户统一审核入口 | 状态：Phase 2 完成 + 四轮审查修订 + 外部评审分支 A~F 全部闭环，Phase 3 已放行；**M0 门禁 P3-001 / P3-002 已完成，P3-003 待金仓 license**；**openapi 冻结窗口已解冻并回封，7xxx 段已入契约**
+> 生成：2026-10-21 | 更新：2026-10-22（**P3-001 工程化基线评审完成轮 + openapi 8 项放行落盘**；P3-002 已于凌晨完成；**D1-13 卡 v1.7 已完成；P3-010-01/02 已交付 monorepo 与 ESLint/Prettier 基线（19/722 包）**，B1 派发前沿 8 包；**仓库已 git init 并完成首提交 5c1d433，156 文件 / 22051 行，无远端未推送**；4 份中间评审文档已归档清理）| 用途：用户统一审核入口 | 状态：Phase 2 完成 + 四轮审查修订 + 外部评审分支 A~F 全部闭环，Phase 3 已放行；**M0 门禁 P3-001 / P3-002 已完成，P3-003 待金仓 license**；**openapi 冻结窗口已解冻并回封，7xxx 段已入契约**
 
 ## 审核建议顺序
 
@@ -42,11 +42,12 @@
 | 28 | docs/decisions/ADR-007-自研原子组件.md | **Accepted（本轮新增）** | 自研外壳原子 14 个 + Radix 9 个无样式原语（精确版本）；否决 antd/Semi/Arco/Mantine（`^19.2.0` peer 硬冲突）/shadcn CLI；成本对比 7~9 人日（一次性）vs 3~5 人日（持续） |
 | 29 | docs/phase3/design/D1-13-请求校验链与API契约生成门禁.md | **v1.7 已完成**（D1-13-01/02 收口 2026-10-22） | 第 13 张设计卡：zod 单一源 → 自研 ZodValidationPipe → 7xxx 码段 → G1 contract-diff；四栏齐全，阻断 P3-011 / P3-012 / P3-037 共 22 包 |
 | 30 | scripts/check_openapi_contract.py | **v1.2，实跑 PASS（退出码 0）** | openapi 契约门禁：YAML 可解析 / 7xxx 四码在位 / 孤儿 schema·response = 0 / 悬空 `$ref` = 0 / 9 个 Request schema 均 `additionalProperties:false` / `SnapshotSaveRequest` 已删除。P3-037 的 G1 直接调用 |
+| 31 | （已归档清理）D1-13 挑刺审查链 4 份中间文档 | 2026-10-22 清理 | 首轮问题清单 / 二轮回执审核 / 三轮回执 / 四轮审核：结论已全部落盘（卡 v1.7、DESIGN-LAYER v1.4 §2.2、OPEN-DECISIONS），原文移至 `.workbuddy/trash/2026-10-22/`。逐份结论落点见「D1-13 挑刺审查线程」段末归档表 |
 | 32 | docs/status-panel.html | **2026-10-22 新增（约 440 KB 自包含单文件）** | 需求/设计/评审/拆分状态面板：101 工作项 × 11 列 + 722 包下钻 + 8 域汇总 + 13 卡写卡/评审状态；自带「文档声明 vs 机读复算」口径校验带；搜索/筛选/排序全前端，无外部依赖 |
 | 33 | scripts/gen_status_panel.py | **2026-10-22 新增** | 面板数据聚合器：backlog.csv + DESIGN-LAYER §3.1 + D1-*.md 状态行 + REVIEW-INDEX 线程段 + OPEN-DECISIONS → 单文件 HTML；重跑即刷新，不手填数字 |
 | 34 | docs/phase3/ANCHORS.md | **2026-10-22 新增 v1.1** | 包级锚点台账：一包一行写死「产出物路径 / 检查命令 / 通过判据」，含 P3-010 接口签名表与本轮反向验证记录。锚点三项此前**无载体**（只写在包级断言里「本包须填」），此表就是那个载体 |
 | 35 | 仓库根（monorepo 骨架） | **2026-10-22 新增，`pnpm verify` exit=0** | `package.json` / `pnpm-workspace.yaml`（pnpm 11 配置模型：`pmOnFail: error`、`allowBuilds`、`autoInstallPeers: false`）/ `.npmrc` / tsconfig 三段 / flat ESLint preset + 两条 P0 规则 / Prettier / `packages/shared` 双构建 / `scripts/check-workspace-deps.mjs`。269 个包、版本精确锚定（pnpm 11.28.6 / TS 5.9.3 / eslint 9.39.5 / prettier 3.9.10） |
-| 31 | （已归档清理）D1-13 挑刺审查链 4 份中间文档 | 2026-10-22 清理 | 首轮问题清单 / 二轮回执审核 / 三轮回执 / 四轮审核：结论已全部落盘（卡 v1.7、DESIGN-LAYER v1.4 §2.2、OPEN-DECISIONS），原文移至 `.workbuddy/trash/2026-10-22/`。逐份结论落点见「D1-13 挑刺审查线程」段末归档表 |
+| 36 | `.gitattributes` + `.gitignore` | **2026-10-22 新增（仓库纳入版本控制）** | `.gitattributes` 统一 LF（`* text=auto eol=lf`，不随各机 `core.autocrlf` 漂移）；`spike/**/src/vendor/**` 标 `-text -diff` 保持字节原样；`.gitignore` 新增 `.workbuddy/trash/`（本地回收站不入库） |
 | 18 | docs/phase1/（三文档） | 含信创增补；**已加「溯源材料非契约」置顶提示 + 过期项就地标注（2026-10-21 晚）** | PRD / 架构选型 / UIUX 方向（溯源材料）。架构选型 §5 Prisma+Redis、§10 技术栈总图、§11「重算<200ms」三处已就地标注为修订/作废，并补当前有效口径；PRD 与 UIUX 加「与 Spec/design 冲突时以后者为准」提示 |
 | 19 | docs/performance/promise-tiering.md | v1.0 | 性能承诺分级口径（分支 E PM 裁决）：三级承诺/竞品锚/禁用语/规格承诺表，对外唯一口径出处 |
 | 20 | spike/collab-spike/src/perf-scale-probe.mjs | 定稿 | 分支 E 规模-耗时-体积曲线探针（5 档 + 单档隔离），数源：100 万格三硬事实 |
@@ -294,3 +295,15 @@
 | 纪律增量 | **P0 规则会抓自己的测试文件**：测试里放真 emoji 与 no-emoji 天然冲突，正确解是 `String.fromCodePoint()` 运行时构造，而不是给测试加 eslint-disable |
 | 待用户裁决（新增 1 条） | **仓库不在版本控制下**（`git status` → not a repository）。monorepo 基线已产出 269 包 + 30 余份代码文件，无 VCS 意味着任何一次误改无法回滚。建议 `git init` + 首次提交（按既有纪律**只提交不推送**），需用户点头 |
 | 派发前沿 | 19/722 已完成；可立即派发 8 包：P3-010-03（本工作项主路径）、P3-003-01（等金仓 license）、D1-05/09/07/01/08/12-01（6 张设计卡首包） |
+
+### 仓库纳入版本控制（2026-10-22 14:36，用户「执行」）
+
+| 项 | 结果 |
+|----|------|
+| 提交 | `5c1d433`（main 分支首提交）：**156 文件 / 22051 行**，`.git` 4.0 MB，工作区 clean。**无远端、未推送**（按既有纪律：只提交不推送） |
+| 入仓范围 | 工程基线（`package.json` / `pnpm-workspace.yaml` / `pnpm-lock.yaml` / tsconfig 三段 / ESLint preset + 2 条 P0 规则 / `packages/shared` 双构建 / `verify.mjs`）+ 需求与设计文档（spec、phase1~3、decisions、DESIGN-LAYER、openapi、13 卡立项口径）+ Phase 3 台账（backlog.csv、生成器、状态面板、ANCHORS）+ `.workbuddy/memory`（项目决策日志） |
+| 排除 | `node_modules/`（含 spike 下两份共 13M）、`dist/`、`.workbuddy/trash/`（本地回收站，8 份已归档评审原文仍在盘上可恢复，不入库） |
+| 换行符 | 本机全局 `core.autocrlf=true`，不处理会让同一文件在不同机器上反复整文件 diff。新增 `.gitattributes`（`* text=auto eol=lf`）+ 本仓库 `core.autocrlf=false` 锁定；`git ls-files --eol` 实测全部 `i/lf w/lf`，`git add` 零换行告警 |
+| vendor 处理 | `spike/**/src/vendor/**` 是 spike 期一次性 bundle（单文件最大 1.3 MB，无权威来源可重建）→ 标 `-text -diff` 按二进制入库，避免换行改写与整文件 diff |
+| 提交前门禁 | `node scripts/verify.mjs` **5/5 PASS、exit=0**——提交只在绿态做，不把红的基线钉进第一个提交 |
+| 遗留 | 无远端。将来接远端时按用户纪律只推明确要求的分支 |

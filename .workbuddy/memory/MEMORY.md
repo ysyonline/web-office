@@ -21,4 +21,4 @@
 - 三条 P0 一律 error：`wo/no-emoji`（扫解码值+注释）、`wo/no-hardcoded-color`、`no-restricted-imports`（10 个第二图标源）。规则测试必须 valid+invalid 双向，且**测试文件里不写真 emoji**（用 `String.fromCodePoint`）。
 - 坑：块注释内不写 glob（`**/` 会提前闭合注释）；`node --test <目录>` 在 Windows 不递归 `.ts`，要显式列文件。
 - 包级锚点台账 = `docs/phase3/ANCHORS.md`（一包一行：产出物路径/检查命令/通过判据），派单前先填这里。
-- **仓库尚未 git init**（2026-10-22 状态）；按用户纪律只提交不推送。
+- **仓库已纳入 git**（2026-10-22 首提交 `5c1d433`，main，156 文件）：`.gitattributes` 锁 LF（`* text=auto eol=lf`）+ 本仓库 `core.autocrlf=false`（本机全局是 true）；`spike/**/src/vendor/**` 标 `-text -diff`；`.workbuddy/trash/` 不入库。**按用户纪律只提交不推送，且不主动加远端。**
