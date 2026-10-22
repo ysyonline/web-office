@@ -1,6 +1,6 @@
 # 包级锚点台账（产出物路径 / 检查命令 / 通过判据）
 
-> 版本：**v1.1**（2026-10-22 起用；v1.1 补「接口签名表」一节）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
+> 版本：**v1.2**（2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
 >
 > 为什么单独成表：锚点三项原先只写在包级验收断言里（「本包须填锚点三项」），但**没有载体**——填在哪、谁来核，都没定义。本表就是那个载体：一包一行，写死路径与可复制执行的命令。
 >
@@ -11,7 +11,7 @@
 本机 `pnpm` 的 PATH shim 由 corepack 提供，绑定的 Node 版本随 nvm 当前指针漂移（实测先后解析到 Node 16 / 20），一旦不是被 corepack 认可的那支就报 `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`。**这不是代码问题，是 shim 问题**——所以自检入口绕开 pnpm：
 
 ```
-node scripts/verify.mjs      # 五段，逐段 PASS/FAIL + 耗时，exit=0 即过
+node scripts/verify.mjs      # 六段，逐段 PASS/FAIL + 耗时，exit=0 即过
 ```
 
 `pnpm verify` 只是它的别名（`scripts.verify = node scripts/verify.mjs`）。装依赖仍需 pnpm，可用显式入口：
@@ -23,6 +23,11 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 ```
 
 **为什么要多写一个 `verify.mjs`**：`a && b && c` 式的长串只在第一个失败处停，看不到「哪些段其实过了」；而 pnpm shim 崩掉时会伪装成「代码红了」。`verify.mjs` 用 `spawnSync(process.execPath, …)` 直连各工具的 JS 入口，与 pnpm/PATH 解耦，失败时还会把该段输出打出来。
+
+**两条依赖 / 版本控制纪律**（2026-10-22 从交接件回填，此前无正式载体）：
+
+1. `pnpm-lock.yaml` 是依赖的**唯一真相**：加依赖必须同时更新 lock，版本精确（`saveExact` 已开）；验收跑 `install --frozen-lockfile` 才算数。
+2. `.gitignore` 对**已暂存**文件不生效：把已入库路径移出版本控制必须 `git rm -r --cached <path>`，只改 `.gitignore` 不生效（`.workbuddy/trash/` 踩过这一步）。
 
 ## 1. 接口签名表（P3-010 的「签名」，下游按此引用）
 

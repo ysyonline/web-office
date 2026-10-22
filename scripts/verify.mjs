@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 代码基线自检（P3-010 起）：一条命令跑完五段，逐段打印耗时与退出码。
+ * 代码基线自检（P3-010 起）：一条命令跑完六段，逐段打印耗时与退出码。
  *
  * 为什么不写成 npm script 的 `&&` 长串：
  *  ① 长串只会在第一个失败处停，看不到「哪些段其实过了」；
@@ -38,6 +38,9 @@ const STEPS = [
     ],
   },
   { name: '依赖面断言（A~H）', cmd: null, args: ['scripts/check-workspace-deps.mjs'] },
+  // 2026-10-22 新增：临时件必须在结论落盘后回收到 .workbuddy/trash/，
+  // 这条纪律此前只有文字、没有 fail 条件，同日就残留了一份 handoff。
+  { name: '文档临时件回收', cmd: null, args: ['scripts/check-temp-docs.mjs'] },
 ];
 
 let failed = 0;
