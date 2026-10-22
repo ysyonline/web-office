@@ -8,7 +8,7 @@
  *  A 包名统一前缀 @wo/*
  *  B 反向依赖：packages/* 不得依赖 apps/*
  *  C 跨 app 依赖：apps/* 之间不得互相依赖
- *  D @wo/shared 的 dependencies 只允许 zod（schema 单一源在依赖面上的强制）
+ *  D @wo/shared 的 dependencies 只允许 zod 与 sm-crypto（后者必须精确版本 0.5.7）
  *  E @wo/config 零 dependencies / 零 peerDependencies（它是纯配置）
  *  F 内部 @wo/* 引用必须写 workspace:*（否则可能被解析到 registry 上的同名包）
  *  G 全仓不得出现第二图标库（与 packages/config/eslint-preset.js 的 BANNED_ICON_SOURCES 同源）
@@ -107,12 +107,21 @@ for (const p of pkgs) {
 
   // D
   if (p.name === '@wo/shared') {
-    const runtime = Object.keys(
-      JSON.parse(readFileSync(join(ROOT, p.id, 'package.json'), 'utf8')).dependencies ?? {},
-    );
-    const extra = runtime.filter((d) => d !== 'zod');
+    const sharedJson = JSON.parse(readFileSync(join(ROOT, p.id, 'package.json'), 'utf8'));
+    const runtime = sharedJson.dependencies ?? {};
+    // 白名单：zod（schema 单一源）+ sm-crypto（国密 SM2 签验，D1-11 ① 国密依赖面 / OPEN-DECISIONS 2026-10-23 Q1 拍板）
+    const SHARED_ALLOWED = ['zod', 'sm-crypto'];
+    const extra = Object.keys(runtime).filter((d) => !SHARED_ALLOWED.includes(d));
     if (extra.length)
-      fail(p.id, `@wo/shared 的 dependencies 只允许 zod，多出：${extra.join(', ')}`);
+      fail(
+        p.id,
+        `@wo/shared 的 dependencies 只允许 ${SHARED_ALLOWED.join(' / ')}，多出：${extra.join(', ')}`,
+      );
+    // V-DEPSM：sm-crypto 必须精确版本（0.5.x 有 API 命名变动，浮动版本会静默改签名）
+    const smSpec = runtime['sm-crypto'];
+    if (smSpec !== undefined && !/^\d+\.\d+\.\d+$/.test(String(smSpec))) {
+      fail(p.id, `sm-crypto 必须精确版本（禁 ^ / ~），实为「${smSpec}」`);
+    }
   }
 
   // E

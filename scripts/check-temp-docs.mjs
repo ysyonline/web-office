@@ -11,7 +11,7 @@
  *
  * 退出码：0 = docs/ 无临时件；1 = 存在未回收临时件。
  */
-import { readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -42,16 +42,68 @@ function walk(dir, out = []) {
   return out;
 }
 
+/**
+ * 登记保留白名单（2026-10-23 立，复核 N-3 方案 b）。
+ *
+ * 为什么需要：第三轮挑刺件内含 4 条 P0 待裁决，存续期内必须留在 docs/，
+ * 但文件名命中「挑刺」→ 第 6 段永久 5/6，从此分不清「已知保留」与「新泄漏」。
+ * 白名单让「已登记且带回收条件」的件不触发红灯，未登记的照样红——
+ * 信号回来了，而不是像「改名绕开过滤」那样把信号一起丢掉。
+ *
+ * 格式（docs/review/RETAINED.md）：每行一条列表项，必须含
+ *   ① 反引号包裹的仓库相对路径（如 `docs/review/xxx.md`）
+ *   ② 「回收条件：」字样
+ * 缺其一即判该条目无效并 exit=1 —— 白名单不是无限期滞留的后门。
+ */
+const RETAINED_FILE = join(DOCS, 'review', 'RETAINED.md');
+
+function readRetained() {
+  if (!existsSync(RETAINED_FILE)) return { paths: new Set(), invalid: [], stale: [] };
+  const paths = new Set();
+  const invalid = [];
+  for (const line of readFileSync(RETAINED_FILE, 'utf8').split(/\r?\n/)) {
+    const t = line.trim();
+    if (!/^[-*]\s+/.test(t)) continue;
+    const m = t.match(/`([^`]+)`/);
+    if (!m) continue;
+    if (!/回收条件/.test(t)) invalid.push(t);
+    else paths.add(m[1].split('\\').join('/'));
+  }
+  const stale = [...paths].filter((p) => !existsSync(join(ROOT, p)));
+  return { paths, invalid, stale };
+}
+
+const { paths: retained, invalid, stale } = readRetained();
+
+if (invalid.length > 0) {
+  process.stdout.write(
+    `白名单 ${RETAINED_FILE} 存在 ${invalid.length} 条无效条目（缺「回收条件」）：\n`,
+  );
+  for (const l of invalid) process.stdout.write(`  - ${l}\n`);
+  process.stdout.write('\n白名单条目必须写明回收条件，否则等于无限期滞留。\n');
+  process.exit(1);
+}
+
 const hits = walk(DOCS)
   .map((p) => relative(ROOT, p).split('\\').join('/'))
   .filter((rel) => {
     const base = rel.split('/').pop() ?? rel;
     // Office 锁文件以 ~$ 开头，属同类一次性产物
     return base.startsWith('~$') || TEMP_PATTERNS.some((re) => re.test(base));
-  });
+  })
+  .filter((rel) => !retained.has(rel));
+
+if (stale.length > 0) {
+  process.stdout.write(
+    `[警告] 白名单中 ${stale.length} 条已失效（文件已回收，条目未删）：${stale.join(' / ')}\n\n`,
+  );
+}
 
 if (hits.length === 0) {
-  process.stdout.write('docs/ 临时件 0 件（纪律：落盘后即移入 .workbuddy/trash/<日期>/）\n');
+  process.stdout.write(
+    `docs/ 未登记临时件 0 件（纪律：落盘后即移入 .workbuddy/trash/<日期>/）` +
+      `｜登记保留 ${retained.size} 件（见 docs/review/RETAINED.md，均带回收条件）\n`,
+  );
   process.exit(0);
 }
 

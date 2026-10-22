@@ -1,0 +1,9 @@
+{
+  "note": "G3 标准向量 fixture：由 scripts/issue-license.mjs --gen-fixture 生成，仅用于验签断言，不可用于生产",
+  "generatedBy": "scripts/issue-license.mjs",
+  "alg": "SM2-with-SM3(ZA)/DER",
+  "userId": "1234567812345678",
+  "publicKey": "04758329f6aaaf39fcd7d6c3c5fb0c4428f0848cce775dfb4dd7622365f0ee7299da940ce0a2c9ee8c650bc4927630ea21f70d0bfe3adda4e3e3c4b1c602adf68c",
+  "payload": "{\"expiresAt\":\"2027-10-23T00:00:00.000Z\",\"issuedAt\":\"2026-10-23T00:00:00.000Z\",\"licenseId\":\"fixture-0001\",\"machineFingerprint\":\"fixture-fingerprint-hex\",\"rebindLimit\":2,\"seats\":50}",
+  "signatureDerHex": "3045022100d5b1d739ccfe0c1cbfe55b2227c084f5a8d2500b68c4e405d6c371e1ce3ac08e02206780ec9825fa8b1db07f16f152916cda2e43a309a2333403a1ab4ef1b9190036"
+}

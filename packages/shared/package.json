@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "DTO 类型 + zod schema + 错误码常量 + 纯函数。dependencies 只允许 zod（P3-001 §5.3）。",
+  "description": "DTO 类型 + zod schema + 错误码常量 + 纯函数 + 国密 SM2 签验口径常量。dependencies 仅 zod 与 sm-crypto（P3-001 §5.3 + D1-11 ① 国密依赖面）。",
   "exports": {
     ".": {
       "types": "./dist/esm/index.d.ts",
@@ -19,6 +19,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "sm-crypto": "0.5.7",
     "zod": "4.6.7"
   }
 }

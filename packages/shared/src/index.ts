@@ -10,5 +10,17 @@
  */
 export { fnv1a32 } from './utils/fnv1a32.js';
 
+// 国密 SM2 签验口径（四口径单一定义点，D1-11 ① / license/design.md §3.0）：
+// 签发侧 scripts/issue-license.mjs 与验签侧 evaluateLicense 共用，禁止别处再写字面量。
+export {
+  SM2_DEFAULT_USER_ID,
+  SM2_SIGN_DER,
+  SM2_SIGN_HASH,
+  canonicalJsonBytes,
+  canonicalJsonStringify,
+  sm2SignOptions,
+  sm2VerifyOptions,
+} from './license/sm2-constants.js';
+
 /** 包标识，供启动日志与健康检查回显（证明消费方加载的是构建产物而非源码）。 */
 export const SHARED_PACKAGE_NAME = '@wo/shared' as const;

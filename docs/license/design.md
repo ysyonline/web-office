@@ -1,6 +1,6 @@
 # License 离线授权设计（多源指纹 + 换绑流程）
 
-> 版本：v1.4（变更记录见文末）
+> 版本：v1.6（变更记录见文末）
 > 产出人：高见远（首席架构师） | 依据：用户对抗式审查 P1-3 + 复审打回 2 + 第三轮 P0-2 + 外部评审分支 D + Spec §2 License 行（AC-09）+ 架构选型 12.5
 > 关联：openapi.yaml /license/* 三端点、schema.md 3.7 licenses 表、scripts/gm-crypto-probe.mjs
 
@@ -90,12 +90,33 @@ machine_fingerprint = SM3( concat( item_1..item_6 各自 SM3 后的定序拼接 
 **断言三级（探针 `scripts/gm-crypto-probe.mjs` 固化，评审人产出已收编）**：
 - G1 摘要 sm3 存在（getHashes）；
 - G2 曲线 SM2 存在（getCurves）；
-- G3 **SM2 自签自验真跑一次**（generateKeyPairSync('ec',{namedCurve:'SM2'}) → createSign('sm3') 签名 → createVerify 验签）——任一失败**拒绝启动**；
+- G3 **标准向量验签**（v1.6 改口径）：启动期用固定 fixture（公钥 + 载荷 + 签名，由本仓签发 CLI 生成）断言**必须验过**，并含「篡改 1 字节必 FAIL」反断言——原「自签自验真跑一次」只测自洽性不测互通性，正是 P0-1 让它假阳性的原因；
 - G4 sm4 六模式（sm4/sm4-cbc/sm4-cfb/sm4-ctr/sm4-ecb/sm4-ofb）与 G5 PBKDF2-HMAC-SM3 进 CI 门禁**不进启动断言**（License 链路 MVP 用不到 sm4；PBKDF2 已由登录链路自然验证，启动多跑 10 万轮派生浪费 ~60ms）。
 
 **实跑基线（2026-10-21，win32-x64，Node 22.22.2 / OpenSSL 3.5.5）**：G1-G5 全 PASS（G3 sig=70B、G5 58ms@10 万轮）。**鲲鹏 aarch64 官方二进制复测列入 Phase 3 首迭代验证项**（与 PBKDF2 延迟实测同批）。
 
 ## 3. 离线换绑申请流程
+
+### 3.0 License 签发口径（v1.5 新增，防与卡分叉）
+
+**背景**：本文件 §3 原文只写「供应商私钥签发」——签发工具、签名格式、distid 全无约定（第三轮挑刺 P0-2 实证：distid / ZA / GM/T 在本文件全文 0 命中）。签发侧不受本仓控制是 P0-2 最致命的一块空白。收进本仓后**口径随代码版本化、可评审、可回归**，且签发与验签共用同一 canonical JSON 实现，「签-验口径漂移」类 bug 从根上消除。
+
+**签发工具链 = 本仓 `scripts/issue-license.mjs`（离线 CLI）**——**2026-10-23 已落盘**（用户代码放行）。G3 标准向量 fixture 由 `node scripts/issue-license.mjs --gen-fixture` 产出并入库 `scripts/fixtures/sm2-standard-vector.json`（fixture 只含公钥与签名，私钥不出进程）。
+
+**四口径锁定（签发与验签两侧必须完全一致）**
+
+| 口径 | 锁定值 | 落地要求 |
+|---|---|---|
+| 算法 | SM2 + SM3，**摘要含 ZA** | 用 sm-crypto `doSignature(msg, priv, {hash:true})`（`hash` 默认 true，**不得关**——关掉即退化为无 ZA 的普通 ECDSA，正是 Node 原生 crypto 的死法） |
+| userId / distid | **`1234567812345678`**（GM/T 0003.2 标准值，ASCII 字符串） | 两侧显式传**同一常量**；sm-crypto 参数名是 `userId`（**不是 `id`**）；单一定义点 = `packages/shared/src/license/sm2-constants.ts` 的 `SM2_DEFAULT_USER_ID`，**禁止在两处各写一遍字面量** |
+| 签名编码 | **标准 DER**（SEQUENCE { INTEGER r, INTEGER s }） | 用 sm-crypto 内建 **`{der:true}`**，**不得手写 ASN.1 编码**；落盘为二进制或 base64 须在契约里写死 |
+| 载荷 | **canonical JSON** | 键序固定（字典序递归排序）、UTF-8、禁浮点（席位/有效期用整数 + ISO 字符串）。**实测**：同内容不同键序 → 验签失败（键序进摘要），canonical 化是**必需**而非锦上添花 |
+
+**三条强制约束**：① **私钥不入库、不进镜像、不进 CI 日志**（脚本从环境变量 / 离线介质 / `--key-file` 读；脚本内含「检测到私钥内容出现在 stdout/stderr 时拒绝执行」断言）；② **签发 → 验签 fixture 闭环进 CI**（本 CLI 产出 → `POST /api/v1/license/install` → 服务端 `evaluateLicense()` 验过，中间无人工转录与格式转换；用测试夹具的临时私钥，不涉及真实供应商私钥）；③ **验签公钥形态唯一**（`WO_LICENSE_PUBLIC_KEY` = 裸点 hex 130 字符前缀 `04`，见 D1-11 ①）。
+
+**防分叉声明（本小节存在的核心理由）**：本文件的签发口径与下列卡面是**上下游关系**——**D1-10 ② 判定链第②步**（SM2 验签，Node 原生 crypto 禁用于 SM2）、**D1-11 ② 国密断言链 G3/G6/G7/G8**（G3 改标准向量验签，fixture 由本 CLI 生成）、**D1-11 ① `WO_LICENSE_PUBLIC_KEY` 形态校验**、**D1-10 ④ V-SINGLEFLIGHT**（缓存 miss 验签单飞，实测 ≈19.4ms/次）。**本文件改口径必须同步改上述四处**，反之亦然——这正是 D1-01 ② 踩过的「两份文档 = 漂移源」的同构坑。
+
+**供应商场景**：交付方持私钥运行本 CLI，无第三方工具依赖。
 
 虚拟机迁移、硬件维修等场景触发换绑（匹配分数 < 0.70）：
 
@@ -188,8 +209,10 @@ matching 阈值（0.70）与权重表作为服务端常量，随 License 公钥�
 
 | 版本 | 日期 | 变更 | 依据 |
 |---|---|---|---|
+| v1.6 | 2026-10-23 | 代码放行轮：§3.0 签发工具链由「待代码放行」改为**已落盘**（`scripts/issue-license.mjs`；fixture 入库 `scripts/fixtures/sm2-standard-vector.json`）；§2.5 **G3 口径改写**为「标准向量验签 + 篡改反断言」（原自签自验只测自洽性，是 P0-1 假阳性来源）。实证：`node scripts/gm-crypto-probe.mjs` **12/12 PASS**（G1~G8 含四条负向反断言），G8 确认 sm-crypto ↔ OpenSSL 标准路径互通；附 CLI 侧口径订正——`pkeyopt distid` 传 **ASCII 原文**（传 hex 验不过），四口径常量本身不变 | 第三轮挑刺 Q1/Q2 拍板 + OPEN-DECISIONS 2026-10-23 两条（Q1 条已 RESOLVED） |
 | v1.0 | 2026-10-21 | 首版（多源加权指纹 + 换绑流程） | 用户审查 P1-3 |
 | v1.1 | 2026-10-21 | 打回 2 修复：去掉 unique(machine_fingerprint) DB 索引改应用层校验（修复换回旧机器撞唯一索引的真实 bug）；#6 盐的防护表述降级（防误装/目录拷贝，不防整盘克隆，整盘克隆靠关键项+席位并发兜底） | 用户复审打回 |
 | v1.2 | 2026-10-21 | P0-2 修复：新增 §2.1-b 容器部署形态专用权重表（#6 卷级盐 0.40 主权重、#1 dmidecode 降可选增强、#5 hostname 剔除、关键项改卷级盐必通过）；方案①宿主机 agent 登记为后续增强不进 MVP；§5 新增验收 7/8（Docker 默认模式激活 + 容器重建不漂移） | 用户第三轮审查 P0-2 |
 | v1.3 | 2026-10-21 | 新增 §4-bis 席位口径与并发计量（编辑会话去重用户数/查看不占席/ROLE_UPGRADE 升级占席/60s 宽限/进程内计量/peak_concurrent）+ 商务备注（销售物料标注席位口径防 WPS 混淆） | 席位口径三方定稿（PM 商务备案） |
+| v1.5 | 2026-10-23 | 新增 §3.0「License 签发口径」（第三轮挑刺 Q2 拍板 R4）：签发工具链 = 本仓 `scripts/issue-license.mjs`（**待代码放行**）+ 四口径锁定（SM2-with-SM3 含 ZA / distid `1234567812345678` / 标准 DER / canonical JSON）+ 三条强制约束（私钥不入仓不入日志、签→验 fixture 闭环进 CI、公钥形态唯一）+ **防分叉声明**（与 D1-10 ②、D1-11 ①②、D1-10 ④ V-SINGLEFLIGHT 四处互为上下游，改一处须同步其余） | 第三轮挑刺 P0-2（本文件 distid/ZA 全文 0 命中）+ Q2 拍板意见书 §3.4 R4 |
 | v1.4 | 2026-10-21 | 外部评审分支 D 修订（team-lead 代 PM 裁决路线，PM 复核待限额恢复）：① §2.1-c 拷卷即过显式承认——席位并发兜底对跨实例克隆结构性失效（进程内单实例 Map 彼此不可见），该兜底承诺废止；路线裁 A（License 定位「授权计量与合规凭证」，不承诺防拷贝；B 宿主 agent 性价比为负否决、C 并入 A 配套③）② §2.4 时钟回拨检测（max_seen_at 持久化 + 回拨告警不误杀 + 7 天过期宽限提示语义）③ §2.5 国密启动断言三级（sm3/SM2 曲线/自签自验真跑，gm-crypto-probe.mjs 收编固化，鲲鹏复测列 Phase 3 首迭代）④ §6-bis 防拷贝口径商务强制披露（允许写/禁止写/标准应答句）+ 换绑额度维持统一 2 次/年（合同侧上浮，vMotion 不消耗，72h 临时授权不做）⑤ §5 验收 +4 条（时钟回拨/前跳/SM2 断言/拷卷审计显形） | 外部评审分支 D：gm-crypto-probe 5/5 实证（team-lead 复跑确认）+ 拷卷推理链（design.md 自身条款引用逐条属实）+ 时钟零覆盖 + 换绑额度质疑 |
