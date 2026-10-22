@@ -1,6 +1,6 @@
 # 包级锚点台账（产出物路径 / 检查命令 / 通过判据）
 
-> 版本：**v1.2**（2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
+> 版本：**v1.3**（2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
 >
 > 为什么单独成表：锚点三项原先只写在包级验收断言里（「本包须填锚点三项」），但**没有载体**——填在哪、谁来核，都没定义。本表就是那个载体：一包一行，写死路径与可复制执行的命令。
 >
@@ -28,6 +28,11 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 
 1. `pnpm-lock.yaml` 是依赖的**唯一真相**：加依赖必须同时更新 lock，版本精确（`saveExact` 已开）；验收跑 `install --frozen-lockfile` 才算数。
 2. `.gitignore` 对**已暂存**文件不生效：把已入库路径移出版本控制必须 `git rm -r --cached <path>`，只改 `.gitignore` 不生效（`.workbuddy/trash/` 踩过这一步）。
+
+**两条登记 / 编辑纪律**（2026-10-22 从交接件回填，此前无正式载体）：
+
+3. REVIEW-INDEX / OPEN-DECISIONS / 日志的**长表格行追加或锚点替换一律用 python 按行检测操作，不用 Edit 长串匹配**——Edit 工具对含表格线与全角字符的长行匹配不稳定（2026-10-22 实测失败两次，含 D1-06 卡表格行）。
+4. **门禁三连**（每轮收口即跑，缺一不可）：`node scripts/verify.mjs`（六段自检）→ `python -X utf8 scripts/check_openapi_contract.py`（openapi 契约门禁）→ `python -X utf8 scripts/gen_status_panel.py`（面板刷新 + 三口径校验带）。三条全 exit=0 才算收口。
 
 ## 1. 接口签名表（P3-010 的「签名」，下游按此引用）
 
