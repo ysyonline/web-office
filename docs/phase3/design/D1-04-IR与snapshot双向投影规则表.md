@@ -1,9 +1,9 @@
 # D1-04 IR↔snapshot 双向投影规则表
 
 > 卡号：D1-04 | 工时 3.6h（3 包 × 1.2h）| 泳道 BE | 里程碑 M3→B5 前置 | 需求域 R7 设计层
-> 消费方（首包）：**P3-100**（WI-2 IR 中间模型，依赖 `P3-002-11|D1-02-04|D1-03-03|D1-04-03`——B5 三卡全齐方可派发）；设计意图覆盖 P3-105/107/108/112（共 53 包）
+> 消费方（首包）：**P3-100**（WI-2 IR 中间模型，依赖 `P3-002-11|D1-02-04|D1-03-03|D1-04-03`——B5 三卡全齐方可派发）；设计意图覆盖 P3-100/105/107/108/112（共 53 包）
 > 主要出处：plan.md §1（IR 定义）+ WI-2/3/4/6（映射规则与验收）+ §4 坑表（时区/强转/去抖三坑）、Spec §9 AC-07/AC-08、OPEN-DECISIONS 星型依赖条（裁决义务移交本卡）、ADR-001 v1.7/v1.8（档位与降级）、D1-03（桶判定顺序，本卡只消费）、D1-02（档案迁移与值校验生命周期，本卡只引用导出闸门）
-> 状态：v1.0 已完成（D1-04-01/02/03 收口 2026-10-22）
+> 状态：**v1.1**（2026-10-22 B5 挑刺审查修订：theme 单源路径修正为 `src/import-export/` / 头部覆盖枚举补 P3-100 / 值校验引用改「D1-02 ② 闸门」 / error 降表理由改 t 域锁定；v1.0 于 D1-04-01/02/03 收口）| 评审记录见 REVIEW-INDEX「D1-04 挑刺审查线程」段
 
 ---
 
@@ -12,10 +12,10 @@
 | 项 | 定义 | 出处 |
 |---|---|---|
 | IR 唯一定义 | IRWorkbook/IRSheet/IRRow/IRCell/IRStyle 五结构以 plan.md §1 为唯一事实源（P3-100 交付 ir.ts 照抄），本卡不重定义、只锁投影边界 | plan.md §1 + DESIGN-LAYER §5 |
-| 类型矩阵（xlsx ↔ IR ↔ Univer 双向） | xlsx `t:'s'`→IR string→snapshot `t:1`；`t:'n'`→number（numFmt 呈日期形态时→IR date）→`t:2`；`t:'b'`→boolean→`t:3`；**`t:'e'`→IR error（value 保留原文）→snapshot 降表为纯值字符串 `{v:'#DIV/0!', t:1}`**（引擎无此公式节点，不进重算路径）；导出逆向：IR error→xlsx `t:'e'` 原文 | plan.md WI-2/WI-3 + **本卡新定**（error 格的 snapshot 形态——plan 只定 IR 侧） |
+| 类型矩阵（xlsx ↔ IR ↔ Univer 双向） | xlsx `t:'s'`→IR string→snapshot `t:1`；`t:'n'`→number（numFmt 呈日期形态时→IR date）→`t:2`；`t:'b'`→boolean→`t:3`；**`t:'e'`→IR error（value 保留原文）→snapshot 降表为纯值字符串 `{v:'#DIV/0!', t:1}`**（snapshot 的 t 域只有 1/2/3——plan WI-3 锁定，无错误类型载体，故降表为字符串；该格无 f，不进重算路径）；导出逆向：IR error→xlsx `t:'e'` 原文 | plan.md WI-2/WI-3 + **本卡新定**（error 格的 snapshot 形态——plan 只定 IR 侧） |
 | 文本数字防线 | `raw:true` + cellText 判定，"0012" 必须保持 string（用例 text-look-like-number 防回归）；禁止 valueOf 隐式转换 | plan.md WI-1 + 坑表 |
 | 存储值 vs 显示值分离 | IR/snapshot **只存原始值 + numFmt 代码**（0.1234 + `"0.00%"`），禁止存显示字符串（"12.34%" 文本化即丢精度）；日期存 ISO 字符串 + 显式 numFmt，禁本地时区 Date 构造（UTC 坑）；numFmt 代码字符串原样保真 | plan.md WI-4 numfmt 用例 + 坑表「日期时区偏移」 |
-| theme 色换算单源 | 主题色索引 + tint → #RRGGBB 换算取 ExcelJS 同款算法，**全库只允许一份实现**（packages/import-export 内单函数，导入导出双向共用）——两份实现 = 往返色差漂移源 | plan.md WI-4 + 本卡新定（单源约束） |
+| theme 色换算单源 | 主题色索引 + tint → #RRGGBB 换算取 ExcelJS 同款算法，**全库只允许一份实现**（`src/import-export/` 内单函数——plan.md §1 定位，随 apps/server；导入导出双向共用）——两份实现 = 往返色差漂移源 | plan.md WI-4 + 本卡新定（单源约束；**v1.0 误写 `packages/import-export` 包路径，B5 评审修正——plan 定 `src/import-export/ir.ts`，monorepo 无该包**） |
 | 结构边界 | rowCount/columnCount = 最大非空行列 + 缓冲；sparse 不膨胀（A1+Z100 用例）；冻结 pane→snapshot freeze 直映 | plan.md WI-3 |
 | 不可表达项降级三件套 | 渐变填充 / 条件格式图标集 / 富文本分段（取首段纯文本）——导入不失败、记 import_tasks 降级说明；**导出侧写回**（本卡新定）：渐变→无填充如实导出、条件格式→不生成、富文本→首段样式应用整格——三者均不得触发 Excel 修复弹窗（AC-08） | plan.md WI-4 + 本卡新定（导出侧口径） |
 
@@ -25,10 +25,10 @@
 
 ```
 格 → ① t:'e' 无 f？→ 纯值降表（{v:原文, t:1}），结束
-  → ② 有 f → D1-03 桶判定出口：
+  → ② 有 f → D1-03 桶判定出口（v1.1 起含空函数集分支：纯算式按桶 I 差分）：
        W 白名单 119 → f 保留（白名单内 volatile 四函数例外：静态化，v=缓存值、f 剥档案）
-       E 可用区差分一致 → f 保留同权；不一致 → 冻结出口
-       X 排除 8 / 桶 II / 差分超限 → 冻结出口（剥 f、v=缓存值、档案条目）
+       桶 I 可用区差分一致 → f 保留同权；不一致 → 冻结出口
+       桶 III / 桶 II / 差分超限 → 冻结出口（剥 f、v=缓存值、档案条目）
   → ③ 冻结出口格 → 纯值 + 档案条目 {f 原文, v, 来源}（档案载体与生命周期 = D1-02）
   → ④ 无 f → 纯值 + 样式投影（WI-4 十一项）
 ```
@@ -36,7 +36,7 @@
 **导出方向合并视图时序（值校验闸门唯一归属 D1-02，本卡引用）**
 
 ```
-snapshot cellData + 公式档案 → 逐条目校验「目标格当前 v === 档案 v」（D1-02 规则 9）
+snapshot cellData + 公式档案 → 逐条目校验「目标格当前 v === 档案 v」（D1-02 ② 值校验闸门，权威出处 plan 规则 9；v=undefined 条目走例外直还原）
   → 相等：合并 type=formula, formula=f 原文, value=当前 v
   → 不等：丢弃条目 + 降级说明计数（不写错格优先于文本保真）
 → IR → ExcelJS 写 xlsx（样式/合并/冻结/numFmt）/ PapaParse 写 csv（仅值+公式文本，UTF-8 BOM，无样式——文案已明示）
