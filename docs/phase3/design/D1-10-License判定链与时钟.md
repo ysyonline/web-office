@@ -3,7 +3,7 @@
 > 卡号：D1-10 | 工时 2.4h（2 包 × 1.2h）| 泳道 BE | 里程碑 M3→B6 前置 | 需求域 R7 设计层
 > 消费方（首包）：**P3-122**（SM2 验签与 License 解析，依赖 `P3-121-05|D1-10-02`）；设计意图覆盖 P3-120/122/123/124/125（共 29 包——**v1.2 修订**：原枚举漏 P3-122（消费方首包，5 包），枚举机读和 24 ≠ 声明 29；按约定 A 补齐）
 > 主要出处：license/design.md §2.4（时钟三层）/§2.5（断言三级）/§2.1-c（路线 A + 拷卷即过承认）/§3（换绑四步）/§4-bis（席位计量）/§6-bis（商务披露）、Spec §10 License 定位行与 AC-09、openapi /license/* 端点与 registry 5001/5002、D1-05（三出口等价约束 + ③ 档位 D）、D1-08（SeatMeter/席位口径/peak_concurrent）、D1-11（启动断言链 ② 步 + WO_LICENSE_PUBLIC_KEY）
-> 状态：**v1.5**（2026-10-23 代码放行后传导：v1.4 的 2 处「待代码放行」标记**全部摘除**——`packages/shared/src/license/sm2-constants.ts` 的 `SM2_DEFAULT_USER_ID` 与 `scripts/issue-license.mjs` 已于 06:30 落盘（提交 `bf134ec`），卡面改标**已落盘**；V-CHAIN 正向断言的 fixture 来源补**诚实化注**——本仓 fixture 系**自签向量**，驱动「合法 License → valid」正向闭环**足够**（该断言要的是判定链自洽，不是互通性），**互通性由 D1-11 的 G8 独家承担**，不得借本条声称跨实现互通）｜v1.4① 栏判定器签名 `expiresAt` **改可空**、缺失态取值 = `null`（`graceUntil` 同规则，防前端 `Invalid Date`）／② 栏判定链第②步验签改走 **sm-crypto**（Node 原生 crypto 禁用于 SM2：无 ZA/distid，与 GM/T 不互通；四口径锁定，userId 单一定义点待代码放行）／② 栏重判触发点补**缓存 miss 验签必须单飞**（实测 19.4ms/次）／④ 栏 V-CHAIN 增**正向断言**（合法 License → valid → 激活成功，须由签发脚本 fixture 驱动）／④ 栏**新增 V-SINGLEFLIGHT**（并发 N 写请求 → 验签计数 = 1 的可执行判据）｜v1.3（2026-10-23 架构师裁决落地（OPEN-DECISIONS 第 63 条）：AC-09 措辞已在 Spec §9 按分域口径统一，① 栏「缺失态」行的「待解答」标注关闭，分域结论升格为权威，QA 断言以修订后 AC-09 + 本卡 V-4EXIT 为准｜v1.2：按 D1-05 v1.2 分域结论改四处——① 栏三层防线 4409 限定 License 域 / ② 栏判定链 ⑥ 席位步改「无 close 码、降级 view」/ ③ 栏错误码表拆「License 无效」与「席位满」两行 / V-4EXIT 按两态分别断言；头部覆盖枚举补 P3-122（约定 A）｜v1.1（AC-09/registry 5001 三触发之「缺失」原无落点）/ ③ 栏 403 降级态出处对齐 D1-05 v1.1 改 Spec §12 / V-CHAIN 六态构造升七态；v1.0 于 D1-10-01/02 收口）| 评审记录见 REVIEW-INDEX「D1-10 挑刺审查线程」段
+> 状态：**v1.6**（2026-10-24 条 K/L 裁决落盘：① 栏缺失态行分域注、三层防线行、② 栏 v1.2 注、③ 栏出口行的 4409 触发集补「缺失」= 无效/缺失/过期（OPEN 条 K，恢复 2026-10-22 复评轮多数载体口径）；V-CHAIN 正向断言 fixture 落点注迁 packages/shared（条 L）｜状态行 v1.1~v1.5 明细段压缩配平，明细由 REVIEW-INDEX 线程段承载）｜v1.5（代码放行传导：v1.4 两处待放行标记摘除 + V-CHAIN fixture 自签向量诚实化注）｜v1.4（expiresAt 可空缺失态取 null + sm-crypto 验签四口径 + 缓存 miss 单飞 + V-SINGLEFLIGHT + V-CHAIN 正向断言）｜v1.3（AC-09 统一措辞传导、缺失态行「待解答」标注关闭）｜v1.2/v1.1（席位分域修订、缺失态入判定链 ① 步、V-CHAIN 七态构造；v1.0 于 D1-10-01/02 收口）| 评审记录见 REVIEW-INDEX「D1-10 挑刺审查线程」段
 
 ---
 
@@ -13,10 +13,10 @@
 |---|---|---|
 | 判定器签名 | `evaluateLicense(): { state: 'valid' \| 'readonly-license' \| 'readonly-grace' \| 'invalid', reason?, seatsTotal, seatsUsed, expiresAt: string \| null, graceUntil?: string \| null }`——单例服务，出口供三防线消费；**invalid（验签失败）≠ readonly（降级）**，语义分层。**`expiresAt` 可空（v1.4 补，P3-4）**：原签名 `expiresAt` 非可选，**缺失态（License 文件缺失/未安装、或载荷无有效期字段）下取值未定义**；现定死：**缺失态取值 = `null`**（不用 `undefined`——`undefined` 经 JSON 序列化会被静默丢字段，且前端 `new Date(undefined)` 渲染出 `Invalid Date`）。消费方（前端 banner / `/license/status`）必须显式处理 `null` 分支（渲染为「未激活/无有效期」而非解析失败），**`graceUntil` 同规则**（未进宽限态时 = `null`） | 本卡新定（依据 AC-09 + 5001/5002 分码）+ **本卡 v1.4 补**（可空与缺失态取值） |
 | 判定输入三源 | ① License 文件（SM2 验签后的载荷：席位/有效期/指纹快照）② `licenses` 表（status/max_seen_at/peak_concurrent）③ SeatMeter.current()（D1-08 四操作，判定链只读不占不释放——占席在连接网关） | license §2.2/§2.4 + D1-08 |
-| 缺失态（AC-09 三触发之一） | **License 文件缺失/未安装 → state=readonly-license**（只读降级，非 invalid、非拒绝启动）——AC-09 明言「缺失/过期/超席」三触发均降级只读（**分域注 v1.2**：三触发的**降级目标**一致，但 WS 侧出口不同——仅「无效/过期」映射 4409，「超席」走角色降级 view、无 close 码，见 ③ 栏与 V-4EXIT；**AC-09 措辞已于 2026-10-23 架构师裁决在 Spec §9 按本分域统一（v1.3 标注）**，QA 断言以修订后 AC-09 为准），registry 5001 描述同为三触发并列；缺失态支撑私有化「先部署后激活」流程（启动不依赖 License 文件在场，激活走 /license/install） | AC-09 + registry 5001 + 本卡新定（判定链落点） |
+| 缺失态（AC-09 三触发之一） | **License 文件缺失/未安装 → state=readonly-license**（只读降级，非 invalid、非拒绝启动）——AC-09 明言「缺失/过期/超席」三触发均降级只读（**分域注 v1.2**：三触发的**降级目标**一致，但 WS 侧出口不同——「无效/缺失/过期」映射 4409、「超席」走角色降级 view、无 close 码（**v1.6 条 K 扩义**：原 v1.2「仅无效/过期」系超席清除轮枚举顺带，恢复 2026-10-22 复评轮多数载体全域口径），见 ③ 栏与 V-4EXIT；**AC-09 措辞已于 2026-10-23 架构师裁决在 Spec §9 按本分域统一（v1.3 标注）**，QA 断言以修订后 AC-09 为准），registry 5001 描述同为三触发并列；缺失态支撑私有化「先部署后激活」流程（启动不依赖 License 文件在场，激活走 /license/install） | AC-09 + registry 5001 + 本卡新定（判定链落点） |
 | 时钟口径 | **判定基准 now() ≡ max(系统时钟, max_seen_at)**；`max_seen_at` 每次判定成功即更新（应用层，licenses 表）；回拨检测：`系统时钟 < max_seen_at − 24h` → 审计告警（license.clock-rollback，detail 含偏差量）+ 后台状态提示，**不拒绝服务**；偏差 ≤24h 视为正常校时静默容忍 | license §2.4 机制三层 |
 | 宽限期 | `expiresAt < now()` → 只读 + 7 天宽限（graceUntil = expiresAt + 7d，同样按 max 口径算）；宽限内提示「已过期，宽限期至 X 日，联系供应商续期」；**超 7 天仍只读不锁死**（登录/查看可用、编辑禁用）——不存在锁死态 | license §2.4 第 3 层 + AC-09 |
-| 三层只读防线 | 服务端 HTTP 402+5001（写端点过滤器）/ WS 4409（**License 无效/过期时的**新 edit 首连；**席位满不属本码**——满席走角色降级 view 与 role-upgrade-reject 帧，无 close，见 D1-08 v1.1）/ Command 守卫（beforeCommandExecuted 写类拦截）+ UI 只读 banner（pages.md §3.10 三态文案）——**四出口（含 UI）语义必须一致，实现锚点归 D1-05 三出口等价约束，本卡不重复定义** | D1-05 ② + AC-09 + DESIGN-LAYER 任务书条 4 |
+| 三层只读防线 | 服务端 HTTP 402+5001（写端点过滤器）/ WS 4409（**License 无效/缺失/过期时的**新 edit 首连；**席位满不属本码**——满席走角色降级 view 与 role-upgrade-reject 帧，无 close，见 D1-08 v1.1）/ Command 守卫（beforeCommandExecuted 写类拦截）+ UI 只读 banner（pages.md §3.10 三态文案）——**四出口（含 UI）语义必须一致，实现锚点归 D1-05 三出口等价约束，本卡不重复定义** | D1-05 ② + AC-09 + DESIGN-LAYER 任务书条 4 |
 | 防拷贝口径 | License = 授权计量与合规凭证，**不承诺防拷贝**（拷卷即过显式承认）；技术侧不做与 §6-bis 矛盾的实现（不搞在线心跳/外呼验证——离线形态无通道且属虚假承诺配套） | license §2.1-c/§6-bis + Spec §10 |
 
 ## ② 判定链（短路序，定死）
@@ -41,7 +41,7 @@ evaluateLicense() 按序短路：
                                               → 超宽限 → readonly-license（仍不锁死）
 ⑥ 席位：seatsUsed < seatsTotal？ → valid；超 → 三防线只对「新编辑请求」生效
    （HTTP 402 写端点 / Command 守卫 / WS 侧 = **新 edit 首连降级 view，无 close 码**），既有编辑会话不中断
-   ——**v1.2 分域修订**：席位满属席位域，WS 侧不出 4409（4409 属 License 无效/过期域），依据 Spec §10 与 D1-08 v1.1
+   ——**v1.2 分域修订（v1.6 条 K 扩域）**：席位满属席位域，WS 侧不出 4409（4409 属 License 无效/缺失/过期域），依据 Spec §10 与 D1-08 v1.1
 成功路径收尾：max_seen_at ← max(时钟, max_seen_at) 持久化
 ```
 
@@ -56,7 +56,7 @@ evaluateLicense() 按序短路：
 |---|---|---|---|---|
 | 写端点降级 | 5001 | HTTP 402 | 只读降级（过滤器层统一出口） | registry + D1-05 |
 | 降级后写操作 | 5001 | HTTP 403 | Spec §12 实证（D1-05 v1.1 已修出处；AC-09 只定降级未定 403 档） | D1-05 ① |
-| 新 edit 首连（License 无效/过期） | — | WS 4409 | 只读降级（既有编辑不中断） | D1-05/D1-08 |
+| 新 edit 首连（License 无效/缺失/过期） | — | WS 4409 | 只读降级（既有编辑不中断） | D1-05/D1-08 |
 | 席位满（License 有效） | — | **无 close 码** | 新 edit 首连降级 view；ROLE_UPGRADE 满席回 reject 帧——连接均不中断 | D1-08 v1.1 + Spec §10 |
 | 验签失败/指纹不匹配 | 5002 | HTTP 422（激活/安装端点） | 拒绝，不降级 | registry |
 | 回拨 >24h | — | 审计 + 后台提示 | 告警不误杀 | license §2.4 |
@@ -68,7 +68,7 @@ evaluateLicense() 按序短路：
 
 | # | 断言 | 落点包 |
 |---|---|---|
-| V-CHAIN | 判定链短路序：构造 ① 文件缺失/未安装 ② 验签坏 ③ 载荷坏 ④ 指纹不匹配 ⑤ 过期宽限内 ⑥ 过期超宽限 ⑦ 超席 七态文件/环境 → 七态出口逐态断言（含缺失态降级不拒启动、invalid 不出现在线上路径、超宽限不锁死）。**正向断言（v1.4 补，P0-2 原刺）**：本条七态**全为负向态**，缺少「合法 License → 验签通过 → state=valid → 激活成功（`POST /license/install` 2xx）→ 写端点放行」的**正向闭环**——补后本条为 7 负 + 1 正共八态；正向态必须由**本仓签发脚本产出的 fixture**（`scripts/issue-license.mjs`，**v1.5 摘除「待代码放行」——已于 2026-10-23 06:30 落盘**，`--gen-fixture` 产出 `scripts/fixtures/sm2-standard-vector.json`）或等价标准向量驱动，**不得用「把验签 mock 掉」替代**（mock 掉即 P0-1 假阳性复发）。**诚实化注（v1.5）**：该 fixture 由本仓 sm-crypto 签发，属**自签向量**——它足以驱动本条「合法 License → valid → 激活成功」的正向闭环（本条验的是判定链自洽，不是跨实现互通），但**不得**据本条声称与 GM/T 标准实现互通；**互通性由 D1-11 ② 的 G8（OpenSSL CLI 交叉验签）独家承担** | P3-122 / P3-123 |
+| V-CHAIN | 判定链短路序：构造 ① 文件缺失/未安装 ② 验签坏 ③ 载荷坏 ④ 指纹不匹配 ⑤ 过期宽限内 ⑥ 过期超宽限 ⑦ 超席 七态文件/环境 → 七态出口逐态断言（含缺失态降级不拒启动、invalid 不出现在线上路径、超宽限不锁死）。**正向断言（v1.4 补，P0-2 原刺）**：本条七态**全为负向态**，缺少「合法 License → 验签通过 → state=valid → 激活成功（`POST /license/install` 2xx）→ 写端点放行」的**正向闭环**——补后本条为 7 负 + 1 正共八态；正向态必须由**本仓签发脚本产出的 fixture**（`scripts/issue-license.mjs`，已于 2026-10-23 落盘；`--gen-fixture` 产出 fixture——**落点 v1.6 迁 `packages/shared/src/license/fixtures/`（条 L 裁决：单一物理源模块化分发，物理迁移随代码放行批、过渡居 `scripts/fixtures/`）**）或等价标准向量驱动，**不得用「把验签 mock 掉」替代**（mock 掉即 P0-1 假阳性复发）。**诚实化注（v1.5）**：该 fixture 由本仓 sm-crypto 签发，属**自签向量**——它足以驱动本条「合法 License → valid → 激活成功」的正向闭环（本条验的是判定链自洽，不是跨实现互通），但**不得**据本条声称与 GM/T 标准实现互通；**互通性由 D1-11 ② 的 G8（OpenSSL CLI 交叉验签）独家承担** | P3-122 / P3-123 |
 | V-CLOCK | 时钟三层：回拨 48h → 服务不拒 + 审计含偏差 + 判定按 max_seen_at（改时间无法续期实证）；回拨 12h → 静默；前跳至 expiresAt+8d → readonly-grace 提示宽限语义（license §5 用例 10 行为化） | P3-123 |
 | V-GATE | 重判触发全覆盖：六触发点逐一注入状态变化 → 防线在 TTL 外即时生效；TTL 内席位跨越 → 主动失效即时刷新（缓存不成为漏洞）。**与 V-SINGLEFLIGHT 的分工（v1.4 注）**：本条验「状态变化的即时性」，V-SINGLEFLIGHT 验「缓存 miss 时的验签次数」，两者正交——不得用本条覆盖单飞（本条在单飞缺失时仍可通过） | P3-123 / P3-124 |
 | V-DBFAIL | licenses 表停 → 判定按 readonly + 告警（非 invalid）；DB 恢复 → 自动回 valid（不要求重启） | P3-123 |

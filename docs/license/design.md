@@ -101,7 +101,7 @@ machine_fingerprint = SM3( concat( item_1..item_6 各自 SM3 后的定序拼接 
 
 **背景**：本文件 §3 原文只写「供应商私钥签发」——签发工具、签名格式、distid 全无约定（第三轮挑刺 P0-2 实证：distid / ZA / GM/T 在本文件全文 0 命中）。签发侧不受本仓控制是 P0-2 最致命的一块空白。收进本仓后**口径随代码版本化、可评审、可回归**，且签发与验签共用同一 canonical JSON 实现，「签-验口径漂移」类 bug 从根上消除。
 
-**签发工具链 = 本仓 `scripts/issue-license.mjs`（离线 CLI）**——**2026-10-23 已落盘**（用户代码放行）。G3 验签 fixture（**自签向量，自洽断言**，v1.7 措辞）由 `node scripts/issue-license.mjs --gen-fixture` 产出并入库 `scripts/fixtures/sm2-standard-vector.json`（fixture 只含公钥与签名，私钥不出进程）。
+**签发工具链 = 本仓 `scripts/issue-license.mjs`（离线 CLI）**——**2026-10-23 已落盘**（用户代码放行）。G3 验签 fixture（**自签向量，自洽断言**，v1.7 措辞）由 `node scripts/issue-license.mjs --gen-fixture` 产出（fixture 只含公钥与签名，私钥不出进程）。**落点（v1.8，条 L 裁决 2026-10-24）**：单一物理源迁 `packages/shared/src/license/fixtures/sm2-standard-vector.json`，服务端启动链（D1-11 ② G3）经模块导入消费、随构建产物分发到一切部署形态；生成器输出路径与探针读取路径随代码放行批（条 O）同步迁移，迁移完成前 `scripts/fixtures/` 为过渡落点。
 
 **四口径锁定（签发与验签两侧必须完全一致）**
 
@@ -211,6 +211,7 @@ matching 阈值（0.70）与权重表作为服务端常量，随 License 公钥�
 |---|---|---|---|
 | v1.6 | 2026-10-23 | 代码放行轮：§3.0 签发工具链由「待代码放行」改为**已落盘**（`scripts/issue-license.mjs`；fixture 入库 `scripts/fixtures/sm2-standard-vector.json`）；§2.5 **G3 口径改写**为「标准向量验签 + 篡改反断言」（原自签自验只测自洽性，是 P0-1 假阳性来源）。实证：`node scripts/gm-crypto-probe.mjs` **12/12 PASS**（G1~G8 含四条负向反断言），G8 确认 sm-crypto ↔ OpenSSL 标准路径互通；附 CLI 侧口径订正——`pkeyopt distid` 传 **ASCII 原文**（传 hex 验不过），四口径常量本身不变 | 第三轮挑刺 Q1/Q2 拍板 + OPEN-DECISIONS 2026-10-23 两条（Q1 条已 RESOLVED） |
 | v1.7 | 2026-10-24 | §2.5 G3 措辞**诚实化传导**：「标准向量验签」→「fixture 验签（自洽断言）」——fixture 由本仓签发 CLI 生成，属**自签向量**（v1.6 行内「标准向量」与「本仓生成」同句自相矛盾），只证自洽、**互通由 G8 独家承担**，不得称「标准向量」（与 D1-11 v1.4/v1.5、D1-10 v1.5、探针头注释同口径；条 J B2 前置实读 #45 G-2 查出的漏网活载体）。措辞级勘误，断言行为不变 | 第五轮审核 P1-1b + 第六轮 D1-11 v1.4 诚实化裁决（口径在案，本次为传导执行） |
+| v1.8 | 2026-10-24 | §3.0 fixture **落点改单一物理源**（条 L 裁决）：迁 `packages/shared/src/license/fixtures/sm2-standard-vector.json`（紧邻 sm2-constants.ts 四口径单一定义点），服务端启动链（D1-11 ② G3）经**模块导入**消费、随构建产物分发到一切部署形态（容器 P3-019/裸机 systemd P3-131），禁运行期 fs 仓库路径读取；生成器输出路径与探针读取路径随代码放行批（条 O）同步迁移，迁移前 `scripts/fixtures/` 为过渡落点 | 条 L 裁决（2026-10-24，用户指令「条 K/条 L 裁决」；OPEN-DECISIONS 条 L RESOLVED，代码残余并入条 O） |
 | v1.0 | 2026-10-21 | 首版（多源加权指纹 + 换绑流程） | 用户审查 P1-3 |
 | v1.1 | 2026-10-21 | 打回 2 修复：去掉 unique(machine_fingerprint) DB 索引改应用层校验（修复换回旧机器撞唯一索引的真实 bug）；#6 盐的防护表述降级（防误装/目录拷贝，不防整盘克隆，整盘克隆靠关键项+席位并发兜底） | 用户复审打回 |
 | v1.2 | 2026-10-21 | P0-2 修复：新增 §2.1-b 容器部署形态专用权重表（#6 卷级盐 0.40 主权重、#1 dmidecode 降可选增强、#5 hostname 剔除、关键项改卷级盐必通过）；方案①宿主机 agent 登记为后续增强不进 MVP；§5 新增验收 7/8（Docker 默认模式激活 + 容器重建不漂移） | 用户第三轮审查 P0-2 |
