@@ -19,7 +19,7 @@
 ### 档二 · 开发期硬约束（写进代码，不写会写死）
 
 - **四个可替换接口**：`SeqAllocator` / `SeatMeter` / `CollabBus` / `CalcDispatcher`——实现可以是进程内 Map、主线程同步，但**形状不可写死**（ADR-004 / Worker P1 演进只换实现不换调用方）
-- **SM2 三级启动断言**（sm3 存在 / SM2 曲线存在 / 自签自验真跑，失败拒绝启动；gm-crypto-probe 已固化）
+- **SM2 三级启动断言**（sm3 存在 / SM2 曲线存在 / 固定 fixture 验签——自洽断言（fixture 系本仓自签向量，互通归探针 G8），失败拒绝启动；gm-crypto-probe 已固化。措辞诚实化传导 2026-10-24，原「自签自验真跑」系 P0-1 废弃口径）
 - **白名单 CI 门禁**（check_formula_whitelist.py G1-G5 + check_formula_buckets.py G6-G9b，含 G4 范例锚点 OFFSET/INDIRECT/AGGREGATE）
 - **WI-3 突变测试**（两种故意错误注入必须检出，替代恒真断言）
 - **「插入后不撤销即导出」陷阱用例置顶**回归集（断言迁移器捕获 remove-rows，非坐标数值碰巧相等）
