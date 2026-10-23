@@ -15,5 +15,8 @@ Thumbs.db
 !.vscode/extensions.json
 !.vscode/settings.json
 
+# 外部工具副产物：本仓不使用 Nx（全库零处引用 .nx），该目录由外部工具/IDE 生成
+.nx/
+
 # 本地回收站：删掉的评审/交接原文移到这里可恢复，属于本地暂存而非项目内容
 .workbuddy/trash/

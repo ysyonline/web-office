@@ -74,8 +74,46 @@ for m, p, s in ops_no400:
 # 带参未挂 400 归零，断言由此启用（v1.2）。P3-037 仍负责把本脚本接入 CI。
 ops_bad400 = [x for x in ops_no400 if x[2] in ("body", "op-param", "path-param")]
 
+# 路径模板占位符 ↔ path 参数 name 一致性（OPEN #69 立，2026-10-23 用户放行）：
+# OpenAPI 规范要求每个 {placeholder} 都有同名 path 参数（path 级或 op 级，$ref 需展开）。
+# 违例如 /ws/collab/{fileId} 引 FileId 组件（name: id）——解冻窗口修契约前先登记豁免。
+# 豁免粒度 = 「path + 占位符名 + 参数名」三元组（不是整条 path）：只在差集运算前把这一对
+# 已知错配精确抵消，同一 path 的其它占位符/参数仍受检——防止日后该 path 新增第二个
+# path 参数时静默失守（不匹配是双向差集：fileId 缺同名参数、id 缺同名占位符，两侧都要抵）。
+PLACEHOLDER_EXEMPT = [("/ws/collab/{fileId}", "fileId", "id")]  # OPEN #69 待修（裁决候选 a：模板改 {id}）
+
+comps = d.get("components", {}).get("parameters", {})
+def _resolved(q):
+    if "$ref" in q:
+        return comps.get(q["$ref"].split("/")[-1], {})
+    return q
+
+ph_mismatch = []
+for path, item in d["paths"].items():
+    if not isinstance(item, dict):
+        continue
+    ph = set(re.findall(r"\{(\w+)\}", path))
+    names = set()
+    ops = [op for m, op in item.items() if m in ("get", "post", "put", "patch", "delete")]
+    for sec in [item] + ops:
+        for q in (sec.get("parameters") or []):
+            c = _resolved(q)
+            if c.get("in") == "path" and c.get("name"):
+                names.add(c["name"])
+    for (_p, ph_, n_) in PLACEHOLDER_EXEMPT:
+        if _p == path:
+            ph.discard(ph_)
+            names.discard(n_)
+    for x in sorted(ph ^ names):
+        ph_mismatch.append("%s 不一致项: %s (placeholders=%s names=%s)"
+                           % (path, x, sorted(ph), sorted(names)))
+
 bad = bool(orphan_s or dangling or orphan_r or no_addprops or len(c7) != 4
-           or "SnapshotSaveRequest" in schemas or ops_bad400)
+           or "SnapshotSaveRequest" in schemas or ops_bad400 or ph_mismatch)
+if ph_mismatch:
+    print("\nFAIL 路径占位符与 path 参数 name 不匹配（%d 个）：" % len(ph_mismatch))
+    for x in ph_mismatch:
+        print("  " + x)
 if ops_bad400:
     print("\nFAIL 带参未挂 400（%d 个）：" % len(ops_bad400))
     for m, p, s in ops_bad400:

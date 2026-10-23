@@ -33,8 +33,8 @@ const STEPS = [
     cmd: null,
     args: [
       '--test',
-      'packages/config/rules/no-emoji.test.ts',
-      'packages/config/rules/no-hardcoded-color.test.ts',
+      'packages/config/rules/no-emoji.test.mjs',
+      'packages/config/rules/no-hardcoded-color.test.mjs',
     ],
   },
   { name: '依赖面断言（A~I）', cmd: null, args: ['scripts/check-workspace-deps.mjs'] },

@@ -14,7 +14,7 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc -p packages/shared/tsconfig.json",
     "build": "tsc -p packages/shared/tsconfig.build.esm.json && tsc -p packages/shared/tsconfig.build.cjs.json && node packages/shared/scripts/postbuild.mjs",
-    "test:rules": "node --test packages/config/rules/no-emoji.test.ts packages/config/rules/no-hardcoded-color.test.ts",
+    "test:rules": "node --test packages/config/rules/no-emoji.test.mjs packages/config/rules/no-hardcoded-color.test.mjs",
     "check:deps": "node scripts/check-workspace-deps.mjs",
     "verify": "node scripts/verify.mjs"
   },
