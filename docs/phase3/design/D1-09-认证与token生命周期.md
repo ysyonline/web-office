@@ -3,7 +3,7 @@
 > 卡号：D1-09 | 工时 2.4h（2 包 × 1.2h）| 泳道 BE | 里程碑 M1→B2 前置 | 需求域 R7 设计层
 > 消费方（首包）：**P3-035**（API 客户端 + 401 自动刷新 + 并发去重）、**P3-040**（口令服务）；设计意图覆盖 P3-035/040/041/042/044/060/070（API 客户端、口令服务、auth 四端点、锁定、用户管理、登录页、WS ticket，共 52 包——复评轮修订：原枚举 5 项 38 包 vs 总数 43（含 P3-040 漏 P3-035），与 DESIGN-LAYER §3.1 列表及机读 52 对齐）
 > 主要出处：Spec §4 认证行（15min/7d）与 §10 WS 安全行、openapi（auth 三端点 + ws/ticket + x-websocket handshake/会话失效/close-codes）、schema.md §3.1/§3.2（users 状态字段、refresh_tokens 吊销制）、OPEN-DECISIONS 等保配套条（首登改密随 M3 落）
-> 状态：**v1.4**（2026-10-23 第三轮挑刺裁决落盘：② 栏失效传播矩阵登出行补「HTTP 残留 ≤15min **含写端点可读写**」并交叉引用卡内待办 3／④ 栏 V-REV 补**写端点残留断言**（旧 access 调写端点同返 2xx，读/写两端行为必须一致）｜v1.3（2026-10-23 架构师裁决落地（OPEN-DECISIONS 第 62 条）：refresh 端点 locked → **423+1002（detail {unlockAt}）**、disabled → **403+1005**，挂起解除；openapi 端点显式补挂 423/403 声明已登记解冻窗口待办，契约落盘前按运行时 guard 出口实现（D1-05 过滤器层统一出口口径，不构成违约）｜v1.2：① 栏补 status guard 覆盖范围定性／② 栏 refresh 两行形态挂起；v1.1 HS256 补标「本卡新定」；v1.0 于 D1-09-01/02 收口）| 评审记录见 REVIEW-INDEX「D1-09 挑刺审查线程」段
+> 状态：**v1.5**（2026-10-24 条 N 裁决落盘：③ 栏 1005 行挂决策理由指针（全域 D 档 = 刻意决策，理由载体 D1-05 ③ D 档 v1.8 补记；OPEN 条 N）｜v1.4（2026-10-23 第三轮挑刺裁决：② 失效传播矩阵登出行补「HTTP 残留 ≤15min 含写端点可读写」+ V-REV 写端点残留断言）｜v1.3（OPEN 62 裁决落地：refresh locked → 423+1002（detail.unlockAt）、disabled → 403+1005，挂起解除；openapi 显式补挂随解冻窗口，落盘前按运行时 guard 出口不违约）｜v1.2/v1.1（status guard 覆盖定性、HS256 补标本卡新定；v1.0 于 D1-09-01/02 收口）| 评审记录见 REVIEW-INDEX「D1-09 挑刺审查线程」段
 
 ---
 
@@ -61,7 +61,7 @@
 | 账号锁定 | 1002 | 423（login / guard / refresh——v1.3 裁决补 refresh） | 锁定倒计时（`role=timer` 不逐秒朗读）；refresh 出口的 detail.unlockAt 供跳登录页后渲染倒计时 | registry + AC-02 |
 | refresh 无效/已吊销/过期 | 1003 | 401（refresh） | 清会话跳登录（D 档） | registry |
 | access 过期/未认证 | 1004 | 401（任意鉴权端点） | 触发单飞刷新；刷新失败才跳登录 | registry |
-| 无权限（含 disabled） | 1005 | 403（guard / refresh——v1.3 裁决补 refresh） | D 档（登出引导） | registry |
+| 无权限（含 disabled） | 1005 | 403（guard / refresh——v1.3 裁决补 refresh） | D 档（登出引导——理由载体 = D1-05 ③ D 档 v1.8 补记：admin 域 8 操作，快照失配自愈 / disabled 会话不可续，全域不分流） | registry |
 | WS ticket 失效/re-validate 失配 | — | close 4401 | 清会话回登录 | x-websocket |
 | 会话失效（登出/锁定/禁用/吊销） | — | close 4411（前置 session-invalidated 帧） | 清会话回登录 | x-websocket |
 
