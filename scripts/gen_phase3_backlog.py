@@ -38,8 +38,8 @@ ITEMS = [
      "D1-13 设计卡 v1（zod 单一源 → 自研 ZodValidationPipe → 7xxx 码段 → G1 contract-diff 门禁）",
      "四栏齐全且每条决策有出处；7xxx 四条码与前端呈现档位一一对应；漏挂 pipe 与孤儿 schema 各有可机检的断言"),
     ("P3-011", "R1 工程基建", "NestJS 应用骨架与模块划分", 8, "BE", "M1", "P3-010,D1-13",
-     "Nest 引导 + 模块骨架（auth/files/collab/license/audit/sso）",
-     "启动 200 /api/v1/health；模块依赖无环；目录与 Spec §5 端点分组一致"),
+     "Nest 引导 + 模块骨架（auth/files/collab/license/audit/sso）+ 22 个契约 schema 的 zod 定义落 packages/shared/src/schemas/（请求侧 9 + 响应侧 13，D1-13 ① 栏）",
+     "启动 200 /api/v1/health；模块依赖无环；目录与 Spec §5 端点分组一致；全部 request schema 为 z.strictObject()/.strict()、未知键样本返回 400 不静默剥离（D1-13 A-STRICT）"),
     # ---------------- M1 设计层（D1 设计卡，见 docs/phase3/DESIGN-LAYER.md） ----------------
     ("D1-05", "R7 设计层", "设计卡：错误码与降级四层矩阵", 3.6, "BE", "M1", "",
      "D1-05 设计卡 v1（错误码分段 + HTTP status↔code↔WS close 4409-4412↔前端文案 四层对照）",
