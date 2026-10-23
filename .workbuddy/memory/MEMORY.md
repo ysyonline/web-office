@@ -31,7 +31,7 @@
 - **pnpm isolated 布局的连带坑**：包声明的依赖只装在 `packages/<name>/node_modules`，**根 `scripts/*.mjs` 解析不到** → 「运行时依赖」与「根工具链依赖」可能要**同版本声明两处**（如 sm-crypto：shared 的 dependencies + 根 devDependencies），这是两棵解析树不是重复定义。**手工拷包进根 node_modules 是陷阱**：能跑但 lockfile 不同步、CI `--frozen-lockfile` 必红。
 - **只校验「声明面」的依赖门禁是假绿**：`check-workspace-deps.mjs` 断言 **I**（2026-10-23 加）= 声明 ↔ `pnpm-lock.yaml` importer ↔ 包内 node_modules 三面对账（含 root importer），可拦「加了依赖没跑 install」。**改任何依赖后必须先 `pnpm install` 再跑门禁**。
 - **仓库已纳入 git**（2026-10-22 首提交 `5c1d433`，main，156 文件）：`.gitattributes` 锁 LF（`* text=auto eol=lf`）+ 本仓库 `core.autocrlf=false`（本机全局是 true）；`spike/**/src/vendor/**` 标 `-text -diff`；`.workbuddy/trash/` 不入库。**按用户纪律只提交不推送，且不主动加远端。**
-- **Security Center 是路径级规则、不随脱离沙箱解除**（2026-10-23 多次实测）：`docs/phase3/design/D1-*.md` 与 `docs/review/*` 的 read/mv/rm 被禁，**`git add` 也会被拒**（git 需读文件做 hash），所以这些目录下的卡**改得动但入不了库**，需用户手动 add。判据：报错形如 `Blocked by Security Center rules: read <绝对路径>`。**不要重试等价手段**，直接转用户手动处理。
+- **Security Center 是路径级规则、不随脱离沙箱解除**（2026-10-23 多次实测）：`docs/phase3/design/D1-*.md` 与 `docs/review/*` 的 read/mv/rm 被禁，**`git add` 也会被拒**（git 需读文件做 hash），所以这些目录下的卡**改得动但入不了库**，需用户手动 add。判据：报错形如 `Blocked by Security Center rules: read <绝对路径>`。**不要重试等价手段**，直接转用户手动处理。**规则同时挡 Grep 与 Python/Bash 读取，但 Read 工具与 Edit/Write 可用**——取证一律走 Read。跨轮次累积的卡片改动**无法按轮拆分**（同一文件同一处叠加），只能一次性提交，故提交信息须在正文里按轮分段列清。
 
 ## 国密 SM2 签验链路（2026-10-23 代码放行轮落盘）
 
