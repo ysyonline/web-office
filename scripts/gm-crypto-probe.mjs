@@ -9,16 +9,21 @@
  * 检查项（tier=启动 的三级任一失败必须拒绝启动，见 D1-11 ②）：
  *   G1 摘要 sm3 可用                                            [启动]
  *   G2 椭圆曲线 SM2 可用                                        [启动]
- *   G3 标准向量验签（固定 fixture，由 issue-license.mjs 生成）   [启动]
+ *   G3 固定 fixture 验签（自签向量，承担**自洽**）                [启动]
  *   G4 对称算法 sm4 可用（License 文件可选加密，非 MVP 必需）     [CI]
  *   G5 PBKDF2-HMAC-SM3 可用（口令派生，与 License 同依赖）        [CI]
  *   G6 userId（distid）口径锁定：正确值验过、错值验不过           [CI]
  *   G7 DER 编码一致性：首字节 0x30 + 本仓解码器可解 + 重编码还原  [CI]
- *   G8 跨实现一致性：本仓签名可被 OpenSSL CLI 以标准 distid 验过  [CI，需 openssl CLI]
+ *   G8 跨实现一致性：本仓签名可被 OpenSSL CLI 以标准 distid 验过  [CI，需 openssl CLI ≥3.x]
  *
- * 为什么 G3 从「自签自验」改为「标准向量验签」（P0-1 教训）：
+ * 为什么 G3 从「自签自验」改为「固定 fixture 验签」（P0-1 教训）：
  *   自签自验只测自洽性不测互通性——Node 原生 crypto 的自签自验恒过，
  *   但与 GM/T 标准口径（含 ZA）完全不互通，正是它让 P0-1 假阳性。
+ *
+ * G3 / G8 的分工必须诚实（2026-10-23 第五轮审核 P1-3）：
+ *   fixture 由本仓 issue-license.mjs 生成，属**自签向量**——G3 承担「自洽」
+ *   （四口径没漂移、篡改必拒），**互通性由 G8 独家承担**（外部实现 OpenSSL CLI 验过）。
+ *   不要把 G3 描述成「标准向量」，那等于把自洽证据当成互通证据，与 P0-1 同类。
  *
  * 运行：node scripts/gm-crypto-probe.mjs
  * 退出码：0 全通过（SKIP 不计失败） / 1 有失败项
@@ -102,7 +107,7 @@ if (!existsSync(FIXTURE)) {
   } catch (e) {
     g3Detail = e.message.split('\n')[0];
   }
-  record('G3', '标准向量验签（固定 fixture）', g3, g3Detail, '启动');
+  record('G3', '固定 fixture 验签（自签向量，承担自洽）', g3, g3Detail, '启动');
 
   // 反断言（V-GM ①）：篡改 1 字节必须验不过，防 G3 退化成「只检查文件存在」
   if (g3) {
@@ -113,7 +118,7 @@ if (!existsSync(FIXTURE)) {
       fx.publicKey,
       sm2VerifyOptions(),
     );
-    record('G3-', '标准向量验签反断言（篡改 1 字节必 FAIL）', neg === false, '负向用例', '启动');
+    record('G3-', 'fixture 验签反断言（篡改 1 字节必 FAIL）', neg === false, '负向用例', '启动');
   }
 }
 
@@ -173,10 +178,24 @@ try {
   record('G7', 'DER 一致性', false, e.message.split('\n')[0]);
 }
 
-// G8 跨实现一致性（依赖 openssl CLI；不存在则 SKIP）
+// G8 跨实现一致性。
+//
+// SKIP 判定必须是**能力探测**而非「命令是否存在」（2026-10-23 第五轮审核 P1-2）：
+// `-rawin` 是 OpenSSL 3.x 才有的参数。信创基础镜像常带 1.1.1，若只判「openssl 能不能执行」，
+// G8 不会 SKIP 而是走验签并必红，把「CI 可选项」变成「必红项」，误伤整条流水线。
 const openssl = spawnSync('openssl', ['version'], { encoding: 'utf8' });
-if (openssl.status !== 0) {
-  recordSkip('G8', 'OpenSSL CLI 交叉验签', '未检测到 openssl CLI（CI 可选项）');
+const opensslOut = `${openssl.stdout ?? ''}${openssl.stderr ?? ''}`.trim();
+const majorMatch = /OpenSSL\s+(\d+)\./i.exec(opensslOut);
+const opensslMajor = majorMatch ? Number(majorMatch[1]) : null;
+
+if (openssl.status !== 0 || opensslMajor === null) {
+  recordSkip('G8', 'OpenSSL CLI 交叉验签', '未检测到 openssl CLI（CI 可选项，互通性证据缺失）');
+} else if (opensslMajor < 3) {
+  recordSkip(
+    'G8',
+    'OpenSSL CLI 交叉验签',
+    `${opensslOut}：-rawin 需 OpenSSL >= 3.0，1.1.1 走验签必红，故按能力探测 SKIP（CI 应固定 OpenSSL 3.x 以获得互通性证据）`,
+  );
 } else {
   try {
     const kp = sm2.generateKeyPairHex();
@@ -224,14 +243,20 @@ if (openssl.status !== 0) {
     };
 
     const pos = verifyWithOpenssl(issued.signatureDerHex);
-    record(
-      'G8',
-      'OpenSSL CLI 以标准 distid 验过本仓签名',
-      pos.ok,
-      pos.ok ? openssl.stdout.trim() : pos.err,
-    );
+    record('G8', 'OpenSSL CLI 以标准 distid 验过本仓签名', pos.ok, pos.ok ? opensslOut : pos.err);
+    // 负向断言必须以正向成功为前置（2026-10-23 第五轮审核 P1-1）：
+    // openssl 因参数错误退出时 status 同样 != 0，负向会「恒真」——实证注入 OpenSSL 1.1.1k 时
+    // 出现 G8 FAIL 而 G8- PASS 的荒谬组合，负向完全失去判别力。
     const neg = verifyWithOpenssl(tamperHex(issued.signatureDerHex));
-    record('G8-', 'OpenSSL CLI 反断言（篡改签名验不过）', neg.ok === false, '负向用例');
+    const g8NegPass = pos.ok && neg.ok === false;
+    record(
+      'G8-',
+      'OpenSSL CLI 反断言（篡改签名验不过）',
+      g8NegPass,
+      g8NegPass
+        ? '负向用例'
+        : `正向未通过（${pos.err || '详见 G8'}）——负向断言无判别力，openssl 参数错误同样 status != 0`,
+    );
   } catch (e) {
     record('G8', 'OpenSSL CLI 交叉验签', false, e.message.split('\n')[0]);
   }

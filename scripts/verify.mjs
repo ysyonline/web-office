@@ -37,7 +37,7 @@ const STEPS = [
       'packages/config/rules/no-hardcoded-color.test.ts',
     ],
   },
-  { name: '依赖面断言（A~H）', cmd: null, args: ['scripts/check-workspace-deps.mjs'] },
+  { name: '依赖面断言（A~I）', cmd: null, args: ['scripts/check-workspace-deps.mjs'] },
   // 2026-10-22 新增：临时件必须在结论落盘后回收到 .workbuddy/trash/，
   // 这条纪律此前只有文字、没有 fail 条件，同日就残留了一份 handoff。
   { name: '文档临时件回收', cmd: null, args: ['scripts/check-temp-docs.mjs'] },

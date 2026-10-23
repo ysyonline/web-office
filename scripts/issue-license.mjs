@@ -15,8 +15,8 @@
  * 用法：
  *   node scripts/issue-license.mjs --payload-file license.json --out license.issued.json
  *   node scripts/issue-license.mjs --payload '{"seats":50}' --key-file /secure/vendor.key
- *   node scripts/issue-license.mjs --gen-fixture            # 生成 G3 标准向量 fixture（临时密钥）
- *   node scripts/issue-license.mjs --gen-keypair            # 只输出一对测试密钥
+ *   node scripts/issue-license.mjs --gen-fixture            # 生成 G3 固定向量 fixture（临时密钥）
+ *   node scripts/issue-license.mjs --gen-keypair --out-key-file /secure/vendor.key
  *
  * 私钥来源（按优先级）：--key-file <path> > 环境变量 WO_LICENSE_PRIVATE_KEY。
  * 私钥不入库、不进镜像、不进 CI 日志；本脚本默认**拒绝**把私钥打印到 stdout/stderr
@@ -25,7 +25,7 @@
  * 退出码：0 成功 / 1 用法或校验失败 / 2 私钥泄漏拦截。
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 
@@ -254,12 +254,41 @@ function main(argv) {
     const kp = sm2.generateKeyPairHex();
     // 私钥一生成就进入泄漏自检范围：任何把它写进 stdout/stderr 的尝试都会被 emit() 拦下（R1）
     ACTIVE_PRIVATE_KEY = kp.privateKey;
+
+    // --out-key-file：私钥落文件而非输出流（2026-10-23 第五轮审核 P2 修复）。
+    // 原设计只留了 --print-private-key，而该分支必然被 R1 拦成 exit 2 —— 等于「能生成密钥但拿不到私钥」，
+    // 签发者只能绕开本脚本。落文件既满足 R1（不进日志/终端），又让工具真正可用。
+    if (args['out-key-file']) {
+      const keyFile = resolve(ROOT, args['out-key-file']);
+      mkdirSync(dirname(keyFile), { recursive: true });
+      // mode 在 Windows 下不生效，仅 POSIX 有效；两侧都不依赖它作为唯一防线。
+      writeFileSync(keyFile, `${kp.privateKey}\n`, { encoding: 'utf8', mode: 0o600 });
+      emit(
+        `${JSON.stringify(
+          {
+            publicKey: kp.publicKey,
+            privateKeyFile: relative(ROOT, keyFile) || keyFile,
+          },
+          null,
+          2,
+        )}\n`,
+      );
+      emit(
+        `私钥已写入文件（POSIX 下权限 600），**未进输出流**（R1 通过）。` +
+          `该文件严禁入库：确认其路径被 .gitignore 覆盖，生产私钥一律走 --key-file。\n`,
+      );
+      return;
+    }
+
     emit(`${JSON.stringify({ publicKey: kp.publicKey }, null, 2)}\n`);
     if (args['print-private-key'] === 'true') {
       // 故意走到这里会被守卫拦下并 exit 2——保留该分支就是为了让 R1 断言有可演示的 fail 条件
       emit(`${kp.privateKey}\n`);
     }
-    emit('私钥未打印（生产私钥一律走 --key-file；强行打印会触发 R1 泄漏拦截并 exit 2）\n');
+    emit(
+      '私钥未打印（需要私钥请加 --out-key-file <path> 落文件；生产私钥一律走 --key-file；' +
+        '强行打印会触发 R1 泄漏拦截并 exit 2）\n',
+    );
     return;
   }
 

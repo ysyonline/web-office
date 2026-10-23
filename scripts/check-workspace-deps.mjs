@@ -13,6 +13,12 @@
  *  F 内部 @wo/* 引用必须写 workspace:*（否则可能被解析到 registry 上的同名包）
  *  G 全仓不得出现第二图标库（与 packages/config/eslint-preset.js 的 BANNED_ICON_SOURCES 同源）
  *  H @wo/shared 源码不得 import React / Nest / univer / yjs
+ *  I 三面对账：package.json 声明 / pnpm-lock.yaml importer / 包内 node_modules
+ *
+ * I 的存在理由（2026-10-23 第五轮审核 P0-2）：只校验「声明面」的门禁是**假绿**——
+ * 它只证明声明没写错，不证明装得上。当时 package.json 加了 sm-crypto 却没跑 pnpm install，
+ * D/E 全 PASS，而 CI 克隆后 `pnpm install --frozen-lockfile` 直接 ERR_PNPM_OUTDATED_LOCKFILE，
+ * 整个 B1 批次开不了工。故 lockfile 与 node_modules 两侧必须有独立 fail 条件。
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
@@ -150,6 +156,100 @@ if (existsSync(sharedSrc)) {
     }
   };
   walk(sharedSrc);
+}
+
+// I
+//
+// I-1 解析 pnpm-lock.yaml 的 importers 段（极简缩进解析，本脚本保持零依赖，不引 YAML 库）。
+const lockPath = join(ROOT, 'pnpm-lock.yaml');
+/** @type {Map<string, Set<string>>} importer id -> 已锁定的依赖名 */
+const lockDeps = new Map();
+const unquote = (s) => s.replace(/^'(.*)'$/, '$1').replace(/^"(.*)"$/, '$1');
+
+if (!existsSync(lockPath)) {
+  fail('(root)', 'pnpm-lock.yaml 不存在——依赖不可复现，CI `pnpm install --frozen-lockfile` 必红');
+} else {
+  let inImporters = false;
+  let cur = null;
+  let inField = false;
+  for (const raw of readFileSync(lockPath, 'utf8').split(/\r?\n/)) {
+    if (/^importers:\s*$/.test(raw)) {
+      inImporters = true;
+      continue;
+    }
+    if (!inImporters) continue;
+    if (raw.trim() !== '' && /^\S/.test(raw)) break; // 下一个顶层键（packages: / snapshots:）
+    const importer = /^ {2}(\S.*?):\s*(?:\{\s*\})?\s*$/.exec(raw);
+    if (importer) {
+      cur = unquote(importer[1]);
+      inField = false;
+      if (!lockDeps.has(cur)) lockDeps.set(cur, new Set());
+      continue;
+    }
+    if (cur === null) continue;
+    if (/^ {4}(dependencies|devDependencies|peerDependencies|optionalDependencies):/.test(raw)) {
+      inField = true;
+      continue;
+    }
+    if (/^ {4}\S/.test(raw)) {
+      inField = false;
+      continue;
+    }
+    if (inField && cur !== null) {
+      const dep = /^ {6}(\S+):/.exec(raw);
+      if (dep) lockDeps.get(cur).add(unquote(dep[1]));
+    }
+  }
+}
+
+/**
+ * @param {string} id  workspace 相对路径（如 packages/shared）
+ * @param {string} label
+ * @param {Record<string, string>} declared  package.json 里声明的依赖（含 dev/peer/optional）
+ * @param {Record<string, string>} runtime  仅 dependencies（决定 import 能否解析）
+ */
+const reconcile = (id, label, declared, runtime) => {
+  const locked = lockDeps.get(id);
+  if (locked === undefined) {
+    fail(id, `pnpm-lock.yaml 的 importers 中没有 ${label}——跑一次 pnpm install`);
+    return;
+  }
+  const declaredNames = Object.keys(declared);
+  const missingInLock = declaredNames.filter((d) => !locked.has(d));
+  if (missingInLock.length)
+    fail(
+      id,
+      `package.json 声明了 ${missingInLock.join(', ')}，但 pnpm-lock.yaml 未同步` +
+        `——CI 的 --frozen-lockfile 会因此红（修法：跑 pnpm install，不要手工拷 node_modules）`,
+    );
+  const staleInLock = [...locked].filter((d) => !declaredNames.includes(d));
+  if (staleInLock.length)
+    fail(
+      id,
+      `pnpm-lock.yaml 残留已删除的依赖 ${staleInLock.join(', ')}——lockfile 与 package.json 不一致`,
+    );
+  // I-2 装得上才算数：runtime 依赖必须能在包内 node_modules 解析（pnpm isolated 布局不提升）
+  for (const d of Object.keys(runtime)) {
+    const entry = join(ROOT, id, 'node_modules', d);
+    if (!existsSync(entry))
+      fail(
+        id,
+        `包内 node_modules 缺 ${d}——声明与 lockfile 都在但没装到位，` +
+          `包内 import 会解析失败（修法：跑 pnpm install）`,
+      );
+  }
+};
+
+// root：仅做「声明 与 lockfile」对账（devDependencies 全在根 node_modules，无 isolated 提升问题）
+const rootJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+/** @type {Record<string, string>} */
+const rootDeps = {};
+for (const f of DEP_FIELDS) Object.assign(rootDeps, rootJson[f] ?? {});
+reconcile('.', '根 importer', rootDeps, rootJson.dependencies ?? {});
+
+for (const p of pkgs) {
+  const json = JSON.parse(readFileSync(join(ROOT, p.id, 'package.json'), 'utf8'));
+  reconcile(p.id, p.id, p.deps, json.dependencies ?? {});
 }
 
 if (failures.length) {
