@@ -3,7 +3,7 @@
 > 卡号：D1-04 | 工时 3.6h（3 包 × 1.2h）| 泳道 BE | 里程碑 M3→B5 前置 | 需求域 R7 设计层
 > 消费方（首包）：**P3-100**（WI-2 IR 中间模型，依赖 `P3-002-11|D1-02-04|D1-03-03|D1-04-03`——B5 三卡全齐方可派发）；设计意图覆盖 P3-100/105/107/108/112（共 53 包）
 > 主要出处：plan.md §1（IR 定义）+ WI-2/3/4/6（映射规则与验收）+ §4 坑表（时区/强转/去抖三坑）、Spec §9 AC-07/AC-08、OPEN-DECISIONS 星型依赖条（裁决义务移交本卡）、ADR-001 v1.7/v1.8（档位与降级）、D1-03（桶判定顺序，本卡只消费）、D1-02（档案迁移与值校验生命周期，本卡只引用导出闸门）
-> 状态：**v1.1**（2026-10-22 B5 挑刺审查修订：theme 单源路径修正为 `src/import-export/` / 头部覆盖枚举补 P3-100 / 值校验引用改「D1-02 ② 闸门」 / error 降表理由改 t 域锁定；v1.0 于 D1-04-01/02/03 收口）| 评审记录见 REVIEW-INDEX「D1-04 挑刺审查线程」段
+> 状态：**v1.2**（2026-10-23 第三轮挑刺裁决落盘：① 栏类型矩阵 error 行补**第三路径**——降表 + 档案侧车 `source:'import-error-value'` 标记（Q10 裁决，不动 t 域锁定、不引 error 载体，fallback 为退化态）／① 栏 theme 行补「换算是算法非配置项，故 D1-11 无对应配置键」／④ 栏 V-THEME 补确切落点（`themeColorToHex` / `apps/server/src/import-export/theme-color.ts` / 导出符号）+ 可执行 grep 判据／④ 栏 V-ERR 按第三路径重写为双向判别断言｜v1.1（2026-10-22 B5 挑刺审查修订：theme 单源路径修正为 `src/import-export/` / 头部覆盖枚举补 P3-100 / 值校验引用改「D1-02 ② 闸门」 / error 降表理由改 t 域锁定；v1.0 于 D1-04-01/02/03 收口）| 评审记录见 REVIEW-INDEX「D1-04 挑刺审查线程」段
 
 ---
 
@@ -12,10 +12,10 @@
 | 项 | 定义 | 出处 |
 |---|---|---|
 | IR 唯一定义 | IRWorkbook/IRSheet/IRRow/IRCell/IRStyle 五结构以 plan.md §1 为唯一事实源（P3-100 交付 ir.ts 照抄），本卡不重定义、只锁投影边界 | plan.md §1 + DESIGN-LAYER §5 |
-| 类型矩阵（xlsx ↔ IR ↔ Univer 双向） | xlsx `t:'s'`→IR string→snapshot `t:1`；`t:'n'`→number（numFmt 呈日期形态时→IR date）→`t:2`；`t:'b'`→boolean→`t:3`；**`t:'e'`→IR error（value 保留原文）→snapshot 降表为纯值字符串 `{v:'#DIV/0!', t:1}`**（snapshot 的 t 域只有 1/2/3——plan WI-3 锁定，无错误类型载体，故降表为字符串；该格无 f，不进重算路径）；导出逆向：IR error→xlsx `t:'e'` 原文 | plan.md WI-2/WI-3 + **本卡新定**（error 格的 snapshot 形态——plan 只定 IR 侧） |
+| 类型矩阵（xlsx ↔ IR ↔ Univer 双向） | xlsx `t:'s'`→IR string→snapshot `t:1`；`t:'n'`→number（numFmt 呈日期形态时→IR date）→`t:2`；`t:'b'`→boolean→`t:3`；**`t:'e'`→IR error（value 保留原文）→snapshot 降表为纯值字符串 `{v:'#DIV/0!', t:1}`**（snapshot 的 t 域只有 1/2/3——plan WI-3 锁定，无错误类型载体，故降表为字符串；该格无 f，不进重算路径）；导出逆向：IR error→xlsx `t:'e'` 原文。**v1.2 补——error 往返保真的第三路径（Q10 裁决，P2-4 上调 P1）**：仅靠降表态无法在导出侧区分「error 格」与「字面文本 `#DIV/0!`」（信息论上不可还原），故**不动 t 域锁定、不引 error 载体**，改走**档案侧车标记**：导入侧除降表外，**同时在档案（resources 侧车）写入 `{ v: 原文, source:'import-error-value' }` 标记条目（无 `f`）**——档案是 D1-02 既有载体，`source` 值空间随之 +1（D1-02 ① v1.3 同步落）；导出侧查档案命中即还原 `t:'e'`，未命中按纯值字符串导出（V-ERR 往返全等因此可成立，见 ④）。**fallback（若实施评审判定 error 格高密度文件的档案膨胀不可接受）**＝接受类型降级（导出为纯值字符串）+ AC-07 开口子 + import_tasks 降级说明留痕——该 fallback 属**退化态**，启用须回填本行并同步修订 V-ERR | plan.md WI-2/WI-3 + **本卡新定**（error 格的 snapshot 形态——plan 只定 IR 侧）+ **本卡 v1.2 新定**（Q10 第三路径） |
 | 文本数字防线 | `raw:true` + cellText 判定，"0012" 必须保持 string（用例 text-look-like-number 防回归）；禁止 valueOf 隐式转换 | plan.md WI-1 + 坑表 |
 | 存储值 vs 显示值分离 | IR/snapshot **只存原始值 + numFmt 代码**（0.1234 + `"0.00%"`），禁止存显示字符串（"12.34%" 文本化即丢精度）；日期存 ISO 字符串 + 显式 numFmt，禁本地时区 Date 构造（UTC 坑）；numFmt 代码字符串原样保真 | plan.md WI-4 numfmt 用例 + 坑表「日期时区偏移」 |
-| theme 色换算单源 | 主题色索引 + tint → #RRGGBB 换算取 ExcelJS 同款算法，**全库只允许一份实现**（`src/import-export/` 内单函数——plan.md §1 定位，随 apps/server；导入导出双向共用）——两份实现 = 往返色差漂移源 | plan.md WI-4 + 本卡新定（单源约束；**v1.0 误写 `packages/import-export` 包路径，B5 评审修正——plan 定 `src/import-export/ir.ts`，monorepo 无该包**） |
+| theme 色换算单源 | 主题色索引 + tint → #RRGGBB 换算取 ExcelJS 同款算法，**全库只允许一份实现**（`src/import-export/` 内单函数——plan.md §1 定位，随 apps/server；导入导出双向共用）——两份实现 = 往返色差漂移源。**该换算是算法不是配置项（v1.2 补，P3-3 澄清类）**：取 ExcelJS 同款算法为定死的技术选型，**不存在可运维调优的参数**，故 **D1-11 ① 配置键全表无对应键是正确状态而非漏项**——实现者不得为它新增 `WO_THEME_*` 环境变量（新增即双源：一份在代码里、一份在部署环境里） | plan.md WI-4 + 本卡新定（单源约束；**v1.0 误写 `packages/import-export` 包路径，B5 评审修正——plan 定 `src/import-export/ir.ts`，monorepo 无该包**）+ **本卡 v1.2 补**（算法非配置项，D1-11 无对应键） |
 | 结构边界 | rowCount/columnCount = 最大非空行列 + 缓冲；sparse 不膨胀（A1+Z100 用例）；冻结 pane→snapshot freeze 直映 | plan.md WI-3 |
 | 不可表达项降级三件套 | 渐变填充 / 条件格式图标集 / 富文本分段（取首段纯文本）——导入不失败、记 import_tasks 降级说明；**导出侧写回**（本卡新定）：渐变→无填充如实导出、条件格式→不生成、富文本→首段样式应用整格——三者均不得触发 Excel 修复弹窗（AC-08） | plan.md WI-4 + 本卡新定（导出侧口径） |
 
@@ -60,8 +60,8 @@ snapshot cellData + 公式档案 → 逐条目校验「目标格当前 v === 档
 
 | # | 断言 | 落点包 |
 |---|---|---|
-| V-ERR | error 格往返：t:'e' 无公式格 → snapshot {v:原文, t:1} → 导出回 t:'e' 原文全等（本卡新定路径正反断言；含档案格缓存值为错误的同形态用例） | P3-100 / P3-112 |
-| V-THEME | theme 换算单源：全库 grep 主题色换算实现仅一份；含 theme+tint 的格往返 #RRGGBB 全等 | P3-107 / P3-108 |
+| V-ERR | error 格往返（**v1.2 按 Q10 第三路径重写**）：t:'e' 无公式格 → snapshot `{v:原文, t:1}` **+ 档案标记条目 `{v:原文, source:'import-error-value'}`** → 导出侧查档案命中 → 回 `t:'e'` 原文全等。**正反双向**：① 命中档案 → `t:'e'` 全等；② 字面文本格（用户在单元格里手打 `#DIV/0!` 字符串，无档案条目）→ 导出为 `t:'s'` 纯文本，**不得**被误判为 error（这是本断言的判别力所在，也是「无档案载体时该断言信息论上不可实现」的实证）；③ 含档案格缓存值为错误的同形态用例同跑。**反断言**：若走 fallback（接受类型降级），本条降为「导出为纯值字符串 + import_tasks 留痕」，须回填 ① 栏该行 | P3-100 / P3-112 |
+| V-THEME | theme 换算单源：**确切落点写死（v1.2 补，P2-3）**——实现函数名 `themeColorToHex`（导出符号，非默认导出）、文件路径 `apps/server/src/import-export/theme-color.ts`（plan.md §1 定位 `src/import-export/`，随 apps/server）、导入与导出双向 **import 同一符号**。**可执行判据（二选一即可，机检 = 零命中即 FAIL）**：① `grep -rn "tint" --include=*.ts apps/ packages/ \| grep -i "theme"` 结果仅 `theme-color.ts` 一行；② `grep -rn "themeColorToHex" --include=*.ts apps/ packages/` 的**定义**命中数 = 1（`export function themeColorToHex`）。原表述「全库 grep 仅一份」无函数名/文件路径/导出符号，断言不可执行；另含 theme+tint 的格往返 #RRGGBB 全等 | P3-107 / P3-108 |
 | V-NUM | 存储值非显示值：0.1234+`0.00%` 往返仍为 0.1234（非 "12.34%"）；日期格 ISO+numFmt 往返存储值全等、无时区漂移 | P3-107 / P3-108 / P3-112 |
 | V-DECL | 降级三件套导出侧：渐变→无填充、条件格式→不生成、富文本→首段整格——导出件 Excel/LibreOffice 打开零修复弹窗 | P3-112 |
 | V-STAR | 高入度 fixture（≥1 万公式同引一格）→ import_tasks 含高入度记录 + **snapshot 数据零变换**（无拆分/预计算痕迹、值全等） | P3-105 |
