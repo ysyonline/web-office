@@ -1,5 +1,5 @@
 {
-  "note": "G3 标准向量 fixture：由 scripts/issue-license.mjs --gen-fixture 生成，仅用于验签断言，不可用于生产",
+  "note": "G3 fixture（自签向量，自洽断言）：由 scripts/issue-license.mjs --gen-fixture 生成，仅用于验签断言，不可用于生产",
   "generatedBy": "scripts/issue-license.mjs",
   "alg": "SM2-with-SM3(ZA)/DER",
   "userId": "1234567812345678",
