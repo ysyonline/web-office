@@ -32,7 +32,7 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 **两条登记 / 编辑纪律**（2026-10-22 从交接件回填，此前无正式载体）：
 
 3. REVIEW-INDEX / OPEN-DECISIONS / 日志的**长表格行追加或锚点替换一律用 python 按行检测操作，不用 Edit 长串匹配**——Edit 工具对含表格线与全角字符的长行匹配不稳定（2026-10-22 实测失败两次，含 D1-06 卡表格行）。
-4. **门禁三连**（每轮收口即跑，缺一不可）：`node scripts/verify.mjs`（六段自检）→ `python -X utf8 scripts/check_openapi_contract.py`（openapi 契约门禁）→ `python -X utf8 scripts/gen_status_panel.py`（面板刷新 + 三口径校验带）。三条全 exit=0 才算收口。
+4. **门禁三连**（每轮收口即跑，缺一不可）：`node scripts/verify.mjs`（**八段自检**，2026-10-24 条 Q ③ + 条 S① 代码批起已含 openapi 契约门禁与文档纪律段，`check_openapi_contract.py` 不再需要单独跑）→ `python -X utf8 scripts/gen_status_panel.py`（面板刷新 + 三口径校验带）。两条全 exit=0 才算收口；面板生成器若被 Security Center 拦截转用户侧实跑（R-6 口径不变）。
 
 ## 1. 接口签名表（P3-010 的「签名」，下游按此引用）
 

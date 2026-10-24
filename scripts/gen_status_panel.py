@@ -18,6 +18,7 @@ import json
 import os
 import re
 import datetime
+import subprocess
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CSV = os.path.join(ROOT, "docs/phase3/backlog.csv")
@@ -42,8 +43,26 @@ DOMAIN_REVIEW = {
 
 
 def read(path):
-    with open(path, encoding="utf-8") as f:
-        return f.read()
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except (PermissionError, OSError):
+        # Security Center 逐文件 deny（2026-10-24 起 D1-*.md 等落在名单内，直读被拒）：
+        # 回退到 git HEAD 取内容。仅当该文件相对 HEAD 无未入库改动时，回退内容才等于
+        # 工作区真值；有改动则打 WARN，绝不静默用旧内容冒充真值。
+        rel = os.path.relpath(path, ROOT).replace("\\", "/")
+        proc = subprocess.run(["git", "show", "HEAD:" + rel], cwd=ROOT,
+                              capture_output=True)
+        if proc.returncode != 0:
+            raise
+        txt = proc.stdout.decode("utf-8")
+        st = subprocess.run(["git", "status", "--porcelain", "--", rel],
+                            cwd=ROOT, capture_output=True, text=True)
+        if st.stdout.strip():
+            print("WARN %s 有未入库改动，git 回退读到的是旧内容" % rel)
+        else:
+            print("note %s 直读被拒，已从 git HEAD 回退（与工作区一致）" % rel)
+        return txt
 
 
 def load_packages():

@@ -76,11 +76,9 @@ ops_bad400 = [x for x in ops_no400 if x[2] in ("body", "op-param", "path-param")
 
 # 路径模板占位符 ↔ path 参数 name 一致性（OPEN #69 立，2026-10-23 用户放行）：
 # OpenAPI 规范要求每个 {placeholder} 都有同名 path 参数（path 级或 op 级，$ref 需展开）。
-# 违例如 /ws/collab/{fileId} 引 FileId 组件（name: id）——解冻窗口修契约前先登记豁免。
-# 豁免粒度 = 「path + 占位符名 + 参数名」三元组（不是整条 path）：只在差集运算前把这一对
-# 已知错配精确抵消，同一 path 的其它占位符/参数仍受检——防止日后该 path 新增第二个
-# path 参数时静默失守（不匹配是双向差集：fileId 缺同名参数、id 缺同名占位符，两侧都要抵）。
-PLACEHOLDER_EXEMPT = [("/ws/collab/{fileId}", "fileId", "id")]  # OPEN #69 待修（裁决候选 a：模板改 {id}）
+# 曾有违例 /ws/collab/{fileId}（引 FileId 组件，name: id）——解冻批已改模板为 {id}（候选 a），
+# 2026-10-24 用户放行删除豁免行：断言恢复全量无豁免（豁免粒度设计——三元组精确抵消、
+# 印记见 git 历史 be89469 前后版本——保留在本注释，日后若再需豁免按同型登记）。
 
 comps = d.get("components", {}).get("parameters", {})
 def _resolved(q):
@@ -100,10 +98,6 @@ for path, item in d["paths"].items():
             c = _resolved(q)
             if c.get("in") == "path" and c.get("name"):
                 names.add(c["name"])
-    for (_p, ph_, n_) in PLACEHOLDER_EXEMPT:
-        if _p == path:
-            ph.discard(ph_)
-            names.discard(n_)
     for x in sorted(ph ^ names):
         ph_mismatch.append("%s 不一致项: %s (placeholders=%s names=%s)"
                            % (path, x, sorted(ph), sorted(names)))
