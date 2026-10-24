@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * 代码基线自检（P3-010 起）：一条命令跑完七段，逐段打印耗时与退出码。
+ * 代码基线自检（P3-010 起）：一条命令跑完全部门禁段，逐段打印耗时与退出码。
+ * （不写死段数——段会随批次增删，写死必然过期；以末行「N/M 段通过」为准。）
  *
  * 为什么不写成 npm script 的 `&&` 长串：
  *  ① 长串只会在第一个失败处停，看不到「哪些段其实过了」；
@@ -34,6 +35,19 @@ const STEPS = [
     name: '类型（tsc shared）',
     cmd: 'typescript/bin/tsc',
     args: ['-p', 'packages/shared/tsconfig.json'],
+  },
+  // 2026-10-24 P3-010-03：类型段从「只覆盖 shared」扩为 workspace 级，
+  // 与根 `typecheck` 脚本（显式枚举三 project，不嵌套 pnpm）逐字对应。
+  // 若只留 shared 一段，apps/* 的类型错误就进不了自检，门禁与脚本口径分叉。
+  {
+    name: '类型（tsc server）',
+    cmd: 'typescript/bin/tsc',
+    args: ['-p', 'apps/server/tsconfig.json'],
+  },
+  {
+    name: '类型（tsc web）',
+    cmd: 'typescript/bin/tsc',
+    args: ['-p', 'apps/web/tsconfig.json'],
   },
   {
     name: '规则测试（RuleTester）',

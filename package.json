@@ -12,7 +12,7 @@
     "lint:fix": "eslint . --max-warnings=0 --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc -p packages/shared/tsconfig.json",
+    "typecheck": "tsc -p packages/shared/tsconfig.json && tsc -p apps/server/tsconfig.json && tsc -p apps/web/tsconfig.json",
     "build": "tsc -p packages/shared/tsconfig.build.esm.json && tsc -p packages/shared/tsconfig.build.cjs.json && node packages/shared/scripts/postbuild.mjs",
     "test:rules": "node --test packages/config/rules/no-emoji.test.mjs packages/config/rules/no-hardcoded-color.test.mjs",
     "check:deps": "node scripts/check-workspace-deps.mjs",

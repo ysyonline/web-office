@@ -1,0 +1,13 @@
+{
+  "name": "@wo/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "NestJS 11 服务端（CJS + 装饰器）。P3-010-03 只落入口骨架，真实引导/模块划分/国密启动断言链归 P3-011。",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@wo/shared": "workspace:*"
+  }
+}

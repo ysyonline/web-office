@@ -1,0 +1,13 @@
+{
+  "name": "@wo/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "React 18.3 + Vite 7 前端 SPA。P3-010-03 只落入口骨架，main.tsx/路由/页面归 P3-030。",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@wo/shared": "workspace:*"
+  }
+}

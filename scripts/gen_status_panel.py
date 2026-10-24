@@ -200,7 +200,10 @@ def main():
     open_cnt, open_detail = parse_open(items)
 
     # 包状态索引（判阻塞）
-    done = {r["包ID"] for r in rows if r["状态"] == "已完成"}
+    # 「已归并」= 经用户裁决随同段首包一并收口、无独立交付物（2026-10-24 P3-010 首个案例）。
+    # 它在阻塞判定上与「已完成」等价（下游依赖它可以解开），但不计入「已完成包」数——
+    # 否则完成数会把 8 个无实体产出的包算成真实交付，属于计数撒谎。
+    done = {r["包ID"] for r in rows if r["状态"] in ("已完成", "已归并")}
 
     cover_map = {}
     for cid, c in cards.items():
@@ -238,6 +241,7 @@ def main():
                 reviewed_state = "所属卡未评审"
 
         done_n = sum(1 for p in it["packages"] if p["status"] == "已完成")
+        merged_n = sum(1 for p in it["packages"] if p["status"] == "已归并")
         ready = [p["id"] for p in it["packages"] if p["status"] == "待派发"
                  and all(d in done for d in [x for x in re.split(r"[|]", p["deps"]) if x])]
         dom = it["domain"][:2]
@@ -247,7 +251,7 @@ def main():
             "id": wid, "name": it["name"], "lane": it["lane"],
             "milestone": it["milestone"], "domain": it["domain"],
             "hours": round(it["hours"], 2), "pkgCount": len(it["packages"]),
-            "donePkgs": done_n, "readyPkgs": len(ready),
+            "donePkgs": done_n, "mergedPkgs": merged_n, "readyPkgs": len(ready),
             "design": design, "cardId": card_id, "cardState": card_state,
             "cardReview": reviewed_state,
             "reviewRounds": (rev or {}).get("rounds", 0),
@@ -267,6 +271,7 @@ def main():
     total_pkg = len(rows)
     total_h = round(sum(float(r["工时h"]) for r in rows), 1)
     done_pkg = sum(1 for r in rows if r["状态"] == "已完成")
+    merged_pkg = sum(1 for r in rows if r["状态"] == "已归并")
     cards_written = len([c for c in cards if c in card_files])
     cards_reviewed = len([c for c in cards if c in reviews])
     cov_set = set(cover_map.keys())                      # 被命名卡（非全局卡）覆盖的 P3 工作项
@@ -293,7 +298,7 @@ def main():
     meta = {
         "generated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "items": len(data), "packages": total_pkg, "hours": total_h,
-        "donePkg": done_pkg,
+        "donePkg": done_pkg, "mergedPkg": merged_pkg,
         "cards": len(cards), "cardsWritten": cards_written, "cardsReviewed": cards_reviewed,
         "coveredItems": covered_items, "coveredPkgs": covered_pkgs,
         "coveredHours": covered_hours, "noCardItems": no_card_items, "noCardPkgs": no_card_pkgs,
@@ -343,8 +348,8 @@ def main():
         f.write(html)
     nbytes = os.path.getsize(OUT)
     print("wrote", os.path.relpath(OUT, ROOT), "%.0f KB" % (nbytes / 1024))
-    print("items=%d packs=%d hours=%.1f done=%d cards written=%d/%d reviewed=%d covered=%d/%d"
-          % (len(data), total_pkg, total_h, done_pkg, cards_written, len(cards),
+    print("items=%d packs=%d hours=%.1f done=%d merged=%d cards written=%d/%d reviewed=%d covered=%d/%d"
+          % (len(data), total_pkg, total_h, done_pkg, merged_pkg, cards_written, len(cards),
              cards_reviewed, covered_items, len(data)))
 
 
@@ -542,6 +547,7 @@ const kpis = [
   ['包总数', M.packages, '平均 ' + (M.packages/M.items).toFixed(1) + ' 包/项'],
   ['总工时', M.hours.toFixed(1) + 'h', (M.hours/8).toFixed(1) + ' 人日'],
   ['已完成包', M.donePkg, '进度 ' + pct(M.donePkg, M.packages) + '%'],
+  ['归并收口包', M.mergedPkg, '无独立交付物，随同段首包收口'],
   ['设计卡', M.cardsWritten + '/' + M.cards, '已写卡文件'],
   ['卡已评审', M.cardsReviewed + '/' + M.cards, '有评审线程记录'],
   ['未决条目', M.openTotal, 'OPEN-DECISIONS'],
@@ -630,7 +636,7 @@ const fdom = document.getElementById('fdom'), flane = document.getElementById('f
 domSet.forEach(d=> fdom.insertAdjacentHTML('beforeend', `<option value="${d}">${d}</option>`));
 laneSet.forEach(l=> flane.insertAdjacentHTML('beforeend', `<option value="${l}">${l}</option>`));
 
-function ratio(d){ return d.pkgCount? d.donePkgs/d.pkgCount : 0; }
+function ratio(d){ return d.pkgCount? (d.donePkgs + (d.mergedPkgs||0))/d.pkgCount : 0; }
 function designPill(d){
   if(d.design==='自有卡') return `<span class="pill p-info">自有卡 ${d.cardId}</span>`;
   if(d.design==='被覆盖'){
@@ -688,7 +694,7 @@ function render(){
       <td style="color:var(--fg2)">${d.milestone}</td>
       <td class="num">${d.pkgCount}</td>
       <td class="num">${d.hours.toFixed(1)}h</td>
-      <td class="num"><span class="pbar"><i style="width:${Math.round(r*100)}%"></i></span> ${d.donePkgs}/${d.pkgCount}</td>
+      <td class="num"><span class="pbar"><i style="width:${Math.round(r*100)}%"></i></span> ${d.donePkgs}/${d.pkgCount}${d.mergedPkgs? ` <span style="color:var(--fg3)">+${d.mergedPkgs} 归并</span>`:''}</td>
       <td>${reqPill(d)}</td>
       <td>${designPill(d)}</td>
       <td>${reviewPill(d)}</td>
@@ -713,7 +719,9 @@ function render(){
         <h4>包清单 · ${d.pkgCount} 包 / ${d.hours.toFixed(1)}h　｜　设计文档：${d.design} ${d.cardId||''}　｜　卡评审：${d.cardReview}</h4>
         <table class="pkg"><thead><tr><th>包ID</th><th>序</th><th>工时</th><th>状态</th><th>本包范围</th><th>依赖</th><th>包级验收断言</th></tr></thead><tbody>`;
       d.packages.forEach(p=>{
-        const st = p.status==='已完成' ? '<span class="pill p-ok">已完成</span>' : '<span class="pill p-idle">待派发</span>';
+        const st = p.status==='已完成' ? '<span class="pill p-ok">已完成</span>'
+          : p.status==='已归并' ? '<span class="pill p-warn">已归并</span>'
+          : '<span class="pill p-idle">待派发</span>';
         h += `<tr><td class="mono">${p.id}</td><td class="num">${p.seq}</td><td class="num">${p.hours.toFixed(2)}</td>
           <td>${st}</td><td class="sc">${p.scope}</td><td class="mono" style="color:var(--fg3)">${p.deps||'—'}</td>
           <td>${p.assert}</td></tr>`;

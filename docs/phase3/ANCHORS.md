@@ -1,6 +1,6 @@
 # 包级锚点台账（产出物路径 / 检查命令 / 通过判据）
 
-> 版本：**v1.3**（2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
+> 版本：**v1.4**（2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条；v1.4（2026-10-24）P3-010-03 落地 + `-04~11` 归并收口登记 + 类型段拆三 project）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
 >
 > 为什么单独成表：锚点三项原先只写在包级验收断言里（「本包须填锚点三项」），但**没有载体**——填在哪、谁来核，都没定义。本表就是那个载体：一包一行，写死路径与可复制执行的命令。
 >
@@ -11,7 +11,7 @@
 本机 `pnpm` 的 PATH shim 由 corepack 提供，绑定的 Node 版本随 nvm 当前指针漂移（实测先后解析到 Node 16 / 20），一旦不是被 corepack 认可的那支就报 `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`。**这不是代码问题，是 shim 问题**——所以自检入口绕开 pnpm：
 
 ```
-node scripts/verify.mjs      # 六段，逐段 PASS/FAIL + 耗时，exit=0 即过
+node scripts/verify.mjs      # 逐段 PASS/FAIL + 耗时，exit=0 即过（段数随批次增删，以末行「N/M 段通过」为准）
 ```
 
 `pnpm verify` 只是它的别名（`scripts.verify = node scripts/verify.mjs`）。装依赖仍需 pnpm，可用显式入口：
@@ -32,7 +32,7 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 **两条登记 / 编辑纪律**（2026-10-22 从交接件回填，此前无正式载体）：
 
 3. REVIEW-INDEX / OPEN-DECISIONS / 日志的**长表格行追加或锚点替换一律用 python 按行检测操作，不用 Edit 长串匹配**——Edit 工具对含表格线与全角字符的长行匹配不稳定（2026-10-22 实测失败两次，含 D1-06 卡表格行）。
-4. **门禁三连**（每轮收口即跑，缺一不可）：`node scripts/verify.mjs`（**八段自检**，2026-10-24 条 Q ③ + 条 S① 代码批起已含 openapi 契约门禁与文档纪律段，`check_openapi_contract.py` 不再需要单独跑）→ `python -X utf8 scripts/gen_status_panel.py`（面板刷新 + 三口径校验带）。两条全 exit=0 才算收口；面板生成器若被 Security Center 拦截转用户侧实跑（R-6 口径不变）。
+4. **门禁三连**（每轮收口即跑，缺一不可）：`node scripts/verify.mjs`（**十段自检**，2026-10-24 条 Q ③ + 条 S① 代码批起已含 openapi 契约门禁与文档纪律段，`check_openapi_contract.py` 不再需要单独跑；同日后半段 P3-010-03 把类型段由 1 段拆为 shared/server/web 3 段 → 8→10 段）→ `python -X utf8 scripts/gen_status_panel.py`（面板刷新 + 三口径校验带）。两条全 exit=0 才算收口；面板生成器若被 Security Center 拦截转用户侧实跑（R-6 口径不变）。
 
 ## 1. 接口签名表（P3-010 的「签名」，下游按此引用）
 
@@ -47,13 +47,34 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 
 ## 2. P3-010 pnpm workspace 与 TS/ESLint/Prettier 基线
 
-段划分（本工作项 11 包，按「接口与骨架 → 主路径 → 边界与错误 → 测试与自检 → 联调与收口」切，锚点互不重叠）：
+段划分（本工作项 11 包，按「接口与骨架 → 主路径 → 边界与错误 → 测试与自检 → 联调与收口」切，锚点互不重叠）。**2026-10-24 用户裁决「收口」**：`-04~11`（8 包）为配置型工作项的模板化切分，无独立实体内容，已归并随 `-03` 收口（`backlog.csv` 状态 = `已归并`），实际交付 = `-01`/`-02`/`-03` 三包 + 收口动作：
 
 | 包ID | 段 | 产出物路径 | 检查命令 | 通过判据 |
 |---|---|---|---|---|
 | **P3-010-01**（已完成） | 接口与骨架 1/2 | `package.json`、`pnpm-workspace.yaml`、`.npmrc`、`.nvmrc`、`.editorconfig`、`.gitignore`、`.prettierignore`、`eslint.config.mjs`、`prettier.config.js`、`packages/config/{package.json,tsconfig.base.json,tsconfig.web.json,tsconfig.server.json,eslint-preset.js,prettier.config.js}`、`packages/shared/{package.json,tsconfig.json,tsconfig.build.esm.json,tsconfig.build.cjs.json,scripts/postbuild.mjs,src/index.ts,src/utils/fnv1a32.ts}` | `pnpm install --frozen-lockfile && node scripts/verify.mjs && pnpm build` | 三条命令全 exit=0；`packages/shared/dist` 下同时存在 `esm/index.js`+`index.d.ts` 与 `cjs/index.js`，两份目录各有 `package.json` 模块类型标记；CJS 与 ESM 分别加载 `fnv1a32` 结果相同（实测 `[6543148, 956401659]`） |
 | **P3-010-02**（已完成） | 接口与骨架 2/2 | `packages/config/rules/{index.js,no-emoji.js,no-hardcoded-color.js,no-emoji.test.ts,no-hardcoded-color.test.ts}`、`scripts/check-workspace-deps.mjs` | `node scripts/verify.mjs`（内含 lint / 规则测试 / 依赖面断言三段） | 全 exit=0；lint 段带 `--max-warnings=0`；每条规则 `invalid`/`valid` 段各至少 1 例；依赖面断言覆盖 A~H 八项；**反向验证已做**（见下） |
-| **P3-010-03** | 主路径 1/2 | `apps/server/{package.json,tsconfig.json,src/index.ts}`、`apps/web/{package.json,tsconfig.json,src/index.ts}`（两个骨架包，各至少一处 `import ... from "@wo/shared"`）；根 `package.json` 的 `typecheck` 脚本由「只覆盖 packages/shared」扩为 workspace 级（`pnpm -r typecheck` 或等价显式枚举） | `pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint` | 三条命令全 exit=0；两个 app 的 tsconfig 均继承 `packages/config` 对应段（server→server 段 / web→web 段）且对 `@wo/shared` 的模块解析无 TS2307；CJS 侧（server）与 ESM 侧（web）各加载一次 `fnv1a32` 结果一致（工作项收口断言「shared 可被前后端同时引用」的最小机读体现）；新增 apps 依赖已同步 `pnpm-lock.yaml`（frozen-lockfile 即校验）；与 -01（root+config+shared 骨架）、-02（rules+依赖面脚本）锚点不重叠 |
+| **P3-010-03**（已完成） | 主路径 1/2 | `apps/server/{package.json,tsconfig.json,src/index.ts}`、`apps/web/{package.json,tsconfig.json,src/index.ts}`（两个骨架包，各至少一处 `import ... from "@wo/shared"`）；根 `package.json` 的 `typecheck` 脚本由「只覆盖 packages/shared」扩为 workspace 级（`pnpm -r typecheck` 或等价显式枚举） | `pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint` | 三条命令全 exit=0；两个 app 的 tsconfig 均继承 `packages/config` 对应段（server→server 段 / web→web 段）且对 `@wo/shared` 的模块解析无 TS2307；CJS 侧（server）与 ESM 侧（web）各加载一次 `fnv1a32` 结果一致（工作项收口断言「shared 可被前后端同时引用」的最小机读体现）；新增 apps 依赖已同步 `pnpm-lock.yaml`（frozen-lockfile 即校验）；与 -01（root+config+shared 骨架）、-02（rules+依赖面脚本）锚点不重叠 |
+
+### P3-010-03 执行记录（2026-10-24，用户裁决「收口」后落地）
+
+**归并裁决**：`P3-010-04~11`（8 包）在 `backlog.csv` 置为 **`已归并`** —— 配置型工作项（pnpm workspace / TS / ESLint / Prettier 基线）不存在「边界与错误分支」「该段单元测试」的实体内容，其包级交付物/断言原为生成器段级模板句，`ANCHORS` 亦从未登记其锚点。归并后 `P3-010` 的实际交付 = `-01` / `-02` / `-03` 三包 + 本收口动作。**台账口径**：`已完成包` 只数真实交付（`-03` 计入）；`已归并` 单独计数，但**在阻塞判定上与已完成等价** —— 否则 `P3-011` / `P3-030` 的 `dep: P3-010-11` 永远解不开（`gen_status_panel.py` 的 `done` 集合已按此口径实现）。
+
+**产出物**：`apps/server/{package.json,tsconfig.json,src/index.ts}`、`apps/web/{package.json,tsconfig.json,src/index.ts}`；根 `package.json` 的 `typecheck` 改为**显式枚举三 project**（不嵌套 pnpm，沿用 §0）；`scripts/verify.mjs` 类型段由 1 段拆为 3 段（shared / server / web），与 `typecheck` 脚本逐字对应。
+
+**两条解析口径（各带反向验证）**
+
+| 项 | 决定 | 理由 | 反向验证 |
+|---|---|---|---|
+| `@wo/shared` 类型解析 | 两个 app 的 tsconfig 用 `paths` → `packages/shared/src/index.ts` | 包的 `exports.types` 指向 `dist/esm/index.d.ts`，而 `dist/` 未入库；检查命令里没有 build 步，干净 clone 上必报 TS2307 | 摘掉 `paths` 后 `tsc -p` → `error TS2307`，且 TS 自述「There are types at .../dist/esm/index.d.ts, but this result could not be resolved under your current 'moduleResolution' setting」（server 段是 Node10，不认 `exports`）；还原 → exit=0 |
+| `apps/web` 的 `types` | 覆写为 `[]` | web 段内置 `types: ["vite/client"]`，而 vite 要到 P3-030 才进依赖树，保留即 `TS2688`（找不到类型定义文件） | 类型错误注入见下行 |
+
+**实测证据（2026-10-24 20:37，HEAD `9a44d08` + 本包未提交工作区）**
+
+- 锚点检查命令三条逐条实跑：`pnpm install --frozen-lockfile` → `Already up to date`（Scope: all 5 workspace projects）／`pnpm typecheck` → exit=0（三 project 串行）／`pnpm lint` → exit=0
+- `node scripts/verify.mjs` → **10/10 段通过**（格式 / lint / tsc shared / tsc server / tsc web / RuleTester / 依赖面 A~I / 临时件 / 文档纪律 / openapi 契约）
+- `pnpm install` 后 lockfile 新增 `apps/server` / `apps/web` 两个 importer，两包 `node_modules/@wo/shared` 软链到位（`check-workspace-deps.mjs` 的 I 段 A~I 断言通过）
+- **双端加载同值**：CJS 侧（`apps/server` 下 `require('@wo/shared')`）解析到 `dist/cjs/index.js`，ESM 侧（`apps/web` 下 `import('@wo/shared')`）解析到 `dist/esm/index.js`，`fnv1a32('@wo/shared')` 两侧同为 **2148397571**
+- **类型段非恒真**：在 `apps/web/src/__probe.ts` 写 `export const probe: number = "not-a-number";` → `tsc -p apps/web` exit=2（`TS2322`）；删除后 exit=0
 
 ### 反向验证记录（断言非恒真）
 
