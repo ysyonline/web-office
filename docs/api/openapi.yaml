@@ -7,7 +7,7 @@ info:
     规则：
     - 成功响应直接返回业务数据（2xx），错误响应统一结构 {code, message, detail}。
     - 认证：Bearer JWT（access 15min）+ refresh token（7d，仅 /api/v1/auth/refresh 与登出使用）。
-    - 所有端点带版本前缀 /api/v1；WebSocket 协同端点为 /ws/collab/{fileId}（见 x-websocket 协议约定）。
+    - 所有端点带版本前缀 /api/v1；WebSocket 协同端点为 /ws/collab/{id}（见 x-websocket 协议约定）。
     - 业务错误码分段：1xxx 认证 / 2xxx 文件与快照 / 3xxx 导入导出 / 4xxx 协同 / 5xxx License / 6xxx SSO / **7xxx 请求校验（均 → HTTP 400）** / 9xxx 服务端。
     - **契约事实源声明（P3-001 裁决，2026-10-22）：本文件是 API 契约的唯一事实源。** 后端 @nestjs/swagger 装饰器生成的产物从属于本文件，由 zod schema（`packages/shared`）经 `z.toJSONSchema(schema, { target: 'openapi-3.0' })` 提供校验规则；两者由 CI 的 G1 contract-diff 强制相等。**任何改动必须先改本文件、再同步代码，并经 contract-diff 验证；不得反向以代码产物覆盖本文件。**
 
@@ -107,6 +107,26 @@ paths:
               example:
                 code: 1003
                 message: refresh token 无效
+                detail: ''
+        '423':
+          description: 账号锁定中（status guard：refresh token 有效但账号被锁，与 1003「token 无效」不同）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 1002
+                message: 账号已锁定
+                detail: { unlockAt: '2026-10-21T12:00:00Z' }
+        '403':
+          description: 账号已禁用（status guard；契约落盘前按运行时 guard 出口实现，见 D1-09 ②）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 1005
+                message: 账号已禁用
                 detail: ''
 
   /api/v1/auth/logout:
@@ -585,8 +605,13 @@ paths:
            广播 [CONTROL] doc-rebuild 指令——客户端收到后断开当前 doc 会话，按加载协议
            （snapshot@base_seq + seq>base_seq 增量）重新加载重建后的文档；
         4. 互斥窗口内（解析完成至 doc-rebuild 广播完成）服务端拒收该文件的新协同 UPDATE（close 4409 语义复用），
-           防止重建期间新写入丢失；
-        5. doc-rebuild 后第一个物化快照的 base_seq 从 0 重新计数（文档已重建，与旧增量链断裂）。
+           防止重建期间新写入丢失。时序不变量（X-3，卡面判据见 D1-01 ②/V-BCAST-FIRST）：对任一连接派发
+           close 4409 前，必须已向**该连接**派发 [CONTROL] doc-rebuild——存量连接在第 2 步广播阶段覆盖、
+           窗口内新连在握手加载完毕时补发；窗口前段在途 UPDATE 滞留至派发毕按 4409 拒。否则客户端
+           「已收 doc-rebuild 帧」判别依据在窗口前段恒假，导入互斥会被误判为 License 只读 banner；
+        5. doc-rebuild 后第一个物化快照的 base_seq = 物化时刻 max(seq)（新快照水位，**非 0**；seq 全程
+           不归零，Q3 裁决）。两种失效机理（X-1）：若 seq 也归零 → 撞 uq_yjs_updates_file_seq 唯一索引；
+           若仅 base_seq 归零 → 加载协议 seq > base_seq 过滤失效、全历史旧增量回灌。
       parameters:
         - $ref: '#/components/parameters/FileId'
       requestBody:
@@ -899,7 +924,42 @@ paths:
                     type: string
                     enum: [ok]
 
-  /ws/collab/{fileId}:
+  /api/v1/health/ready:
+    get:
+      tags: [system]
+      summary: 就绪检查（readiness，公开，无认证；D1-11 ③ 新定，2026-10-24 解冻窗口落盘）
+      security: []
+      description: |
+        readiness 与 liveness 是两个语义、不可合并（D1-11 ②）：
+        liveness = /api/v1/health（进程能应答即活，失败由编排器重启）；
+        readiness = 本端点（依赖可用性，失败只停止接入流量、**编排器不得据此重启进程**——
+        依赖故障重启只会放大故障）。
+        检查项（固定两项）：① DB `SELECT 1`；② License 公钥已装载（WO_LICENSE_PUBLIC_KEY 已解析）。
+        检查带 3s 超时：依赖抖动时 503 但进程存活（与 9002「依赖不可用」语义一致）。
+        容器形态不查 verdaccio 离线源可达性——那是构建期依赖非运行期。
+      responses:
+        '200':
+          description: 依赖可用
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+        '503':
+          description: 依赖不可用（DB 不可达或 License 公钥未装载）；进程存活，编排器应停止接入流量而非重启
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 9002
+                message: 依赖不可用
+                detail: 'db'
+
+  /ws/collab/{id}:
     get:
       tags: [collab]
       summary: Yjs 协同 WebSocket 端点（协议见 x-websocket，OpenAPI 3.0 不承载 WS，此节点为契约锚点）
@@ -920,7 +980,7 @@ paths:
       x-websocket:
         handshake: |
           0. 客户端先 POST /api/v1/ws/ticket（Bearer JWT）换取一次性 ticket（5s 有效），
-             随后连接 wss://<网关>/ws/collab/{fileId}?ticket=<ticket>；
+             随后连接 wss://<网关>/ws/collab/{id}?ticket=<ticket>；
              ticket 校验失败/过期/已用 即 close 4401。用后即焚，重复使用第二次即拒绝。
           1. 服务端校验 ticket 对应的用户身份与该文件的编辑权限；失败则以 close code 4401（未认证）/ 4403（无权限）关闭。
           2. 连接建立后服务端立即执行「加载协议」：
@@ -935,14 +995,17 @@ paths:
           不存在边界增量丢失。
           会话失效（P0-3 ②）：用户登出 / 账号被锁定或禁用 / refresh token 吊销时，服务端向该用户全部活跃 WS
           发送 [CONTROL] session-invalidated 并 close 4411；协同服务每 60s 周期 re-validate：
-          重新校验在线连接对应用户的 status（active）与签发 ticket 的 JWT 会话吊销状态，失配即踢出。
+          重新校验在线连接对应用户的 status（active）、签发 ticket 的 JWT 会话吊销状态、**以及该连接的
+          文件级访问/编辑权限**（6-A 补，2026-10-24：权限撤销不得只等断线重连才生效）——失配即踢出：
+          edit 连接编辑权被撤 → close 4403；view 连接文件访问权被完全撤销 → close 4403（同码，detail 由
+          服务端区分）。
           连接角色与席位（最终口径，PM 商务备案 2026-10-21）：
           - WS 建连时客户端携带本次会话权限（view|edit，来自文件分享/所有者权限判定）；
           - 席位 = 并发「编辑会话」去重用户数（user_id 去重，同用户多标签/多文件计 1 席）；**查看会话不占席**；
           - viewer 与 editor 走同一 WS 通道：服务端按角色过滤上行（viewer 仅收 update 流 + awareness，
             支撑「他人光标可见」；viewer 的 UPDATE 上行被拒 4403）；
           - 超席行为：新的 edit 连接自动降级 view（提示可显示）；已有编辑会话不中断；
-          - view -> edit 升级走 [ROLE_UPGRADE] 帧（服务端判席后 ack/reject，见 frame-protocol），升级瞬间占席；
+          - view -> edit 升级走 [ROLE_UPGRADE] 帧（服务端**判席 + 判权**后 ack/reject，见 frame-protocol），升级瞬间占席；
           - 60s 断线宽限：编辑用户断线后 60s 内重连不重复占席（防席位闪烁），宽限过后释放席位；
           - 峰值计量：进程内实现（单写者单实例 Map 计数，不依赖 Redis——Redis 属 ADR-004 扩容范畴），
             连接建立时创新高更新 licenses.peak_concurrent，经 GET /api/v1/license/status 的
@@ -960,10 +1023,15 @@ paths:
             - doc-rebuild（导入互斥协议，见 /files/{id}/import 端点说明）
             - session-invalidated（会话失效：随 4411 关闭帧前置下发，客户端应清本地会话并引导重登）
             - role-upgrade-ack / role-upgrade-reject（客户端申请 view->edit 升级的应答，见下）
+            - caught-up（追平完成帧，X-6 2026-10-24 新增子类型：seq 升序回放投递毕、转在线广播前下发；
+              客户端收到即追平即就绪、放开本地编辑出站——帧类型仍为 CONTROL 六类之一，不构成新帧类型）
           - 0x05 ROLE_UPGRADE（应用层，客户端 -> 服务端）：{ targetRole: 'edit' }
-            —— 查看用户申请升级编辑。服务端判席：有空席即升级并回发 role-upgrade-ack（此后该连接按
-            编辑角色过滤上行、计入席位）；满席回发 role-upgrade-reject（连接保持 view 角色，不中断），
-            前端提示「席位已满，保持只读」。防绕过关键：**升级瞬间占席**，不存在「先 edit 后补占」窗口。
+            —— 查看用户申请升级编辑。服务端**判席 + 判权**（6-A 补，2026-10-24）：有空席**且该用户当前
+            对该文件有编辑权限**才升级并回发 role-upgrade-ack（此后该连接按编辑角色过滤上行、计入席位）；
+            满席**或无编辑权限**回发 role-upgrade-reject（连接保持 view 角色，不中断），前端提示
+            「席位已满，保持只读」/「无编辑权限，保持只读」。判权失败不断连（与满席同构：权限不足是
+            正常交互非异常；断连即失效候选已否决）。防绕过关键：**判席 + 判权在 ack 前同步完成、
+            升级瞬间占席**，不存在「先 ack 后补验」或「先 edit 后补占」窗口。
           文本帧不使用；Ping/Pong 之外服务端不主动下推非 Yjs 数据。
         message-flow: |
           C -> S [UPDATE]       客户端 mutation -> Yjs update（单元格内容通道 + 结构操作通道，见 spike REPORT.md 第 3 节）
@@ -987,18 +1055,19 @@ paths:
             只读会话不占席（viewer 走同一 WS 通道，服务端按角色过滤上行——仅收 update 流与 awareness，
             支撑他人光标可见；只读用户发编辑 UPDATE 时 close 4403）。
             防绕过（Spec §10 锁定口径）：view->edit 转换瞬间即占席，满席时拒绝转编辑（保持只读并明确提示）。
-            超席时拒绝新的「新用户编辑首连」（close 4409），既有编辑连接不中断、新用户降级只读；
+            超席时新 edit 连接自动降级 view（ROLE_UPGRADE 满席回 role-upgrade-reject 帧），**均无 close 码**，
+            既有编辑连接不中断；
             计量带 60s 断线宽限（防网络抖动导致席位闪烁）；席位计量为进程内实现（单写者单实例，
             ADR-004 多实例时演进）。
           - 连接防滥用（独立于席位判定）：同账号同文件连接数 >= 3 即拒绝新连接（close 4410）——
             席位按用户去重计席，4410 按连接数计，两者口径不同且互不替代。
         close-codes:
           '4401': 未认证（ticket 无效/过期/已用；或周期 re-validate 失败）
-          '4403': 无该文件编辑权限（只读用户收到 UPDATE 帧时也以此码关闭）
-          '4409': License 无效/超席，只读降级（席位口径见 server-responsibilities）
+          '4403': 无该文件编辑权限（只读用户**发出** UPDATE 帧时以此码关闭；re-validate 探得 edit 连接编辑权被撤亦以此码关闭）
+          '4409': License 无效/缺失/过期（License 域全域），只读降级；语义复用为导入互斥窗口拒收 UPDATE。**席位满不归本码**（降级 view 无 close 码，见 server-responsibilities）
           '4410': 同账号同文件连接数超限（>=3）——防滥用上限，按连接数计；与席位判定（按编辑用户去重、查看不占席、ROLE_UPGRADE 升级瞬间占席）为两套独立口径，互不替代
           '4411': 会话失效（登出/锁定/禁用/token 吊销；前置 session-invalidated 控制帧）
-          '4412': 服务端资源上限（活跃 doc 数达单实例上限 100，拒绝新连接并提示稍后重试/联系管理员扩容；容量保护，与席位判定独立）
+          '4412': 服务端资源上限（内存水位触发，ADR-001 v1.7 双触发：超 LRU 硬上限先驱逐最久未活跃已物化 doc、仍超才拒新 WS；单 doc 超预留预算拒开。**doc 个数不设独立上限**——WO_ACTIVE_DOC_LIMIT 键已废止，D1-11 v1.1；容量保护，与席位判定独立）
 
 components:
   securitySchemes:

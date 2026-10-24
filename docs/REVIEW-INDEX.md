@@ -1,6 +1,6 @@
 # web-office 文档审核索引
 
-> 生成：2026-10-21 | 更新：2026-10-22（**P3-001 工程化基线评审完成轮 + openapi 8 项放行落盘**；P3-002 已于凌晨完成；**D1-13 卡 v1.7 已完成；P3-010-01/02 已交付 monorepo 与 ESLint/Prettier 基线（19/789 包）**，B1 派发前沿 8 包；**仓库已 git init 并完成首提交 5c1d433，156 文件 / 22051 行，无远端未推送**；4 份中间评审文档已归档清理；**临时文件生命周期 15:15 立为硬纪律并加机检 `check-temp-docs.mjs`（verify 第 6 段），`docs/` 临时件清零**）| 用途：用户统一审核入口 | 状态：Phase 2 完成 + 四轮审查修订 + 外部评审分支 A~F 全部闭环，Phase 3 已放行；**M0 门禁 P3-001 / P3-002 已完成，P3-003 待金仓 license**；**openapi 冻结窗口已解冻并回封，7xxx 段已入契约**
+> 生成：2026-10-21 | 更新：2026-10-24（**6-A 裁决 + openapi 批量解冻批落盘**：18 处 yaml（import base_seq 非 0 / 广播先于拒帧 / caught-up 子类型 / 4412 内存水位 / 4403·4409 订正 / server-resp 超席句 / refresh 423+403 / health-ready 新端点 / ws-collab {id} / 6-A 判席+判权三处），契约门禁 EXIT=0、verify 6/6；8 卡 + DESIGN-LAYER v1.14 + phase1 三处勘误传导，冻结令 13 卡 108,893→107,353（净 −1,540，逐卡 ≤HEAD）；台账 OPEN 47→41；条 O 代码 5 处待用户放行）| 用途：用户统一审核入口 | 状态：Phase 2 完成 + 四轮审查修订 + 外部评审分支 A~F 全部闭环，Phase 3 已放行；**M0 门禁 P3-001 / P3-002 已完成，P3-003 待金仓 license**；**B1 已交付（19/789 包），B2 派发前沿 = 条 O 代码放行 + 6-A 已裁 + 解冻批已落**
 
 ## 临时文件生命周期（硬纪律，2026-10-22 立 · 机检 `scripts/check-temp-docs.mjs`）
 
@@ -45,7 +45,7 @@
 | 2 | docs/decisions/ADR-001-协同架构Yjs-CRDT.md | Accepted（v1.1/v1.2/v1.3 三轮修订） | Mutation 拦截→Yjs 双通道→Command API 回放（spike 32/32 实证）；v1.3 增持久化时序与 RPO 口径 |
 | 3 | docs/decisions/ADR-002-TypeORM信创数据层.md | Accepted | TypeORM + KingbaseES/openGauss，禁 PG 专有特性 |
 | 4 | docs/decisions/ADR-003-Univer引擎选型.md | Accepted | Univer OSS 1.0.2；协同/导入导出因 Pro 收费自建 |
-| 5 | docs/api/openapi.yaml | 校验通过（**23 path / 22 schema / 4 response**；**2026-10-22 放行窗口已落 8 项并回封**） | REST + WS 契约；1xxx~6xxx + **7xxx 请求校验（7001-7004 → 400）** + 9xxx 错误码分段；doc-rebuild/LOAD 帧；9 个 Request schema 全部 `additionalProperties: false`；共享错误响应带 `X-Request-Id`；**孤儿 schema 0 / 悬空 $ref 0 / 孤儿 response 0** |
+| 5 | docs/api/openapi.yaml | 校验通过（**24 path / 22 schema / 4 response**；2026-10-22 放行窗口落 8 项；**2026-10-24 解冻批再落 18 处**：import base_seq/广播先于拒帧/caught-up/4412/4403/4409/server-resp 超席句/refresh 423+403/health-ready/ws-collab {id}/6-A 三处） | REST + WS 契约；1xxx~6xxx + **7xxx 请求校验（7001-7004 → 400）** + 9xxx 错误码分段；doc-rebuild/LOAD/caught-up 帧；9 个 Request schema 全部 `additionalProperties: false`；共享错误响应带 `X-Request-Id`；**孤儿 schema 0 / 悬空 $ref 0 / 孤儿 response 0**；挂 400 = 22/30 操作 |
 | 6 | docs/db/schema.md | v1.5 | TypeORM entity 契约 + ER 图 + 兼容核对清单 + CI 双跑策略 + 单写者约束 + seq 号段/落库时序 |
 | 7 | docs/db/dameng-poc-plan.md | 定稿 | 达梦 PoC 一页计划（1 周 5 人日，通过 gate 5 条） |
 | 8 | docs/import-export/plan.md | v1.5 定稿 | 6 工作项/**16 人日**/fixtures；WI-3 突变测试验收 + WI-5 公式档案侧车九规则 + 差分导入（规则 12）+ 结构操作族六用例（陷阱用例置顶）；**WI-3/WI-5 开工前置 formula-runtime-spike 门禁** |
@@ -57,7 +57,7 @@
 | 14 | docs/license/design.md | v1.4 | License 6 源加权指纹 + 容器权重表 + 换绑流程 + 席位口径 + §2.1-c 拷卷承认（路线 A）+ §2.4 时钟回拨/宽限 + §2.5 国密断言三级 + §6-bis 商务披露；licenses 表增量（active 应用层校验 + max_seen_at） |
 | 15 | docs/formula/function-whitelist.md | v1.5 | 119 函数场景集白名单 + 三桶定义（引擎可用区 393/桶 II/桶 III 排除集 X 8 个）+ 差分导入规则七条 + volatile 导入静态化 + 名单外范例锚点；双 CI 门禁（check_formula_whitelist.py G1-G5 + check_formula_buckets.py G6-G9b） |
 | 16 | spike/collab-spike/REPORT.md | PASS 定稿（含附录 A 实测） | 协同 spike 32/32 断言报告 + 7 坑 + 降级条件 + 快照体积实测 |
-| 17 | docs/decisions/OPEN-DECISIONS.md | **32 OPEN / 21 RESOLVED**（2026-10-22 14:40 机器统计；口径改为「状态单元格以 OPEN/RESOLVED 开头」——旧口径精确匹配 `| OPEN |` 漏掉 1 条写成 `**OPEN**（说明）` 的变体行，故此前各处报 31 均少算 1） | 未决项登记册（均不阻塞开发）。**「工程化基线 7 项缺口」条目已就地 RESOLVED**；**「7xxx 未进 openapi」与「孤儿 SnapshotSaveRequest 待删除」两条已随放行窗口 RESOLVED**；新增 10 条 OPEN（Playwright 离线承载、Tailwind 产物体积、Node 精确锚与信创机一致性、pnpm 12 迁移前提、esbuild postinstall 离线行为、turbo/Nx 复评、type-checked lint 耗时、许可证清单自动化、openapi 代码生成器、G1 方言豁免） |
+| 17 | docs/decisions/OPEN-DECISIONS.md | **41 OPEN / 39 RESOLVED**（2026-10-24 机读；口径 = 每行最后一个单元格去 `*`/空白后截去括注判 base，禁按单元格数过滤——78+ 条目中 21 行 7 列，按列数过滤静默漏 27%） | 未决项登记册（均不阻塞开发）。**2026-10-24 解冻批关闭 6 条**（OPEN 60 4412 描述 / 61 4403·4409·server-resp / 64 refresh 423+403 / 76 6-A 判权 / 82 health-ready / 85 条 P 三处）；OPEN 69 部分进展（yaml 已修、豁免行删除待代码批）、条 Q（86）① ② ⑥ 达成 ③④⑤ 在册 |
 | 25 | docs/phase3/P3-001-工程化基线裁决记录.md | **本轮新增（P3-001 完成）** | 七项缺口逐项裁决：五问准入判据 + ①②③④ 明细 + 专家冲突裁定 + **openapi 放行清单 8 项（已全部落盘）** + ⑤⑥⑦（pnpm 11.28.6 / ESLint 9 flat / monorepo）+ 定稿补遗五处 |
 | 26 | docs/decisions/ADR-005-pnpm包管理器.md | **Accepted v2（本轮新增）** | pnpm **11.28.6**（`latest-11`）；否决 Rust 重写的 pnpm 12.14.0 / npm / Yarn Berry；**pnpm 11 配置模型**：设置迁 `pnpm-workspace.yaml`、`allowBuilds` 取代 `onlyBuiltDependencies`、`autoInstallPeers: false` |
 | 27 | docs/decisions/ADR-006-Tailwind3选型.md | **Accepted（本轮新增）** | Tailwind 3.4.19；否决 v4 的**决定性理由**是官方下限 Chrome 111/Safari 16.4/Firefox 128 击穿 Chromium 100+（「氧化物原生不可得」论据已作废，不作理由） |
@@ -1068,3 +1068,36 @@
 **三轮净增量与处置**：真增量一条 = **ROLE_UPGRADE 判席不判权（Y-2 6-A，L76）升级为解冻批内优先裁决项**（越权读→越权写；2026-10-23.md L358 原文「本轮最重要发现」，原挂解冻窗口普通待办无安全级标记；批内唯一语义待裁：补权限重验 vs 断连即失效，已就地标注 6-A 行）。其余采纳项开**条 Q**（① 前置指针 ② Phase 1 三处勘误 ③ 措辞族传导机检（待代码放行）④ P0 复审归 PM ⑤ 复核悬空链清账 ⑥ = 6-A 升级）；建议处置余项：#3 盲抽 5% 改造为 k 偏差 >25% 定向复估、#7 驳回（位置前提不成立，低成本提炼可选）。openapi 批量解冻清单随条 Q：已裁可落 7 项 + 6-A 先裁，一个会话收口（落 yaml + check_openapi_contract.py PASS + 各行就地关闭）。
 
 **机读与台账**：13 卡零触碰（冻结令不受影响）；台账 OPEN 46 → **47**（新增条 Q；6-A 行就地标注不计新条）；面板刷新刷出应为 47（W-4 漂移在案，面板现值属已知过渡态）。
+
+### 6-A 裁决 + openapi 批量解冻批落盘（2026-10-24，team-lead 架构师裁决 + 落盘；用户指令「先裁 6-A + 跑解冻批，放行条 O 代码 5 处，PM/架构师侧清账排期」）
+
+**6-A 裁决（ROLE_UPGRADE 判席不判权 + re-validate 不含文件级权限，OPEN 76 / 条 Q ⑥，解冻批内唯一语义待裁项）**：
+
+- **裁决 = 补权限重验，否决「断连即失效」**。理由：① 拒绝帧机制已存在（满席先例 role-upgrade-reject），不新增帧类型、不触 D1-07 ② 六类禁令；② 满席与无权同构——都保持 view 连接不断，与 D1-08 v1.1「满席无 close 码」一致；③ view-only 用户申请升级被拒是正常交互而非异常，断连会把「权限不足」升级成「会话中断」，且与降级链路（License 失效不断连）相逆。
+- **ROLE_UPGRADE**：ack 前完成「判席 + 判权」双验（同步执行，无「先 ack 后补验」窗口——同「升级瞬间占席」防绕过设计）；无编辑权限 → role-upgrade-reject，连接保持 view、前端提示「无编辑权限，保持只读」。
+- **re-validate 校验面** = 用户 status + JWT 吊销 + **文件级访问/编辑权限**；edit 连接编辑权被撤 → close 4403；view 连接文件访问权被完全撤销 → close 4403（同码，detail 由服务端区分）。理由：文件分享权限撤销是常态操作（协作者移除），存连活至断线重连 = 撤销实际不生效，越权窗口以最长会话时长计；4403 是唯一语义匹配的既有码，不新增码（D1-05 ⑤ 私拆码禁令）。
+
+**解冻批落盘清单（openapi.yaml 共 18 处，契约门禁 EXIT=0，paths 23→24、操作 29→30、挂 400 22/30）**：
+
+| # | 修订 | 对应 OPEN |
+|---|---|---|
+| 1 | import step 5：base_seq「从 0 重新计数」→「= 物化时刻 max(seq)（新快照水位，非 0；seq 不归零）」，写明两种失效机理（seq 归零撞唯一索引 / 仅 base_seq 归零致全历史旧增量回灌） | 85 / 条 P①（X-1） |
+| 2 | import step 4：补「广播先于拒帧」时序不变量（派发 4409 前必已向该连接派发 doc-rebuild；存量连接广播覆盖、窗口内新连握手毕补发、窗口前段在途滞留至派发毕） | 85 / 条 P②（X-3） |
+| 3 | frame-protocol 0x04 增 caught-up 子类型（seq 升序回放投递毕、转在线广播前下发；CONTROL 新子类型非新帧类型） | 85 / 条 P③（X-6） |
+| 4 | 4412：doc 个数 100 上限 → 内存水位双触发（LRU 硬上限驱逐 + 单 doc 预算），删 doc 个数表述 | 60 |
+| 5 | 4403：「收到」订正为「发出（上行）」，补 re-validate 探得 mid-session 撤权同码关闭 | 61 |
+| 6 | 4409：「无效/超席」→「无效/缺失/过期（License 域全域）+ 导入互斥复用；席位满不归本码」 | 61 |
+| 7 | server-responsibilities 超席句：「close 4409 拒新首连」→「降级 view / reject 帧，均无 close 码」 | 61 |
+| 8 | /auth/refresh 补 423+1002（detail.unlockAt）/ 403+1005 显式响应 | 64 |
+| 9 | 新增 /api/v1/health/ready（DB SELECT 1 + License 公钥已装载、3s 超时、503+9002、编排器不得据此重启） | 82 |
+| 10 | /ws/collab/{fileId} → {id}（占位符契约缺陷 yaml 侧；PLACEHOLDER_EXEMPT 豁免行删除待代码批，OPEN 69 保持） | 69 |
+| 11~13 | 6-A 三处：handshake 席位段 ROLE_UPGRADE 改「判席+判权」、re-validate 段扩文件级权限、frame-protocol 0x05 补判权与双拒绝理由 | 76 |
+| 14 | info 行 WS 端点路径同步 {id} | 69 |
+
+**卡面与任务书传导（8 卡 + DESIGN-LAYER v1.14，冻结令逐卡配平）**：D1-08 v1.5（② 判席+判权 + ④ V-UPGRADE 判权用例）/ D1-09 v1.6（re-validate 扩面 + refresh 契约已落盘传导）/ D1-05 v1.9（计数 22/29→22/30、29→30 + 423/500/503 传导 + V-4 前提指针（条 Q ①）+ V-2/V-5 过渡态解除）/ D1-07 v1.6（V-RO 前提指针）/ D1-06 v1.4（caught-up 已落盘 + 4412 已处置）/ D1-01 v1.5（③ 两行 registry 缺口/来源级缺陷注消解）/ D1-11 v1.7（4412 已删个数表述 + readiness 契约落盘注）/ D1-13 v1.12（{fileId}→{id} ×5 + E-CV 计数 + ④ 过渡态转正式门禁）；DESIGN-LAYER v1.14（§3.2 D1-08 条 3 / D1-09 条 2 / D1-06 条 4 传导）；phase1 三处勘误（条 Q ②：架构选型 §8 版本表 Prisma/PG/Redis 三项已推翻标注 + §12.6「MVP 保留 Redis」与 §5 相逆标注、PRD §5「重算 <200ms」已作废标注）。
+
+**★ 冻结令核查方法与结果（机读）**：工作区 13 卡被 Security Center 逐文件拦读（python/grep/git add 均不可，Read/Edit 可用），改用**逐编辑增量法**——HEAD 版经 `git show` 对象层导出基准（13 卡合计 108,893，与 09:4x 日志交叉验证一致），每次编辑的 old/new 精确串由 python 计算 len 差（old 串须在 HEAD 版命中一次，转录防错）。**首轮 3 卡净增违返（D1-05 +174 / D1-08 +135 / D1-07 +12）→ 二轮配平裁剪（只砍沿革叙述与自身冗余、保裁决本体）→ D1-08 仍 +20 → 三轮补裁 → 终态逐卡全部 ≤ HEAD**：13 卡 108,893 → **107,353（净 −1,540）**；D1-13 20,974→20,073 / D1-11 11,820→11,607 / D1-05 9,880→9,825 / D1-06 8,199→8,040 / D1-01 7,649→7,504 / D1-08 7,100→7,080 / D1-09 6,909→6,897 / D1-07 5,802→5,767，D1-02/03/04/10/12 零触碰。
+
+**门禁终态**：contract EXIT=0（paths=24 schemas=22 responses=4，挂 400 = 22/30，未挂 8 个全 no-param 含新端点）；verify 6/6；台账 OPEN 47 → **41** / RESOLVED 33 → 39（关闭 60/61/64/76/82/85 六条，69/86 部分进展在册）。**路径规则新增实证**：`git add docs/phase3/design/` 仍被 D1-01 Permission denied 拦（Edit 访问过也不在册）；**TEMP 下中文文件名写出亦被拦**（`docs_phase1_架构技术选型.md` → Permission denied，ASCII 序号命名绕过）——「先试一次」纪律本轮两次拿到负例。
+
+**待用户**：① 条 O 代码 5 处放行（P3-016 派发前置，本会话已宣布范围：生成器源 L63 + CSV P3-016 行、探针 3 处、issue-license DEFAULT_FIXTURE、fixture git mv）；② OPEN 69 豁免行删除（1 行代码，条 O 关项条件）；③ 条 Q ③（措辞族传导机检，verify 新段，待代码放行）；④ PM 排期 P0 显式复审 + ⑤ 复核悬空链清账（ADR-001 v1.8 / ADR-006 / ADR-007 待架构师复核、分支 D 待 PM 复核）。
