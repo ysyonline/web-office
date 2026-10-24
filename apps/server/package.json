@@ -5,7 +5,7 @@
   "type": "commonjs",
   "description": "NestJS 11 服务端（CJS + 装饰器）。P3-010-03 落入口骨架；P3-011-01 落运行期依赖与测试装配；引导/模块划分/国密启动断言链由 P3-011-02 起接管。",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p ../../packages/shared/tsconfig.build.esm.json && tsc -p ../../packages/shared/tsconfig.build.cjs.json && node ../../packages/shared/scripts/postbuild.mjs && tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json",
     "test": "jest"

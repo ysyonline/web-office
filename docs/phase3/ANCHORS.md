@@ -1,6 +1,6 @@
 # 包级锚点台账（产出物路径 / 检查命令 / 通过判据）
 
-> 版本：**v1.7**（2026-10-24 补 P3-011-01/-02 执行记录；v1.5 补 §3「P3-011 六包派发锚点」｜2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条；v1.4（2026-10-24）P3-010-03 落地 + `-04~11` 归并收口登记 + 类型段拆三 project）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
+> 版本：**v1.8**（2026-10-25 议题一 A 案落盘：shared 构建顺序裁决入 §2 决策表 + P3-011-02 防线解除；v1.7 补 P3-011-01/-02 执行记录；v1.5 补 §3「P3-011 六包派发锚点」｜2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条；v1.4（2026-10-24）P3-010-03 落地 + `-04~11` 归并收口登记 + 类型段拆三 project）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
 >
 > 为什么单独成表：锚点三项原先只写在包级验收断言里（「本包须填锚点三项」），但**没有载体**——填在哪、谁来核，都没定义。本表就是那个载体：一包一行，写死路径与可复制执行的命令。
 >
@@ -85,6 +85,32 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 | 依赖面断言 G / D | 给 `@wo/shared` 临时加 `react-icons` 与 `lodash` | `check:deps exit=1`，报「第二图标源」+「dependencies 只允许 zod」；还原后 `exit=0` |
 | 规则测试本身 | RuleTester `invalid` 段断言精确条数（2 处 emoji 必须报 2 条） | 首轮特意写错时测试确实红过，证明不是空跑 |
 
+### shared 构建顺序决策（2026-10-25 议题一裁决，交接件 20261025-0535 §2）
+
+**裁决：A 案**——build 期类型吃 `dist` 声明，顺序由脚本字面串联构造性保证，**不加新鲜度门禁脚本**。
+
+背景：P3-011-02 执行记录预警「P3-011-03 把 schema 放进 `packages/shared/src/schemas/` 后，server build 不得再次跨包编译」。交接件四案中 C（dist 入库）/ D（打包器内联）此前已否决；本会话在当前 HEAD（`57cb263`）复测后取 A 案，E（Node16 改造）留作退路，B（`tsc -b` composite）未取（esm/cjs 双输出下 composite 只能挂一份，顺序并未消失，且与装饰器组合未实测）。
+
+**实测证据（2026-10-25，探针在场，探针用后即删）**：
+
+| 实验 | 配置 | 结果 |
+|---|---|---|
+| ① paths→src + `import @wo/shared` 探针 | 继承 `tsconfig.json` | **exit=2，TS6059×3**（`shared/src/index.ts` 等不在 `rootDir` 下）——复现交接件结论 |
+| ② paths→`dist/esm/index.d.ts` + 同探针 | `tsconfig.build.json` 覆盖 | **exit=0**，真实 emit 成功 |
+| ③ 运行时链路 | `require('./apps/server/dist/__probe.js')` | 输出 `probe = @wo/shared`（dist/cjs 经 exports 正确加载） |
+| ④ 反向验证：改名 `dist/esm/index.d.ts` 模拟 dist 缺失 + 探针 | 同② | **exit=2，TS7016**（implicit any）——dist 陈旧/缺失必然红，还原后 exit=0。注：首轮反向验证曾误判「仍绿」，根因是探针已删、编译闭包根本不含 shared（空跑）；带探针重测才有效。**教训：反向验证必须先确认被测路径在编译闭包内** |
+| ⑤ 端到端 | `PORT=3100` 起 dist 产物 | health 200 且体 `{"status":"ok"}`；`packages/shared/src` 全程零 `.js` 残留（无 TS6059 原地 emit 污染） |
+
+**落地改动（3 文件）**：
+
+1. `apps/server/tsconfig.build.json`：`paths` 覆盖为 `["../../packages/shared/dist/esm/index.d.ts"]`（typecheck 与 jest 仍指 `src`，开发期零 build 依赖的性质保留）。
+2. 根 `package.json` 的 `build`：追加第四段 `&& tsc -p apps/server/tsconfig.build.json`（顺序 = shared esm → shared cjs → postbuild → server，字面先后即构造性保证）。
+3. `apps/server/package.json` 的 `build`：同样改为四段串联——单独 filter build 也不会吃到旧 dist（交接件 §2.3-A 的代价条款落实）。
+
+**副决策 (c)：verify 是否加 build 段——不加，理由登记**：verify 的段全部是「不产副作用的检查」（`--noEmit` 语义）；build 段会写 `dist/`，混进自检会把「检查」与「构建」两种性质搅在一起，且 build 已被收进根 `build` 脚本的字面串联里由构造保证（本裁决主旨正是「顺序问题用构造手段消灭，不靠检查追」）。代价是「verify 10/10 不证明可构建」持续为真——已在 §3 P3-011-02 执行记录实测补位（本会话实验⑤即一次可构建性实证）。若后续 CI 建立后再评估独立 build 段。
+
+**约束（对后续包生效）**：任何让 server build 闭包新含 `@wo/shared` 引用的包，不得回改 `tsconfig.build.json` 的 paths 回 src；`@wo/shared` 新增导出后须先跑根 build（或任一 filter build）再跑 server dist 的运行期验证。
+
 ## 3. P3-011 NestJS 应用骨架与模块划分（六包，按实体内容切分）
 
 **切分口径（2026-10-24 用户裁决「按建议」）**：原 7 包中 `-02`≡`-03`、`-05`≡`-06` 去掉序号后缀后逐字相同，属模板二分；收口为 **5 个实体单元 + 1 个收口包**。工时 1.0 / 1.2 / 2.0 / 1.4 / 1.4 / 1.0（和 **8.0h**，与工作项工时一致）；其中三行越 1.0~1.2h 带，已在 `scripts/gen_phase3_backlog.py` 的 `BAND_EXCEPTIONS` 显式登记理由——**再拆回带内即回到模板切分**，故登记例外而非继续劈包。
@@ -118,7 +144,7 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 - **端口口径偏离（环境所致，非代码）**：本机 3000 被 `D://code//yun//4.x//corpadmin` 的 umi dev server（PID 10900）占用，实测改用 `PORT=3100` 同口径通过。**该占用服务对 `/api/v1/health` 同样返回 200（HTML 页面）**——只查状态码会假绿，这反向印证判据中「体为 `status:ok`」不可省。3000 原始口径待该进程释放后复核。
 - **边界实测（防过度实现）**：`/api/v1/auth` 返回 404（占位控制器确实没伪造路由）；`/api/v1/health/ready` 返回 404（readiness 归 P3-016，未提前落）。
 - **反向验证**：R1 注入 `auth` 与 `users` 互相 import，模块图 exit=1 并打出环路径 `AuthModule -> UsersModule -> AuthModule`；R2 移走 `modules/share`，分组断言 exit=1（缺一组 share + 10 组对 9 目录）、模块图 exit=1（根模块注册了不存在的 ShareModule）。两条均已还原并复跑 exit=0。
-- **踩坑与防线（影响 P3-011-03，必须传承）**：`tsconfig.build.json` 初版用 `rootDir: src` 且未收敛编译面，而 `tsconfig.json` 的 `paths` 把 `@wo/shared` 指向 `packages/shared/src`，tsc 报 TS6059 并把跨包的 `shared/src/*.ts` **原地 emit 成 `.js`/`.js.map`**——污染源码树 6 个未跟踪文件（已清理），verify 的 lint 段因此一度 44 errors。现版显式排除 `src/index.ts`（P3-010-03 的双端消费骨架，不在 `main.ts` 依赖闭包内）后收敛。**该配置只在「运行期闭包不含 `@wo/shared`」时成立**：P3-011-03 把 22 个契约 schema 放进 `packages/shared/src/schemas/` 后必然打破它，届时须改为「先 build shared、build 期解析其 `dist` 类型」或等价单源方案，**不得**让 server 的 build 再次跨包编译。
+- **踩坑与防线（影响 P3-011-03，必须传承）**：`tsconfig.build.json` 初版用 `rootDir: src` 且未收敛编译面，而 `tsconfig.json` 的 `paths` 把 `@wo/shared` 指向 `packages/shared/src`，tsc 报 TS6059 并把跨包的 `shared/src/*.ts` **原地 emit 成 `.js`/`.js.map`**——污染源码树 6 个未跟踪文件（已清理），verify 的 lint 段因此一度 44 errors。现版显式排除 `src/index.ts`（P3-010-03 的双端消费骨架，不在 `main.ts` 依赖闭包内）后收敛。**该配置只在「运行期闭包不含 `@wo/shared`」时成立**：P3-011-03 把 22 个契约 schema 放进 `packages/shared/src/schemas/` 后必然打破它，届时须改为「先 build shared、build 期解析其 `dist` 类型」或等价单源方案，**不得**让 server 的 build 再次跨包编译。**→ 防线已于 2026-10-25 解除**：见 §2「shared 构建顺序决策」——`tsconfig.build.json` 的 paths 已覆盖为 `dist/esm/index.d.ts`，build 闭包可安全含 `@wo/shared`（实测探针验证，无跨包编译、无 src 污染）。
 - **产物入库**：`apps/server/dist/` 被 `.gitignore` 的 `dist/` 覆盖，构建产物不入库。
 
 ### 3.1 与相邻工作项的边界（本段三处越界已定界）
