@@ -2,6 +2,8 @@
 
 ## 文档纪律（2026-10-22 立，多轮实证）
 
+- **先评审后动手（2026-10-24 用户立）**：任何包开工前必须先做**需求评审**（逐包判定「按 Spec 有无独立实体内容」），评审结论交用户确认，再一包一包做、一步一停。跳过评审直接写代码 = 产出形式物；一次铺开多个工作项 = 乱。
+
 - **临时评审件生命周期**：`docs/` 不留临时件，结论落盘当轮 `mv` 到 `.workbuddy/trash/<日期>/`（不用 rm）。回收顺序铁律：① 逐条核结论有载体（卡/DESIGN-LAYER §2.2/OPEN/生成器/台账）→ ② 只在原文的规约先补硬约束 → ③ 再移走。白名单登记走 `docs/review/RETAINED.md`（缺回收条件判无效）。机检 = `scripts/check-temp-docs.mjs`（verify 第 6 段）。删除前先确认已入 git。
 - **机读数字必须回原始文件重算**，且任何计数带三元组：分子 / 分母口径 / 时点（HEAD 短哈希）。先分「字面 vs 展开」「声明数 vs 样本数」再谈对错；百分比先验分母时点（一处旧通常多处旧，grep 旧分母数字）。转述链订正必出错。
 - **台账计数口径**：OPEN-DECISIONS 取每行**最后一个单元格**，去 `*`/空白后**截去括注**判 base；**禁按单元格数过滤**（78 条目中 21 行 7 列，按 len==8 过滤静默漏 27%）。
@@ -19,11 +21,13 @@
 
 ## B1 代码基线（P3-010，已交付）
 
-- **verify 自 2026-10-24 起为八段**（第六段临时件回收后新增：⑦ 文档纪律 `check-doc-discipline.mjs` = 卡体量 warn 8,000/fail 12,000 + 状态行 ≤400 + 措辞族 curated 表 12 族×32 载体 + REGISTERED_STOCK 登记水位制；⑧ openapi 契约门禁接入）。ANCHORS §0 门禁三连已改「verify 八段 + 面板」两件套，check_openapi_contract.py 不再单独跑。
+- **verify 自 2026-10-24 晚起为十段**（原八段 = 格式/lint/tsc/规则测试/依赖面/临时件/文档纪律 `check-doc-discipline.mjs`/openapi 契约；P3-010-03 落地时类型段 1 拆 3 → shared/server/web，故 10 段）。ANCHORS §0 门禁三连已改「verify + 面板」两件套，check_openapi_contract.py 不再单独跑。**段数不写死在文档里**，以末行「N/M 段通过」为准（写死必然过期）。
 - **卡体量阈值已立法**（DESIGN-LAYER v1.16 §2.2 条 1，冻结令废止）：存量按登记水位制管理——`check-doc-discipline.mjs` 的 REGISTERED_STOCK 登记 ceiling（只许减不许增），达标后摘行；未登记新违规一律硬 fail。在册：D1-13 体量 20,226（拆卡待裁）/ 状态行 D1-04 496、D1-12 473、D1-03 451、D1-10 441。**交接件写 D1-13=20,974 系字节口径残留**，字符口径 20,226。
 - **措辞族机检**（条 Q ③）：curated 短语表在 `check-doc-discipline.mjs` PHRASE_FAMILIES，新不变量落盘时**同轮入表**；短语按「多短语任一命中」处理历史措辞变体（如「属本码/归本码」「文件级权限/文件级访问/编辑权限」）。
 - **Security Center deny 下机检脚本的读取兜底**：fs 失败 → `git show HEAD:<path>` 回退并打印 [git-fallback]；**回退读到 HEAD 版**，工作区未入库修订会读滞后 → 收口顺序 = 先提交卡修订再跑门禁。gen_status_panel.py read() 同型兜底（2026-10-24 批随批入库）。
-- 自检唯一入口 `node scripts/verify.mjs`（八段：格式→lint --max-warnings=0→tsc→规则测试→依赖面→临时件回收→文档纪律→契约）；根 scripts 不嵌套调 pnpm。
+- 自检唯一入口 `node scripts/verify.mjs`（格式→lint `--max-warnings=0`→tsc×3→规则测试→依赖面→临时件回收→文档纪律→契约）；根 scripts 不嵌套调 pnpm。
+- **backlog 状态三态**：`待派发` / `已完成` / **`已归并`**（2026-10-24 P3-010-04~11 首个案例 = 用户裁「收口」，配置型工作项无独立实体内容随同段首包收口）。口径：**阻塞判定 `done` = 已完成 ∪ 已归并**（否则下游 dep 永远解不开）；**KPI「已完成包」只数真实交付**，归并单列。两件事必须分开。
+- **app 侧引用 `@wo/shared` 的类型解析走 tsconfig `paths` → `packages/shared/src`**：包 `exports.types` 指 `dist/esm/index.d.ts`，`dist/` 未入库且锚点命令无 build 步 → 干净 clone 必 TS2307（server 段是 Node10，不认 exports）。`apps/web` 另需覆写 `types: []`（web 段内置 `vite/client`，vite 到 P3-030 才进依赖树）。
 - **pnpm 本机唯一跑法**：系统 shim 绑 Node 20 会崩；临时前缀 `npm i pnpm@11.28.6` + 受管 Node 22 驱动 `pnpm.cjs`。isolated 布局下根 scripts 解析不到包依赖 → 运行时/工具链依赖可能同版本声明两处；手工拷包进根 node_modules 是陷阱（lockfile 不同步）。
 - 依赖门禁 `check-workspace-deps.mjs` 断言 I = 声明 ↔ lockfile importer ↔ node_modules 三面；**改依赖后先 install 再跑门禁**。
 - 三条 P0 lint 规则一律 error：`wo/no-emoji`（测试文件用 `String.fromCodePoint` 不写真 emoji）、`wo/no-hardcoded-color`、`no-restricted-imports`（10 个第二图标源）。
