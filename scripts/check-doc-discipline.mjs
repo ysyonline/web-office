@@ -45,9 +45,9 @@ const REGISTERED_STOCK = [
   {
     card: 'D1-13',
     metric: 'size',
-    ceiling: 11598,
+    ceiling: 11602,
     reason:
-      'v1.14 拆卡后余量（E-CV ②③ → D1-13-A、① 栏 5 行实施级口径 → D1-13-B）；> warn 线部分系决策本体，不再净减',
+      'v1.14 拆卡后实测值（E-CV ②③ → D1-13-A、① 栏 5 行实施级口径 → D1-13-B）；> warn 线部分系决策本体，不再净减',
   },
   {
     card: 'D1-03',
