@@ -19,6 +19,17 @@ strictDepBuilds: true
 allowBuilds:
   esbuild: true
   '@scarf/scarf': false
+  # P3-011-01 裁决（jest 30 的两个原生传递依赖，2026-10-24 实测）：
+  # 两者都由 jest 引入——@parcel/watcher ← jest-haste-map（文件监听）、
+  # unrs-resolver ← jest-resolve（模块解析）。显式 false 而非放行，理由三条：
+  # ① 平台预编译 binding 已成对落盘（@parcel/watcher-win32-x64@2.6.0 /
+  #    @unrs/resolver-binding-win32-x64-msvc@1.12.2），其 install/postinstall 在本目标为 no-op；
+  # ② 忽略构建下 `jest --listTests` exit=0、真实用例（ts-jest + @nestjs/testing DI）跑绿，
+  #    说明无需源码编译即可工作（实测见 ANCHORS §3 P3-011-01 执行记录）；
+  # ③ 放行 true 会把 node-gyp 与网络下载面引入信创/离线环境（ADR-005 最小构建面原则）。
+  # 若换到无预编译包的平台（如某些 ARM 信创发行版），这两条必须改判为 true 并重测。
+  '@parcel/watcher': false
+  unrs-resolver: false
 # catalog 本包只登记 @univerjs/*；待 P3-030 引入时按实况补条目，不留空 catalog。
 # catalog:
 #   '@univerjs/*': 1.0.2

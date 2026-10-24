@@ -1,6 +1,6 @@
 # 包级锚点台账（产出物路径 / 检查命令 / 通过判据）
 
-> 版本：**v1.5**（2026-10-24 补 §3「P3-011 六包派发锚点」｜2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条；v1.4（2026-10-24）P3-010-03 落地 + `-04~11` 归并收口登记 + 类型段拆三 project）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
+> 版本：**v1.7**（2026-10-24 补 P3-011-01/-02 执行记录；v1.5 补 §3「P3-011 六包派发锚点」｜2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条；v1.4（2026-10-24）P3-010-03 落地 + `-04~11` 归并收口登记 + 类型段拆三 project）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
 >
 > 为什么单独成表：锚点三项原先只写在包级验收断言里（「本包须填锚点三项」），但**没有载体**——填在哪、谁来核，都没定义。本表就是那个载体：一包一行，写死路径与可复制执行的命令。
 >
@@ -95,12 +95,31 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 
 | 包ID | 段 | 产出物路径 | 检查命令 | 通过判据 |
 |---|---|---|---|---|
-| **P3-011-01**（待派发） | 依赖与工具链落位 | `apps/server/package.json`、`apps/server/jest.config.cjs`、`pnpm-workspace.yaml`（`allowBuilds`）、`pnpm-lock.yaml` | `pnpm install --frozen-lockfile && node scripts/check-workspace-deps.mjs && pnpm --filter @wo/server exec jest --listTests` | 三条 exit=0；lock 可解析 `@nestjs/core@11` / `jest@30.5.2` / `ts-jest` / `@nestjs/testing` / `supertest`；`jest --listTests` 输出 0 用例仍 exit=0（装配成立而非空跑） |
-| **P3-011-02**（待派发） | 引导与模块骨架 | `apps/server/src/main.ts`、`app.module.ts`、`src/modules/<tag>/`（10 个 tag 各一）、`scripts/check-module-graph.mjs`、`scripts/check-endpoint-groups.mjs` | `pnpm --filter @wo/server build` → 起服务 → `curl -s -o /dev/null -w '%{http_code}' 127.0.0.1:3000/api/v1/health` → `node scripts/check-module-graph.mjs` → `node scripts/check-endpoint-groups.mjs` | health=200 且体为 `status:ok`；模块图零环；模块目录与 `openapi.tags` 10 组**逐一对应**（缺一组或多一组即 fail） |
+| **P3-011-01**（已完成） | 依赖与工具链落位 | `apps/server/package.json`、`apps/server/jest.config.cjs`、`pnpm-workspace.yaml`（`allowBuilds`）、`pnpm-lock.yaml` | `pnpm install --frozen-lockfile && node scripts/check-workspace-deps.mjs && pnpm --filter @wo/server exec jest --listTests` | 三条 exit=0；lock 可解析 `@nestjs/core@11` / `jest@30.5.2` / `ts-jest` / `@nestjs/testing` / `supertest`；`jest --listTests` 输出 0 用例仍 exit=0（装配成立而非空跑） |
+| **P3-011-02**（已完成） | 引导与模块骨架 | `apps/server/src/main.ts`、`app.module.ts`、`src/modules/<tag>/`（10 个 tag 各一）、`scripts/check-module-graph.mjs`、`scripts/check-endpoint-groups.mjs` | `pnpm --filter @wo/server build` → 起服务 → `curl -s -o /dev/null -w '%{http_code}' 127.0.0.1:3000/api/v1/health` → `node scripts/check-module-graph.mjs` → `node scripts/check-endpoint-groups.mjs` | health=200 且体为 `status:ok`；模块图零环；模块目录与 `openapi.tags` 10 组**逐一对应**（缺一组或多一组即 fail） |
 | **P3-011-03**（待派发） | 契约 schema 定义 | `packages/shared/src/schemas/`（22 个契约 schema + `internal/`）、`scripts/check-schema-names.mjs` | `node scripts/check-schema-names.mjs && pnpm typecheck` | 22 个导出名与 `components.schemas` **双向逐字相等**（改名/多一/少一即 fail）；每个 schema 的 `z.toJSONSchema` 产物含 `additionalProperties:false`；shared 类型检查 exit=0 |
 | **P3-011-04**（待派发） | 校验管道与错误映射 | `apps/server/src/common/pipes/zod-validation.pipe.ts`、`filters/all-exceptions.filter.ts`、`errors/validation-codes.ts` + 管道单测 | `pnpm --filter @wo/server test -- zod-validation` | 四例全绿：body 未知键/错类型→400+7001、query 越界→400+7002、path 非法→400+7004、非法 JSON→400+7003；**断言非恒真**（摘掉 pipe 挂载后该组必红）；错误体形状 `{code,message,detail:{errors:[{field,rule,message}]}}` |
 | **P3-011-05**（待派发） | 断言与夹具 | `packages/shared/validation-fixtures/*.json`、`scripts/fixtures-run.mjs`、`packages/config/rules/request-schema-strict.js` | `node scripts/fixtures-run.mjs && pnpm test:rules && pnpm lint` | 夹具逐样本断言 `code`/`field`/`rule`/`message` 四者齐全；V-S2 黑名单正则命中即 fail；A-PATH 每条 issue 满足 `path.length>0` 或 `code==='unrecognized_keys'`；规则对 `apps/` 内裸 `z.object(` 报 error，RuleTester 红/绿各一例 |
 | **P3-011-06**（待派发） | 联调与收口 | 本文件 §3 六行执行记录 + 三条新脚本纳入 `verify.mjs` + `OPEN-DECISIONS` 遗留登记 | `node scripts/verify.mjs && python -X utf8 scripts/gen_status_panel.py` | verify 全段 exit=0（含本工作项新增三段）；面板口径校验带无「不一致」；遗留项已登记且带归属包 |
+
+**执行记录（P3-011-01，2026-10-24 交付）**
+
+- **三条派发断言实测**：`install --frozen-lockfile` exit=0（pnpm 11.28.6 / Node 22.22.2，显式入口见 §0）；`check-workspace-deps.mjs` exit=0（4 包全过）；`jest --listTests` 输出 0 用例、exit=0。`apps/server` importer 锁定 `@nestjs/core@11.2.7` / `@nestjs/common@11.2.7` / `@nestjs/platform-express@11.2.7` / `@nestjs/testing@11.2.7` / `jest@30.5.2` / `ts-jest@29.4.15` / `supertest@7.3.1` / `@nestjs/swagger@11.4.7`。
+- **装配非空跑的补证（包级断言不覆盖处）**：`--listTests` 只证明 jest 自身能启动，不证明 ts-jest 与 Nest 可加载——这是「自洽不证互通」的同型缺口。另跑一次性探针（`Test.createTestingModule({}).compile()` + `expect`）实测 PASS（总 1.35s，用例 11ms），跑后即删，工作区无残留，证明「ts-jest 转换 + Nest DI 容器 + tsconfig 装饰器」三者装配成立。
+- **反向验证（断言非恒真）**：R1 摘 `jest` 声明 → `check-workspace-deps` exit=1，报「lock 残留已删除的依赖 jest」；R2 移走 `apps/server/node_modules/@nestjs/core` → exit=1，报「包内 node_modules 缺 @nestjs/core」。两条均精准命中，已还原并复跑 exit=0。
+- **版本裁决理由**：Nest 四件套统一 **11.2.7**——`@nestjs/core` 的 11 系天花板即 11.2.7（dist-tag `legacy`；`11.2.8` 在 registry 实为 404，而 `@nestjs/common` 存在 11.2.8，混用即跨包漂移）；`@nestjs/swagger` 锁 **11.4.7**——12.x 的 peer 要求 `@nestjs/core ^12`，与 Nest 11 不兼容（此为实测拦截，非推断）；`typescript@5.9.3` 显式进本包 devDeps——pnpm isolated 布局下 ts-jest 的 peer 需在本包可解析。
+- **allowBuilds 裁决**：jest 30 引入两个带构建脚本的原生传递依赖（`@parcel/watcher` ← `jest-haste-map`、`unrs-resolver` ← `jest-resolve`），显式登记 `false` 而非放行。三条依据：平台预编译 binding 已成对落盘（`@parcel/watcher-win32-x64@2.6.0` / `@unrs/resolver-binding-win32-x64-msvc@1.12.2`）；实测忽略构建下 jest 可启动且真实用例跑绿；放行会把 node-gyp 与网络下载面带入信创/离线环境（ADR-005 最小构建面）。**换到无预编译包的平台须改判 `true` 并重测**。
+- **已知遗留（非缺陷）**：`autoInstallPeers: false` 下 `@nestjs/swagger` 的 `class-validator` / `class-transformer` peer 缺席——二者在 swagger 11 的 `peerDependenciesMeta` 中均为 optional，缺席正是 P3-001 裁决 ②「zod 单一 schema 源」的预期结果，`install` 不报错。
+
+**执行记录（P3-011-02，2026-10-24 交付）**
+
+- **交付面**：`apps/server/src/{main.ts,app.module.ts}`、`apps/server/src/modules/<tag>/` 10 组共 20 个文件、`apps/server/tsconfig.build.json`、`package.json` 的 `build`/`start`、两个门禁脚本（`check-endpoint-groups.mjs` / `check-module-graph.mjs`）。
+- **实测**：`tsc -p tsconfig.build.json` exit=0（22 个 js 产物 = main + app.module + 10 module + 10 controller）；`check-endpoint-groups.mjs` exit=0（10 组双向一致）；`check-module-graph.mjs` exit=0（10 模块 / 0 条边 / 零环 / 根模块全量注册）；`curl` 健康检查返回 **200 且体为 `{"status":"ok"}`**。
+- **端口口径偏离（环境所致，非代码）**：本机 3000 被 `D://code//yun//4.x//corpadmin` 的 umi dev server（PID 10900）占用，实测改用 `PORT=3100` 同口径通过。**该占用服务对 `/api/v1/health` 同样返回 200（HTML 页面）**——只查状态码会假绿，这反向印证判据中「体为 `status:ok`」不可省。3000 原始口径待该进程释放后复核。
+- **边界实测（防过度实现）**：`/api/v1/auth` 返回 404（占位控制器确实没伪造路由）；`/api/v1/health/ready` 返回 404（readiness 归 P3-016，未提前落）。
+- **反向验证**：R1 注入 `auth` 与 `users` 互相 import，模块图 exit=1 并打出环路径 `AuthModule -> UsersModule -> AuthModule`；R2 移走 `modules/share`，分组断言 exit=1（缺一组 share + 10 组对 9 目录）、模块图 exit=1（根模块注册了不存在的 ShareModule）。两条均已还原并复跑 exit=0。
+- **踩坑与防线（影响 P3-011-03，必须传承）**：`tsconfig.build.json` 初版用 `rootDir: src` 且未收敛编译面，而 `tsconfig.json` 的 `paths` 把 `@wo/shared` 指向 `packages/shared/src`，tsc 报 TS6059 并把跨包的 `shared/src/*.ts` **原地 emit 成 `.js`/`.js.map`**——污染源码树 6 个未跟踪文件（已清理），verify 的 lint 段因此一度 44 errors。现版显式排除 `src/index.ts`（P3-010-03 的双端消费骨架，不在 `main.ts` 依赖闭包内）后收敛。**该配置只在「运行期闭包不含 `@wo/shared`」时成立**：P3-011-03 把 22 个契约 schema 放进 `packages/shared/src/schemas/` 后必然打破它，届时须改为「先 build shared、build 期解析其 `dist` 类型」或等价单源方案，**不得**让 server 的 build 再次跨包编译。
+- **产物入库**：`apps/server/dist/` 被 `.gitignore` 的 `dist/` 覆盖，构建产物不入库。
 
 ### 3.1 与相邻工作项的边界（本段三处越界已定界）
 
