@@ -9,6 +9,8 @@
 - **卡面措辞与已落盘代码必须同步核**：改口径类修订的传导核查 = 旧术语族 grep 于 docs/ + scripts/ + 生成器源，逐处定性「活载体/历史记载」（历史记载合法保留）；收尾必须对已清文件重跑全量 grep（同文件同族措辞散布多节）；字符串字面量也是措辞载体。
 - **出处不引行号**（按 schema 名/§符号 grep）；卡体量以字符数度量；设计卡 = 一页决策归集件 ≠ 详设。
 - **凡新立不变量一律随轮配 ④ 栏断言**，不留「只靠人守」的不变量。
+- **冻结配平 ≠ 可顺手改数**（2026-10-24 grill 轮）：压缩沿革叙述时一度把机读正确值「no-param 余 8」误改为「勘误余 7」——配平砍的是叙述不是数字；动到任何数字前先回原始文件复核真值。
+- **Security Center deny 名单是文件粒度不是目录粒度**（2026-10-24 再实证）：同目录下 DESIGN-LAYER.md / OPEN-DECISIONS.md 的 git add 可过，而 D1-02/06/13 三张卡被拦——每轮对要 add 的文件逐个「先试一次」，失败即转用户系统终端，不要按目录推断。
 
 ## 状态面板（2026-10-22 立）
 
@@ -17,7 +19,11 @@
 
 ## B1 代码基线（P3-010，已交付）
 
-- 自检唯一入口 `node scripts/verify.mjs`（六段：格式→lint --max-warnings=0→tsc→规则测试→依赖面→临时件回收）；根 scripts 不嵌套调 pnpm。
+- **verify 自 2026-10-24 起为八段**（第六段临时件回收后新增：⑦ 文档纪律 `check-doc-discipline.mjs` = 卡体量 warn 8,000/fail 12,000 + 状态行 ≤400 + 措辞族 curated 表 12 族×32 载体 + REGISTERED_STOCK 登记水位制；⑧ openapi 契约门禁接入）。ANCHORS §0 门禁三连已改「verify 八段 + 面板」两件套，check_openapi_contract.py 不再单独跑。
+- **卡体量阈值已立法**（DESIGN-LAYER v1.16 §2.2 条 1，冻结令废止）：存量按登记水位制管理——`check-doc-discipline.mjs` 的 REGISTERED_STOCK 登记 ceiling（只许减不许增），达标后摘行；未登记新违规一律硬 fail。在册：D1-13 体量 20,226（拆卡待裁）/ 状态行 D1-04 496、D1-12 473、D1-03 451、D1-10 441。**交接件写 D1-13=20,974 系字节口径残留**，字符口径 20,226。
+- **措辞族机检**（条 Q ③）：curated 短语表在 `check-doc-discipline.mjs` PHRASE_FAMILIES，新不变量落盘时**同轮入表**；短语按「多短语任一命中」处理历史措辞变体（如「属本码/归本码」「文件级权限/文件级访问/编辑权限」）。
+- **Security Center deny 下机检脚本的读取兜底**：fs 失败 → `git show HEAD:<path>` 回退并打印 [git-fallback]；**回退读到 HEAD 版**，工作区未入库修订会读滞后 → 收口顺序 = 先提交卡修订再跑门禁。gen_status_panel.py read() 同型兜底（2026-10-24 批随批入库）。
+- 自检唯一入口 `node scripts/verify.mjs`（八段：格式→lint --max-warnings=0→tsc→规则测试→依赖面→临时件回收→文档纪律→契约）；根 scripts 不嵌套调 pnpm。
 - **pnpm 本机唯一跑法**：系统 shim 绑 Node 20 会崩；临时前缀 `npm i pnpm@11.28.6` + 受管 Node 22 驱动 `pnpm.cjs`。isolated 布局下根 scripts 解析不到包依赖 → 运行时/工具链依赖可能同版本声明两处；手工拷包进根 node_modules 是陷阱（lockfile 不同步）。
 - 依赖门禁 `check-workspace-deps.mjs` 断言 I = 声明 ↔ lockfile importer ↔ node_modules 三面；**改依赖后先 install 再跑门禁**。
 - 三条 P0 lint 规则一律 error：`wo/no-emoji`（测试文件用 `String.fromCodePoint` 不写真 emoji）、`wo/no-hardcoded-color`、`no-restricted-imports`（10 个第二图标源）。

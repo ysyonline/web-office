@@ -45,9 +45,9 @@ const REGISTERED_STOCK = [
   {
     card: 'D1-13',
     metric: 'size',
-    ceiling: 20226,
+    ceiling: 11598,
     reason:
-      '> fail 线 12,000 存量，拆卡方案待用户裁（OPEN-DECISIONS T-2 行；E-CV 样本清单为最大膨胀源）',
+      'v1.14 拆卡后余量（E-CV ②③ → D1-13-A、① 栏 5 行实施级口径 → D1-13-B）；> warn 线部分系决策本体，不再净减',
   },
   {
     card: 'D1-03',
@@ -186,6 +186,15 @@ const PHRASE_FAMILIES = [
     id: '4412 内存水位口径（同族）',
     phrases: ['内存水位'],
     carriers: ['docs/api/openapi.yaml', 'D1-05', 'docs/phase3/DESIGN-LAYER.md'],
+  },
+  {
+    id: '详设附录件不计卡体量（DESIGN-LAYER v1.17 立法）',
+    phrases: ['附录件不计卡体量', '不计卡体量'],
+    carriers: [
+      'docs/phase3/DESIGN-LAYER.md',
+      'docs/phase3/design/appendix/D1-13-A-ECV样本清单.md',
+      'docs/phase3/design/appendix/D1-13-B-校验链实施级口径.md',
+    ],
   },
 ];
 
