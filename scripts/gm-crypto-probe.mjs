@@ -51,7 +51,7 @@ const require = createRequire(import.meta.url);
 const { sm2 } = require('sm-crypto');
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const FIXTURE = join(ROOT, 'scripts/fixtures/sm2-standard-vector.json');
+const FIXTURE = join(ROOT, 'packages/shared/src/license/fixtures/sm2-standard-vector.json');
 
 const results = [];
 /**
@@ -86,11 +86,11 @@ record('G1', 'digest sm3 可用', hasSm3, '', '启动');
 const hasSm2Curve = crypto.getCurves().includes('SM2');
 record('G2', 'curve SM2 可用（仅登记；SM2 签验改走 sm-crypto）', hasSm2Curve, '', '启动');
 
-// G3 标准向量验签（fixture 由 scripts/issue-license.mjs --gen-fixture 生成）
+// G3 fixture 验签（自洽断言：fixture 由 scripts/issue-license.mjs --gen-fixture 生成，属自签向量，互通性由 G8 承担）
 if (!existsSync(FIXTURE)) {
   record(
     'G3',
-    '标准向量验签',
+    'fixture 验签（自洽）',
     false,
     `缺少 fixture ${FIXTURE}；先跑 node scripts/issue-license.mjs --gen-fixture`,
     '启动',

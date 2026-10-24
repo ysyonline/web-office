@@ -40,7 +40,10 @@ const require = createRequire(import.meta.url);
 const { sm2 } = require('sm-crypto');
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const DEFAULT_FIXTURE = resolve(ROOT, 'scripts/fixtures/sm2-standard-vector.json');
+const DEFAULT_FIXTURE = resolve(
+  ROOT,
+  'packages/shared/src/license/fixtures/sm2-standard-vector.json',
+);
 
 /** @type {string | null} 当前会话的私钥（仅用于输出流泄漏自检，不参与输出）。 */
 let ACTIVE_PRIVATE_KEY = null;
@@ -293,7 +296,7 @@ function main(argv) {
   }
 
   if (args['gen-fixture']) {
-    // G3 标准向量：临时密钥现场生成，私钥不出进程、不入 fixture。
+    // G3 fixture：临时密钥现场生成，私钥不出进程、不入 fixture（自签向量，自洽断言；互通性由探针 G8 承担）。
     const kp = sm2.generateKeyPairHex();
     ACTIVE_PRIVATE_KEY = kp.privateKey;
     const payload = {
@@ -306,7 +309,7 @@ function main(argv) {
     };
     const issued = issueLicense(payload, kp.privateKey);
     const fixture = {
-      note: 'G3 标准向量 fixture：由 scripts/issue-license.mjs --gen-fixture 生成，仅用于验签断言，不可用于生产',
+      note: 'G3 fixture（自签向量，自洽断言）：由 scripts/issue-license.mjs --gen-fixture 生成，仅用于验签断言，不可用于生产',
       generatedBy: 'scripts/issue-license.mjs',
       alg: issued.alg,
       userId: issued.userId,
