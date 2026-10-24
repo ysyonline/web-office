@@ -3,7 +3,7 @@
 > 卡号：D1-09 | 工时 2.4h（2 包 × 1.2h）| 泳道 BE | 里程碑 M1→B2 前置 | 需求域 R7 设计层
 > 消费方（首包）：**P3-035**（API 客户端 + 401 自动刷新 + 并发去重）、**P3-040**（口令服务）；设计意图覆盖 P3-035/040/041/042/044/060/070（API 客户端、口令服务、auth 四端点、锁定、用户管理、登录页、WS ticket，共 52 包——复评轮修订：原枚举 5 项 38 包 vs 总数 43（含 P3-040 漏 P3-035），与 DESIGN-LAYER §3.1 列表及机读 52 对齐）
 > 主要出处：Spec §4 认证行（15min/7d）与 §10 WS 安全行、openapi（auth 三端点 + ws/ticket + x-websocket handshake/会话失效/close-codes）、schema.md §3.1/§3.2（users 状态字段、refresh_tokens 吊销制）、OPEN-DECISIONS 等保配套条（首登改密随 M3 落）
-> 状态：**v1.5**（2026-10-24 条 N 裁决落盘：③ 栏 1005 行挂决策理由指针（全域 D 档 = 刻意决策，理由载体 D1-05 ③ D 档 v1.8 补记；OPEN 条 N）｜v1.4（2026-10-23 第三轮挑刺裁决：② 失效传播矩阵登出行补「HTTP 残留 ≤15min 含写端点可读写」+ V-REV 写端点残留断言）｜v1.3（OPEN 62 裁决落地：refresh locked → 423+1002（detail.unlockAt）、disabled → 403+1005，挂起解除；openapi 显式补挂随解冻窗口，落盘前按运行时 guard 出口不违约）｜v1.2/v1.1（status guard 覆盖定性、HS256 补标本卡新定；v1.0 于 D1-09-01/02 收口）| 评审记录见 REVIEW-INDEX「D1-09 挑刺审查线程」段
+> 状态：**v1.6**（2026-10-24 6-A 裁决落盘：② 失效传播矩阵 re-validate 行校验面扩**文件级权限**（edit/view 连接权限被撤均 close 4403，权限撤销不等断线重连；OPEN 76 / 条 Q ⑥，openapi handshake 同批落盘）+ ② 校验链 refresh 两行传导「契约 423/403 已显式挂载」（OPEN 64 RESOLVED）｜状态行 v1.1~v1.5 明细段压缩配平，明细由 REVIEW-INDEX 线程段承载）| 评审记录见 REVIEW-INDEX「D1-09 挑刺审查线程」段
 
 ---
 
@@ -36,8 +36,8 @@
 {refreshToken} → SM3 查 refresh_tokens
   ├─ 无记录 / revoked_at 非空 / expires_at 过期 → 401 + 1003
   └─ 命中 → 查 users.status
-      ├─ locked（locked_until > now）→ 423 + 1002（detail {unlockAt}，供 AC-02 锁定倒计时渲染）+ 广播 4411 ——**v1.3 架构师裁决落地**：与同卡 ③ 栏及 D1-05 ①「1002 → 423」映射一致；openapi 端点显式补挂 423/403 已登记解冻窗口待办（OPEN-DECISIONS 2026-10-23 条），契约落盘前本行按运行时 status guard 出口实现（D1-05 过滤器层统一出口口径，不逐操作挂载不构成违约）
-      ├─ disabled → 403 + 1005 + 广播 4411 ——v1.3 同裁（1005 → 403 映射本卡 ③ 栏与 D1-05 ① 已定）
+      ├─ locked（locked_until > now）→ 423 + 1002（detail {unlockAt}，供 AC-02 锁定倒计时渲染）+ 广播 4411 ——**v1.3 架构师裁决落地**：与同卡 ③ 栏及 D1-05 ①「1002 → 423」映射一致；**openapi 端点显式补挂 423/403 已于 2026-10-24 解冻窗口落盘**（OPEN 64 RESOLVED），契约挂载面与运行时 guard 出口自此一致
+      ├─ disabled → 403 + 1005 + 广播 4411 ——v1.3 同裁（1005 → 403 映射本卡 ③ 栏与 D1-05 ① 已定；契约显式挂载同上已落盘）
        └─ active → 签发新 access（15min）→ 200 {accessToken}   ← 不动 refresh 行
 ```
 
@@ -49,7 +49,7 @@
 | 锁定（5 次失败） | 全部 4411 | **拒**：423+1002（guard 窗口 0） | 拒：423+1002（detail.unlockAt，v1.3 裁决形态） |
 | 禁用 | 全部 4411 + 60s re-validate 兜底 | 拒：403+1005 | 拒：403+1005（v1.3 裁决形态） |
 | 改密 / 首登改密 | 全部 4411 | 放行 ≤15min（同一用户自身凭据，可接受） | 全量吊销 → 1003 |
-| WS 60s re-validate | 失配即 4411 | —（仅 WS 侧） | — |
+| WS 60s re-validate | 失配即 4411；**校验面含文件级权限（6-A 补，2026-10-24）**：edit 连接编辑权被撤 → close 4403、view 连接文件访问权被完全撤销 → close 4403（同码，detail 由服务端区分）——权限撤销不得只等断线重连才生效 | —（仅 WS 侧） | — |
 
 **失败分支与回滚点**：① guard 判 locked 的依据是 `locked_until` 与当前时间比较，解锁端点（unlock）清零后立即恢复——无缓存阻塞（缓存 TTL ≤5s 的实现同样满足）；② ticket 签发后 5s 内未使用自然过期，无需回收任务；③ refresh 并发同 token 多次调用全部成功（无消耗语义）——若实现发现同 token 第二次 refresh 失败，说明误做了逐次轮换，回 ① 栏口径修正。
 
