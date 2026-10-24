@@ -1,0 +1,4 @@
+# schemas/internal/ —— 非契约 schema 目录（D1-13 ① 栏：目录即分类）
+# 本目录放内部用（不出现在 openapi components.schemas）的 zod schema。
+# P3-011-03 时点为空：22 个契约 schema 全部在上级目录；首个内部 schema 随
+# P3-011-04（validation-codes）或 P3-012（配置键校验）落地，删除本 .gitkeep 即可。

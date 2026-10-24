@@ -152,6 +152,13 @@ export function woPreset({ typeAware = false, withReact = true, tsconfigRootDir 
       rules: { 'no-console': 'off' },
     },
     {
+      name: 'wo/jest-config-cjs',
+      // jest 配置与自定义 resolver 是 CJS 装配件（jest 以 require 加载），
+      // 命名不含 .config.（jest.config.cjs 例外已由上一段覆盖），单独给 node 全局。
+      files: ['apps/*/jest*.cjs'],
+      languageOptions: { globals: { ...globals.node } },
+    },
+    {
       name: 'wo/config-package',
       files: ['packages/config/**/*.js'],
       languageOptions: { globals: { ...globals.node } },
