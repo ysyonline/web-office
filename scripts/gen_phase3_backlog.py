@@ -38,8 +38,8 @@ ITEMS = [
      "D1-13 设计卡 v1（zod 单一源 → 自研 ZodValidationPipe → 7xxx 码段 → G1 contract-diff 门禁）",
      "四栏齐全且每条决策有出处；7xxx 四条码与前端呈现档位一一对应；漏挂 pipe 与孤儿 schema 各有可机检的断言"),
     ("P3-011", "R1 工程基建", "NestJS 应用骨架与模块划分", 8, "BE", "M1", "P3-010,D1-13",
-     "Nest 引导 + 模块骨架（auth/files/collab/license/audit/sso）+ 22 个契约 schema 的 zod 定义落 packages/shared/src/schemas/（请求侧 9 + 响应侧 13，D1-13 ① 栏）",
-     "启动 200 /api/v1/health；模块依赖无环；目录与 Spec §5 端点分组一致；全部 request schema 为 z.strictObject()/.strict()、未知键样本返回 400 不静默剥离（D1-13 A-STRICT）"),
+     "Nest 引导 + 按 openapi tags 10 组的模块骨架（auth/users/sso/files/import-export/share/audit/license/system/collab）+ 22 个契约 schema 的 zod 定义落 packages/shared/src/schemas/（请求侧 9 + 响应侧 13，D1-13 ① 栏）",
+     "启动 200 /api/v1/health；模块依赖无环（scripts/check-module-graph.mjs）；模块目录与 openapi tags 10 组逐一对应（scripts/check-endpoint-groups.mjs）；全部 request schema 为 z.strictObject()/.strict()、未知键样本返回 400 不静默剥离（D1-13 A-STRICT）"),
     # ---------------- M1 设计层（D1 设计卡，见 docs/phase3/DESIGN-LAYER.md） ----------------
     ("D1-05", "R7 设计层", "设计卡：错误码与降级四层矩阵", 3.6, "BE", "M1", "",
      "D1-05 设计卡 v1（错误码分段 + HTTP status↔code↔WS close 4409-4412↔前端文案 四层对照）",
@@ -405,6 +405,91 @@ DESIGN_META = {
     ),
 }
 
+# ---------------- 显式包面覆盖（按实体内容切分，不走五段模板） ----------------
+# 为什么需要：五段模板按「工时 ÷ 1.1」机械切包，对内容分布极不均的工作项会把同一实体劈成
+# 两半（P3-011 的 -02/-03、-05/-06 去掉序号后缀后逐字相同）。凡「实体内容可枚举」的工作项，
+# 在此显式给出逐包（段名 / 工时 / 交付物 / 断言），模板只作兜底。
+# 纪律：
+#   ① 覆盖项的工时之和必须等于 ITEMS 里的工作项工时（不等即中止，防台账与总账脱钩）；
+#   ② 任一行工时越出 [1.0, 1.2] 带，必须在 BAND_EXCEPTIONS 显式登记理由，未登记即中止
+#      ——例外可以存在，但不能静默存在。
+# 登记：P3-011 六包（2026-10-24 用户裁决「按建议收口成 6 包」，见 docs/REVIEW-INDEX.md 该轮）。
+OVERRIDES = {
+    "P3-011": [
+        {
+            "seg": "依赖与工具链落位",
+            "hours": 1.0,
+            "deliverable": "apps/server 的 Nest 运行期依赖 + 后端测试四件套（jest/ts-jest/@nestjs/testing/supertest）"
+                           " + @nestjs/swagger 声明；pnpm-workspace.yaml 的 allowBuilds 裁决；jest 配置与 test 脚本（零用例可启动）；lock 同步",
+            "accept": "产物 apps/server/{package.json,jest.config.cjs}、pnpm-workspace.yaml、pnpm-lock.yaml；"
+                      "命令 pnpm install --frozen-lockfile && node scripts/check-workspace-deps.mjs && pnpm --filter @wo/server exec jest --listTests；"
+                      "判据 三条 exit=0 且 lock 可解析 @nestjs/core@11 / jest@30.5.2 / ts-jest / @nestjs/testing / supertest，"
+                      "jest --listTests 输出 0 用例仍 exit=0（证明装配成立而非空跑）",
+        },
+        {
+            "seg": "引导与模块骨架",
+            "hours": 1.2,
+            "deliverable": "apps/server/src/{main.ts,app.module.ts} + modules/ 下 10 个 tag 模块骨架（各空 module + controller 占位）；"
+                           "GET /api/v1/health 返回 {status:'ok'}",
+            "accept": "产物 apps/server/src/；命令 pnpm --filter @wo/server build && curl -s -o /dev/null -w '%{http_code}' "
+                      "127.0.0.1:3000/api/v1/health && node scripts/check-module-graph.mjs && node scripts/check-endpoint-groups.mjs；"
+                      "判据 health=200 且体为 status:ok、模块图零环、模块目录与 openapi tags 10 组逐一对应（缺一组或多一组即 fail）",
+        },
+        {
+            "seg": "契约 schema 定义",
+            "hours": 2.0,
+            "deliverable": "packages/shared/src/schemas/ 22 个契约 schema（请求 9 + 响应 13，命名逐字对齐 components.schemas）"
+                           " + schemas/internal/ 非契约 schema + index 导出",
+            "accept": "产物 packages/shared/src/schemas/；命令 node scripts/check-schema-names.mjs && pnpm typecheck；"
+                      "判据 22 名与 openapi components.schemas 双向逐字相等（改名/多一/少一即 fail）、"
+                      "每个 schema 的 z.toJSONSchema 产物含 additionalProperties:false、shared 类型检查 exit=0",
+        },
+        {
+            "seg": "校验管道与错误映射",
+            "hours": 1.4,
+            "deliverable": "apps/server/src/common/{pipes/zod-validation.pipe.ts,filters/all-exceptions.filter.ts,"
+                           "errors/validation-codes.ts} + 管道单测（四条分流用例）",
+            "accept": "产物 apps/server/src/common/；命令 pnpm --filter @wo/server test -- zod-validation；"
+                      "判据 body 未知键/错类型→400+7001、query 越界→400+7002、path 非法→400+7004、非法 JSON→400+7003 四例全绿，"
+                      "断言非恒真（摘掉 pipe 挂载后该组必红），错误体形状 {code,message,detail:{errors:[{field,rule,message}]}}",
+        },
+        {
+            "seg": "断言与夹具",
+            "hours": 1.4,
+            "deliverable": "packages/shared/validation-fixtures/*.json + scripts/fixtures-run.mjs（零依赖纯 node）"
+                           " + A-STRICT 的 ESLint 规则（packages/config/rules/request-schema-strict.js，同步登记 WO_RULE_NAMES）",
+            "accept": "产物 validation-fixtures/、scripts/fixtures-run.mjs、packages/config/rules/；"
+                      "命令 node scripts/fixtures-run.mjs && pnpm test:rules && pnpm lint；"
+                      "判据 夹具逐样本断言 code/field/rule/message 四者齐全、V-S2 黑名单正则命中即 fail、"
+                      "A-PATH 每条 issue 满足 path.length>0 或 code==='unrecognized_keys'、规则对 apps/ 内裸 z.object( 报 error 且 RuleTester 有红绿各一例",
+        },
+        {
+            "seg": "联调与收口",
+            "hours": 1.0,
+            "deliverable": "ANCHORS §3 六行执行记录 + 无环/分组/schema 对齐三条脚本纳入 verify + 遗留登记 OPEN-DECISIONS",
+            "accept": "命令 node scripts/verify.mjs && python -X utf8 scripts/gen_status_panel.py；"
+                      "判据 verify 全段 exit=0（含本工作项新增三段）、面板无口径不一致、遗留项已登记且带归属包",
+        },
+    ],
+}
+
+# 已归并包（第三态）：包面交付物/断言由「收口到哪一包」决定，不入模板。
+# 为什么必须在生成器里：上一轮（2026-10-24）只改了 backlog.csv 产物，源里没有这条登记，
+# 任何一次重跑都会把 8 行归并说明覆盖回模板句 —— 「生成物只改产物」等于没改。
+MERGED_INTO = {
+    "P3-010-%02d" % k: "P3-010-03" for k in range(4, 12)
+}
+MERGED_DELIVERABLE = "随 {tgt} 归并收口（2026-10-24 用户裁决「收口」：配置型工作项无独立实体内容），无独立交付物"
+MERGED_ACCEPT = "不单独验收；由 {tgt} 的锚点三项 + P3-010 工作项收口断言覆盖"
+
+
+# 包均工时带例外：键 = 工作项 ID，值 = 理由（必须写清「为什么不能靠再拆包进带」）
+BAND_EXCEPTIONS = {
+    "P3-011": "六包按实体内容切分，工时不均（1.0/1.2/2.0/1.4/1.4/1.0）；三行越 1.2 上限。"
+              "再拆回带内即回到模板切分（-02/-03、-05/-06 逐字相同的成因），故登记例外；"
+              "收口时按 TASKS §7bis 会话录像口径回填实测，届时决定是否上调总工时",
+}
+
 
 def packet_count(hours: float) -> int:
     n = max(1, round(hours / 1.1))
@@ -482,8 +567,28 @@ def main() -> None:
     pkts_by_ms = defaultdict(int)
 
     # 两段式：先算每个工作项的包数（依赖可指向任意工作项，不再依赖 ITEMS 书写顺序）
-    n_of = OrderedDict((it[0], packet_count(it[3])) for it in ITEMS)
+    n_of = OrderedDict(
+        (it[0], len(OVERRIDES[it[0]]) if it[0] in OVERRIDES else packet_count(it[3])) for it in ITEMS
+    )
     last_of = {iid: "%s-%02d" % (iid, n) for iid, n in n_of.items()}
+
+    # 覆盖项自检：① 覆盖工时和 == 工作项工时；② 越带行必须有例外登记
+    hours_by_item = {it[0]: it[3] for it in ITEMS}
+    ov_problems = []
+    for iid, ov in OVERRIDES.items():
+        s = round(sum(o["hours"] for o in ov), 2)
+        if abs(s - hours_by_item[iid]) > 0.005:
+            ov_problems.append("%s 覆盖工时和 %.2fh != 工作项工时 %.2fh" % (iid, s, hours_by_item[iid]))
+        out = ["%s-%02d(%.2fh)" % (iid, k + 1, o["hours"])
+               for k, o in enumerate(ov) if not (1.0 <= o["hours"] <= 1.2)]
+        if out and iid not in BAND_EXCEPTIONS:
+            ov_problems.append("%s 越带但未登记例外：%s" % (iid, ", ".join(out)))
+    if ov_problems:
+        for p in ov_problems:
+            print("OVERRIDE ERROR: %s" % p, file=sys.stderr)
+        raise SystemExit("覆盖项自检失败 %d 处，已中止" % len(ov_problems))
+    for iid, why in BAND_EXCEPTIONS.items():
+        print("BAND EXCEPTION: %s —— %s" % (iid, why), file=sys.stderr)
 
     # 依赖悬挂校验：写错 id 必须立刻报错，不能静默丢边
     dangling = []
@@ -513,7 +618,7 @@ def main() -> None:
         # 卡末包 D1-xx-0n 断言「消费方首包已引用卡号，未引用即视为未完成」）。
         # 单一来源 = ITEMS 的 deps 列，不另设映射表，避免「台账说有、依赖没有」的双源。
         card_deps = [d.strip() for d in deps.split(",") if d.strip().startswith("D1-")]
-        labels = seg_labels(req, n)
+        labels = [o["seg"] for o in OVERRIDES[iid]] if iid in OVERRIDES else seg_labels(req, n)
         seg_total = defaultdict(int)
         for lb in labels:
             seg_total[lb] += 1
@@ -526,7 +631,13 @@ def main() -> None:
             scope = "%s（%d/%d）：%s" % (title, k + 1, n, seg)
             if k == 0 and card_deps:
                 scope += "｜前置设计卡：%s（docs/phase3/design/）" % "、".join(card_deps)
-            pkt_deliverable, pkt_accept = seg_meta(seg, title)
+            if iid in OVERRIDES:
+                ov = OVERRIDES[iid][k]
+                row_hours = ov["hours"]
+                pkt_deliverable, pkt_accept = ov["deliverable"], ov["accept"]
+            else:
+                row_hours = per
+                pkt_deliverable, pkt_accept = seg_meta(seg, title)
             seg_seen[seg] += 1
             if seg_total[seg] > 1:
                 # 同段多包：断言必须落到包级锚点，否则仍无法独立验收
@@ -535,11 +646,17 @@ def main() -> None:
                 pkt_accept += ("；本包须填锚点三项——产出物路径 / 检查命令 / 通过判据，"
                                "且与本段其他包的锚点不重叠" + tag)
             dep = dep_first if k == 0 else prev
+            status = prev_status.get(pid, "待派发")
+            if pid in MERGED_INTO:
+                tgt = MERGED_INTO[pid]
+                pkt_deliverable = MERGED_DELIVERABLE.format(tgt=tgt)
+                pkt_accept = MERGED_ACCEPT.format(tgt=tgt)
+                status = "已归并"
             rows.append([
                 "P3-%04d" % pkt_seq, pid, ms, req, iid, title, lane,
-                "%d/%d" % (k + 1, n), "%.2f" % per, scope,
+                "%d/%d" % (k + 1, n), "%.2f" % row_hours, scope,
                 pkt_deliverable, pkt_accept, deliverable, accept, dep,
-                prev_status.get(pid, "待派发"),
+                status,
             ])
             prev = pid
 

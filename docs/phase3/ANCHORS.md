@@ -1,6 +1,6 @@
 # 包级锚点台账（产出物路径 / 检查命令 / 通过判据）
 
-> 版本：**v1.4**（2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条；v1.4（2026-10-24）P3-010-03 落地 + `-04~11` 归并收口登记 + 类型段拆三 project）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
+> 版本：**v1.5**（2026-10-24 补 §3「P3-011 六包派发锚点」｜2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条；v1.4（2026-10-24）P3-010-03 落地 + `-04~11` 归并收口登记 + 类型段拆三 project）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
 >
 > 为什么单独成表：锚点三项原先只写在包级验收断言里（「本包须填锚点三项」），但**没有载体**——填在哪、谁来核，都没定义。本表就是那个载体：一包一行，写死路径与可复制执行的命令。
 >
@@ -84,3 +84,29 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 | `wo/no-emoji` | 规则自身在测试文件里抓到真 emoji（U+1F680/U+1F4BE 两条） | 说明规则对「源码里的真字符」有效；测试改用 `String.fromCodePoint()` 运行时构造 |
 | 依赖面断言 G / D | 给 `@wo/shared` 临时加 `react-icons` 与 `lodash` | `check:deps exit=1`，报「第二图标源」+「dependencies 只允许 zod」；还原后 `exit=0` |
 | 规则测试本身 | RuleTester `invalid` 段断言精确条数（2 处 emoji 必须报 2 条） | 首轮特意写错时测试确实红过，证明不是空跑 |
+
+## 3. P3-011 NestJS 应用骨架与模块划分（六包，按实体内容切分）
+
+**切分口径（2026-10-24 用户裁决「按建议」）**：原 7 包中 `-02`≡`-03`、`-05`≡`-06` 去掉序号后缀后逐字相同，属模板二分；收口为 **5 个实体单元 + 1 个收口包**。工时 1.0 / 1.2 / 2.0 / 1.4 / 1.4 / 1.0（和 **8.0h**，与工作项工时一致）；其中三行越 1.0~1.2h 带，已在 `scripts/gen_phase3_backlog.py` 的 `BAND_EXCEPTIONS` 显式登记理由——**再拆回带内即回到模板切分**，故登记例外而非继续劈包。
+
+**判据基座（同轮裁定）**：端点分组以 `openapi.tags`（10 组 / 30 operation）为准，不以 Spec §5 为准——Spec §5 表**无「分组」列**，且缺 `GET /api/v1/health/ready`（该端点归 P3-016，见 §3.1 边界）。
+
+**填表状态说明**：下表是**派发前置**锚点（`TASKS §4` 派单四件套 ② 要求随单给出锚点三项），与本文 §0 填表规则 ①「不预填未交付包」分属两件事——规则 ① 约束的是**执行记录**（交付后才写实测与反向验证），不是派发锚点。六包逐包交付后在此补执行记录并标「已完成」。
+
+| 包ID | 段 | 产出物路径 | 检查命令 | 通过判据 |
+|---|---|---|---|---|
+| **P3-011-01**（待派发） | 依赖与工具链落位 | `apps/server/package.json`、`apps/server/jest.config.cjs`、`pnpm-workspace.yaml`（`allowBuilds`）、`pnpm-lock.yaml` | `pnpm install --frozen-lockfile && node scripts/check-workspace-deps.mjs && pnpm --filter @wo/server exec jest --listTests` | 三条 exit=0；lock 可解析 `@nestjs/core@11` / `jest@30.5.2` / `ts-jest` / `@nestjs/testing` / `supertest`；`jest --listTests` 输出 0 用例仍 exit=0（装配成立而非空跑） |
+| **P3-011-02**（待派发） | 引导与模块骨架 | `apps/server/src/main.ts`、`app.module.ts`、`src/modules/<tag>/`（10 个 tag 各一）、`scripts/check-module-graph.mjs`、`scripts/check-endpoint-groups.mjs` | `pnpm --filter @wo/server build` → 起服务 → `curl -s -o /dev/null -w '%{http_code}' 127.0.0.1:3000/api/v1/health` → `node scripts/check-module-graph.mjs` → `node scripts/check-endpoint-groups.mjs` | health=200 且体为 `status:ok`；模块图零环；模块目录与 `openapi.tags` 10 组**逐一对应**（缺一组或多一组即 fail） |
+| **P3-011-03**（待派发） | 契约 schema 定义 | `packages/shared/src/schemas/`（22 个契约 schema + `internal/`）、`scripts/check-schema-names.mjs` | `node scripts/check-schema-names.mjs && pnpm typecheck` | 22 个导出名与 `components.schemas` **双向逐字相等**（改名/多一/少一即 fail）；每个 schema 的 `z.toJSONSchema` 产物含 `additionalProperties:false`；shared 类型检查 exit=0 |
+| **P3-011-04**（待派发） | 校验管道与错误映射 | `apps/server/src/common/pipes/zod-validation.pipe.ts`、`filters/all-exceptions.filter.ts`、`errors/validation-codes.ts` + 管道单测 | `pnpm --filter @wo/server test -- zod-validation` | 四例全绿：body 未知键/错类型→400+7001、query 越界→400+7002、path 非法→400+7004、非法 JSON→400+7003；**断言非恒真**（摘掉 pipe 挂载后该组必红）；错误体形状 `{code,message,detail:{errors:[{field,rule,message}]}}` |
+| **P3-011-05**（待派发） | 断言与夹具 | `packages/shared/validation-fixtures/*.json`、`scripts/fixtures-run.mjs`、`packages/config/rules/request-schema-strict.js` | `node scripts/fixtures-run.mjs && pnpm test:rules && pnpm lint` | 夹具逐样本断言 `code`/`field`/`rule`/`message` 四者齐全；V-S2 黑名单正则命中即 fail；A-PATH 每条 issue 满足 `path.length>0` 或 `code==='unrecognized_keys'`；规则对 `apps/` 内裸 `z.object(` 报 error，RuleTester 红/绿各一例 |
+| **P3-011-06**（待派发） | 联调与收口 | 本文件 §3 六行执行记录 + 三条新脚本纳入 `verify.mjs` + `OPEN-DECISIONS` 遗留登记 | `node scripts/verify.mjs && python -X utf8 scripts/gen_status_panel.py` | verify 全段 exit=0（含本工作项新增三段）；面板口径校验带无「不一致」；遗留项已登记且带归属包 |
+
+### 3.1 与相邻工作项的边界（本段三处越界已定界）
+
+| 越界项 | 归属裁定 | 依据 |
+|---|---|---|
+| 「表结构骨架」 | **P3-014**（TypeORM 数据源与 10 表实体，14h / 13 包） | 原 `-01` 包级交付物模板句含此项，与 P3-014 重复；且 P3-014 依赖 `P3-003`（金仓冒烟，M0 唯一未完项），P3-011 先做即逆依赖顺序。本段六包一律不产出表结构。 |
+| happy path（health 200） | liveness 归本段 `-02`；**readiness 归 P3-016** | `GET /api/v1/health/ready` 由 D1-11 ③ 新定、2026-10-24 解冻窗口落盘，属 P3-016「启动断言三级国密与健康检查」；业务 happy path（login）归 P3-041。 |
+| A-STRICT 判据 1 的 ESLint 规则 | 规则文件落本段 `-05`；**`WO_RULE_NAMES` 登记回写 P3-010-02** | 规则目录 `packages/config/rules/` 是 P3-010-02 的产出物，而该批 `-04~11` 已于 2026-10-24 归并收口。回写动作挂在 `-05` 的通过判据内，并在 `-06` 收口时核对 §1「新增规则必须同步登记 `WO_RULE_NAMES`」。 |
+
