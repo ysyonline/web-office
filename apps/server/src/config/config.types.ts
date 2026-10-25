@@ -12,17 +12,31 @@
  * 写成联合类型则**编译期就守住了**：给必填键写 `defaultValue` 直接 tsc 报错。
  * 这一层正是本包（接口与骨架）该交付的东西——约束是形状的一部分。
  *
- * ## 键清单的边界（本包刻意不预置）
+ * ## 键清单的边界（-01 留空、-02 补齐必填三键）
  *
- * 必填类与派生类的**具体键**由 D1-11 卡裁决（库连接 / License 公钥 / 离线源 / 派生
- * 的 baseUrl 一类），而该卡在 Security Center 拦读名单内。猜一份键表等于给下游埋一份
- * 看起来权威的假契约——故本包只落**机制与既有事实键**（`PORT` / `LOG_LEVEL` 两键，
- * 出处 = `apps/server/src/main.ts` 头注「端口、日志级别」），必填/派生键随
- * P3-012-02 补入（届时按卡内清单逐键登记，不在此文件外另立字面量）。
+ * 必填类与派生类的**具体键**由 D1-11 卡裁决，而该卡在 Security Center 拦读名单内。
+ * -01 只落机制与既有事实键（`PORT` / `LOG_LEVEL`）；-02 从**卡外可机读的旁证**补齐
+ * 必填三键（`.workbuddy/memory/2026-10-22.md` 的 D1-11 交付记录逐字写明「必填 3：
+ * WO_JWT_SECRET/WO_DB_URL/WO_LICENSE_PUBLIC_KEY」，且 openapi readiness 段独立印证
+ * 「License 公钥已装载（WO_LICENSE_PUBLIC_KEY 已解析）」）——**键名有据、非编造**。
+ * 17 个可选键与 2 个派生键（`heapHardLimit` / `isReadonlyMode`）的确切键名与默认值
+ * 只在卡内，本文件仍不猜，随卡可读或 -07 收口时补入。
  */
 
 /** 三分类（D1-11 ①：必填 / 可选有默认 / 派生）。 */
 export type ConfigKeyClass = 'required' | 'optional' | 'derived';
+
+/**
+ * 取值的形态（装载器据它做类型转换）。
+ *
+ * 这不是「业务校验」：`integer` 只保证是十进制非负整数，`logLevel` 只保证落在四个
+ * 级别名内。**具体键的取值范围与形态约束（端口 1~65535、DB URL 可解析、License
+ * 公钥 130 位 hex 且 `04` 开头）归 P3-012-04 的逐键语义校验**——那里会按 kind 挂
+ * 校验器，本包只交付「值能类型正确地进到配置对象里」。
+ *
+ * 缺省 = `string`（不为每个字符串键重复写一遍）。
+ */
+export type ConfigValueKind = 'string' | 'integer' | 'logLevel';
 
 /** 三类共有的字段。 */
 interface ConfigKeyBase {
@@ -32,6 +46,8 @@ interface ConfigKeyBase {
   readonly description: string;
   /** 敏感值（口令/私钥）：日志与错误文案必须脱敏，不得回显取值。 */
   readonly secret?: boolean;
+  /** 取值形态（见 `ConfigValueKind`）；缺省 `string`。 */
+  readonly kind?: ConfigValueKind;
 }
 
 /** 必填：缺失 = 启动失败并指名该键；**不得**有默认值。 */
@@ -59,6 +75,14 @@ export interface DerivedConfigKey extends ConfigKeyBase {
 /** 键表元素（三分类的判别联合）。 */
 export type ConfigKeySpec = RequiredConfigKey | OptionalConfigKey | DerivedConfigKey;
 
+/**
+ * 「有取值」的键（必填 + 可选）——即需要从环境变量读一个值的那些键。
+ *
+ * 派生键没有 `env`，所以装载器里凡是「读值 / 转换 / 脱敏」的函数都用这个类型而不是
+ * `ConfigKeySpec`：拿 `spec.env` 前先由判别联合收窄，而不是运行期 `as`。
+ */
+export type ValuedConfigKey = RequiredConfigKey | OptionalConfigKey;
+
 /** 日志级别（`LOG_LEVEL` 的取值域；与 Nest Logger 的级别名对齐）。 */
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -73,4 +97,10 @@ export interface ServerConfig {
   readonly port: number;
   /** 日志级别（`LOG_LEVEL`）。 */
   readonly logLevel: LogLevel;
+  /** JWT 签名口令（`WO_JWT_SECRET`，**敏感**：日志与错误文案一律脱敏）。 */
+  readonly jwtSecret: string;
+  readonly dbUrl: string;
+  /** 数据库连接串（`WO_DB_URL`，TypeORM 原生吃 URL，不拆零散主机/端口键）。 */
+  /** License 验签公钥（`WO_LICENSE_PUBLIC_KEY`，裸点 hex 130 字符前缀 `04`）。 */
+  readonly licensePublicKey: string;
 }
