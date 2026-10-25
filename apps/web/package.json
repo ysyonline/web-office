@@ -5,9 +5,20 @@
   "type": "module",
   "description": "React 18.3 + Vite 7 前端 SPA。P3-010-03 只落入口骨架，main.tsx/路由/页面归 P3-030。",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@wo/shared": "workspace:*"
+    "@wo/shared": "workspace:*",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@vitejs/plugin-react": "5.2.0",
+    "vite": "7.3.7"
   }
 }

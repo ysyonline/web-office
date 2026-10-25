@@ -1,0 +1,333 @@
+/**
+ * web-office Design Tokens
+ * Spec: Spec-web-office-v1.md §8 | 版本 1.0.0 | 设计师：颜好看
+ * 分层：A1-primitive → A2-semantic → B-slot-component → C-extension
+ * 前端用法：import './design-tokens.css';（在 app 入口最早处引入）
+ *
+ * 图标：lucide-react（全项目唯一来源，16/20/24px）
+ * 禁止：紫粉渐变 / 渐变文字 / 彩色左边框 / emoji 图标 / 硬编码色值散落
+ */
+
+:root {
+  /* ============================================================
+   * A1 — Primitive（原始色板与字体栈，禁止在业务代码中直接引用）
+   * ============================================================ */
+
+  /* 主色 — Emerald */
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-200: #a7f3d0;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669; /* 品牌主色基准值 */
+  --color-emerald-700: #047857;
+  --color-emerald-800: #065f46;
+  --color-emerald-900: #064e3b;
+
+  /* 中性 — 暖灰 */
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #f9fafb;
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-150: #f1f5f9; /* 表头底 */
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-250: #e2e8f0; /* 网格线 / 选中行头底 */
+  --color-neutral-300: #d1d5db;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #64748b; /* 行列头文字 */
+  --color-neutral-700: #374151;
+  --color-neutral-900: #111827;
+
+  /* 语义源色 */
+  --color-red-50: #fef2f2;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-amber-50: #fffbeb;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-amber-700: #b45309;
+  --color-green-50: #f0fdf4;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-green-700: #15803d;
+  --color-blue-50: #eff6ff;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+
+  /* 协同光标 8 色（刻意避开品牌绿与语义红） */
+  --color-collab-1: #2563eb; /* blue   */
+  --color-collab-2: #e11d48; /* rose   */
+  --color-collab-3: #f97316; /* orange */
+  --color-collab-4: #d97706; /* amber  */
+  --color-collab-5: #8b5cf6; /* violet */
+  --color-collab-6: #0891b2; /* cyan   */
+  --color-collab-7: #db2777; /* pink   */
+  --color-collab-8: #65a30d; /* lime   */
+
+  /* 字体栈（OFL 协议，本地打包，禁止运行时外链字体） */
+  --font-display:
+    'Inter', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-body: 'Inter', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+
+  /* ============================================================
+   * A2 — Semantic（语义层，业务代码一律引用这一层）
+   * ============================================================ */
+
+  /* Surface / Foreground / Border */
+  --color-bg: var(--color-neutral-50);
+  --color-surface: var(--color-neutral-0);
+  --color-surface-warm: var(--color-neutral-100);
+  --color-fg: var(--color-neutral-900);
+  --color-fg-2: var(--color-neutral-700);
+  --color-muted: var(--color-neutral-500);
+  --color-meta: var(--color-neutral-400);
+  --color-border: var(--color-neutral-200);
+  --color-border-soft: var(--color-neutral-100);
+
+  /* Accent（每屏 ≤2 处可见使用） */
+  --color-accent: var(--color-emerald-600);
+  --color-accent-on: #ffffff;
+  --color-accent-hover: var(--color-emerald-700);
+  --color-accent-active: var(--color-emerald-800);
+  --color-accent-subtle: var(--color-emerald-50);
+  --color-accent-subtle-hover: var(--color-emerald-100);
+
+  /* Semantic */
+  --color-success: var(--color-green-600);
+  --color-success-bg: var(--color-green-50);
+  --color-warn: var(--color-amber-600);
+  --color-warn-bg: var(--color-amber-50);
+  --color-danger: var(--color-red-600);
+  --color-danger-bg: var(--color-red-50);
+  --color-info: var(--color-blue-600);
+  --color-info-bg: var(--color-blue-50);
+
+  /* Typography */
+  --font-size-xs: 0.75rem; /* 12px 行列头/辅助/徽章 */
+  --font-size-sm: 0.8125rem; /* 13px 单元格默认字号 */
+  --font-size-base: 0.875rem; /* 14px 表单/按钮/列表正文 */
+  --font-size-lg: 1rem; /* 16px 页面标题/对话框标题 */
+  --font-size-xl: 1.25rem; /* 20px 登录页主标题 */
+  --font-weight-regular: 400;
+  --font-weight-medium: 510;
+  --font-weight-semibold: 590;
+  --line-height-tight: 1.25;
+  --line-height-body: 1.5;
+  --line-height-cell: 1.4;
+  --letter-spacing-caps: 0.06em; /* ALL CAPS 标签 */
+  --letter-spacing-title: -0.01em; /* ≥16px 标题 */
+
+  /* Spacing（4px 基准网格） */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Radius（克制：卡片上限 8px） */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 9999px;
+
+  /* Elevation（无装饰性阴影） */
+  --shadow-none: none;
+  --shadow-xs: 0 1px 2px rgba(17, 24, 39, 0.05);
+  --shadow-raised: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 8px rgba(17, 24, 39, 0.06);
+  --shadow-overlay: 0 8px 24px rgba(17, 24, 39, 0.12);
+
+  /* Motion（Motion 3：仅功能性过渡，150ms 收敛） */
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-slow: 300ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Focus */
+  --focus-ring: 0 0 0 2px var(--color-neutral-0), 0 0 0 4px rgba(5, 150, 105, 0.35);
+
+  /* ============================================================
+   * B — Slot（组件槽位）
+   * ============================================================ */
+
+  /* Button */
+  --btn-primary-bg: var(--color-accent);
+  --btn-primary-text: var(--color-accent-on);
+  --btn-primary-bg-hover: var(--color-accent-hover);
+  --btn-primary-bg-active: var(--color-accent-active);
+  --btn-secondary-bg: var(--color-surface);
+  --btn-secondary-text: var(--color-fg-2);
+  --btn-secondary-border: var(--color-border);
+  --btn-secondary-bg-hover: var(--color-neutral-50);
+  --btn-ghost-bg: transparent;
+  --btn-ghost-text: var(--color-fg-2);
+  --btn-ghost-bg-hover: var(--color-neutral-100);
+  --btn-danger-bg: var(--color-danger);
+  --btn-danger-text: #ffffff;
+  --btn-danger-bg-hover: var(--color-red-700);
+  --btn-height: 32px;
+  --btn-radius: var(--radius-md);
+  --btn-padding-x: var(--space-3);
+  --btn-font-size: var(--font-size-base);
+  --btn-font-weight: var(--font-weight-medium);
+  --btn-disabled-bg: var(--color-neutral-100);
+  --btn-disabled-text: var(--color-neutral-400);
+
+  /* Toolbar icon button */
+  --toolbar-btn-size: 28px;
+  --toolbar-btn-icon: 16px;
+  --toolbar-btn-radius: var(--radius-sm);
+  --toolbar-btn-bg-hover: var(--color-neutral-100);
+  --toolbar-btn-bg-active: var(--color-neutral-200);
+  --toolbar-btn-bg-toggled: var(--color-accent-subtle);
+  --toolbar-btn-text-toggled: var(--color-accent);
+  --toolbar-btn-text-disabled: var(--color-neutral-300);
+
+  /* Input */
+  --input-bg: var(--color-surface);
+  --input-text: var(--color-fg);
+  --input-border: var(--color-neutral-300);
+  --input-border-hover: var(--color-neutral-400);
+  --input-placeholder: var(--color-neutral-400);
+  --input-radius: var(--radius-md);
+  --input-height: 32px;
+  --input-padding-x: var(--space-3);
+  --input-error-border: var(--color-danger);
+  --input-disabled-bg: var(--color-neutral-100);
+  --input-disabled-text: var(--color-neutral-400);
+
+  /* Dropdown / Context menu */
+  --dropdown-bg: var(--color-surface);
+  --dropdown-border: var(--color-border);
+  --dropdown-shadow: var(--shadow-raised);
+  --dropdown-radius: var(--radius-lg);
+  --dropdown-item-height: 32px;
+  --dropdown-item-padding-x: var(--space-3);
+  --dropdown-item-bg-hover: var(--color-neutral-100);
+  --dropdown-item-bg-selected: var(--color-accent-subtle);
+  --dropdown-item-text-selected: var(--color-accent);
+  --dropdown-item-text-danger: var(--color-danger);
+  --dropdown-item-bg-danger-hover: var(--color-danger-bg);
+  --context-menu-min-width: 180px;
+
+  /* Dialog */
+  --dialog-bg: var(--color-surface);
+  --dialog-radius: var(--radius-lg);
+  --dialog-shadow: var(--shadow-overlay);
+  --dialog-overlay: rgba(17, 24, 39, 0.4);
+  --dialog-width: 480px;
+  --dialog-padding: var(--space-6);
+  --dialog-title-size: var(--font-size-lg);
+  --dialog-title-weight: var(--font-weight-semibold);
+
+  /* Toast */
+  --toast-bg: var(--color-neutral-900);
+  --toast-text: #ffffff;
+  --toast-radius: var(--radius-md);
+  --toast-padding: var(--space-2) var(--space-3);
+  --toast-font-size: var(--font-size-sm);
+  --toast-duration: 3000ms;
+
+  /* Data table（列表/审计日志用） */
+  --table-header-bg: var(--color-neutral-150);
+  --table-header-text: var(--color-neutral-600);
+  --table-row-border: var(--color-neutral-200);
+  --table-row-hover: var(--color-neutral-50);
+  --table-row-height: 40px;
+  --table-cell-padding-x: var(--space-3);
+
+  /* ============================================================
+   * C — Extension（电子表格编辑器专属）
+   * ============================================================ */
+
+  /* Grid */
+  --grid-line: var(--color-neutral-250);
+  --grid-header-bg: var(--color-neutral-150);
+  --grid-header-text: var(--color-neutral-600);
+  --grid-header-hover-bg: var(--color-neutral-200);
+  --grid-header-selected-bg: var(--color-neutral-250);
+  --grid-header-selected-text: var(--color-accent);
+  --grid-cell-font: var(--font-mono);
+  --grid-cell-size: var(--font-size-sm);
+  --grid-selection-border: var(--color-accent);
+  --grid-selection-fill: rgba(5, 150, 105, 0.06);
+  --grid-fill-handle: var(--color-accent);
+  --grid-resize-guide: var(--color-accent);
+
+  /* Sheet tab */
+  --sheet-tab-text: var(--color-neutral-600);
+  --sheet-tab-hover-bg: var(--color-neutral-100);
+  --sheet-tab-active-bg: var(--color-neutral-250);
+  --sheet-tab-active-text: var(--color-accent);
+  --sheet-tab-active-underline: var(--color-accent);
+
+  /* Collaboration */
+  --collab-selection-fill-opacity: 0.1;
+  --collab-cursor-border-width: 2px;
+  --collab-name-tag-radius: var(--radius-sm);
+  --collab-name-tag-size: var(--font-size-xs);
+  --collab-avatar-size: 24px;
+  --collab-avatar-overlap: -6px;
+
+  /* Save indicator */
+  --save-saved-dot: var(--color-success);
+  --save-saving-color: var(--color-muted);
+  --save-offline-color: var(--color-warn);
+
+  /* Readonly banner（License 降级，挂应用布局根、标题栏栈之外） */
+  --height-readonly-banner: 32px;
+  --readonly-banner-bg: var(--color-warn-bg);
+  --readonly-banner-border: var(--color-warn);
+  --readonly-banner-text: var(--color-amber-700);
+
+  /* ============================================================
+   * Layout — 区域尺寸（Spec §8：工具栏总高 ≤120px）
+   * ============================================================ */
+  --height-title-bar: 44px;
+  --height-toolbar: 40px;
+  --height-formula-bar: 32px;
+  --height-header-total: 116px; /* 44+40+32 */
+  --height-row-header: 24px;
+  --width-column-header: 64px;
+  --height-sheet-bar: 36px;
+  --height-status-bar: 28px;
+  --width-admin-sidebar: 200px;
+  --container-max: 1200px;
+
+  /* z-index */
+  --z-grid: 10;
+  --z-grid-header: 20;
+  --z-sticky: 1100;
+  --z-dropdown: 1200;
+  --z-context-menu: 1250;
+  --z-modal: 1300;
+  --z-toast: 1400;
+  --z-tooltip: 1500;
+}
+
+/**
+ * 无障碍：全局降低动效
+ * 所有 transition/animation 时长归零，禁止弹跳缓动与装饰性动画
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

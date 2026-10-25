@@ -1,0 +1,81 @@
+/**
+ * 页面壳样式（SB-01）。
+ *
+ * 全部颜色、间距、字号走设计令牌（`src/design/design-tokens.css` 的 CSS 变量），
+ * 不写字面量色值——`wo/no-hardcoded-color` 对 TS/TSX 执法，CSS 侧靠人工守同一约定。
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.app-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-title);
+}
+
+.app-meta {
+  color: var(--color-meta);
+  font-size: var(--font-size-xs);
+}
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-4);
+}
+
+.sheet-slot {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.sheet-slot-hint {
+  margin: 0;
+  color: var(--color-fg-2);
+  font-size: var(--font-size-base);
+}
+
+.sheet-slot-sub {
+  margin: var(--space-1) 0 0;
+  color: var(--color-muted);
+  font-size: var(--font-size-xs);
+}

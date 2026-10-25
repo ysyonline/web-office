@@ -1,7 +1,7 @@
 {
   "extends": "../../packages/config/tsconfig.web.json",
   "compilerOptions": {
-    "types": [],
+    "types": ["vite/client", "react", "react-dom"],
     "paths": {
       "@wo/shared": ["../../packages/shared/src/index.ts"]
     }
