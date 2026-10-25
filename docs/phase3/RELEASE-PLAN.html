@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Web Office · Phase 3 版本排期计划（至 v1.0 GA）</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#12181f; --bg3:#161d26; --line:#232c38; --line2:#2c3746;
+  --fg:#e6edf3; --fg2:#9aa7b4; --fg3:#6b7785;
+  --ok:#3fb950; --warn:#d29922; --bad:#f85149; --info:#58a6ff; --purple:#a371f7;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+  font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;
+  font-size:13px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1500px;margin:0 auto;padding:22px 26px 70px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  padding-bottom:14px;border-bottom:1px solid var(--line)}
+h1{font-size:19px;margin:0 0 4px;font-weight:600;letter-spacing:.3px}
+.sub{color:var(--fg3);font-size:12px;max-width:900px}
+.sub b{color:var(--fg2);font-weight:500}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;margin:18px 0 4px}
+.kpi{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:11px 13px}
+.kpi .l{color:var(--fg3);font-size:11px;letter-spacing:.4px}
+.kpi .v{font-size:21px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums}
+.kpi .d{color:var(--fg3);font-size:11px;margin-top:2px}
+.sect{margin-top:28px}
+.sect h2{font-size:12.5px;font-weight:600;color:var(--fg2);margin:0 0 10px;letter-spacing:.6px;
+  text-transform:uppercase}
+.tblbox{border:1px solid var(--line);border-radius:8px;overflow:auto;background:var(--bg2)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px}
+thead th{position:sticky;top:0;z-index:3;background:#151c25;color:var(--fg2);font-weight:500;
+  font-size:11px;letter-spacing:.4px;text-align:left;padding:8px 10px;
+  border-bottom:1px solid var(--line2);white-space:nowrap}
+tbody td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:hover{background:var(--bg3)}
+td.c{text-align:center;white-space:nowrap} td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+th.c{text-align:center} th.r{text-align:right}
+.vid{font-weight:600;color:#cfe6ff}
+.dim{color:var(--fg3)}
+.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;color:var(--fg2)}
+.gantt{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.grow{display:grid;grid-template-columns:132px 1fr 92px;gap:10px;align-items:center;
+  padding:4px 0;border-bottom:1px solid rgba(35,44,56,.55)}
+.grow:last-child{border-bottom:none}
+.gname{font-size:11.5px;color:var(--fg2)}
+.gname b{color:var(--fg);font-weight:600}
+.gtrack{position:relative;height:16px;background:#0f141a;border-radius:3px;overflow:hidden}
+.gbar{position:absolute;top:0;height:16px;border-radius:3px;
+  background:linear-gradient(90deg,#1f4a72,#2b6ca3);border:1px solid #2f6f9f}
+.gbar.ga{background:linear-gradient(90deg,#2f6f3f,#3fb950);border-color:#3fb950}
+.gbar.past{background:linear-gradient(90deg,#3a3f4a,#4b5361);border-color:#4b5356}
+.gmeta{font-size:10.5px;color:var(--fg3);text-align:right;font-variant-numeric:tabular-nums}
+.axis{display:grid;grid-template-columns:132px 1fr 92px;gap:10px;padding:2px 0 6px}
+.axline{display:flex;justify-content:space-between;font-size:10px;color:var(--fg3)}
+.cards{display:grid;grid-template-columns:1fr;gap:12px}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.card.gate{border-left:3px solid var(--warn)}
+.card.ga{border-left:3px solid var(--ok)}
+.ch{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);
+  background:#141b23;flex-wrap:wrap}
+.ch .t{font-size:13.5px;font-weight:600}
+.ch .g{color:var(--fg3);font-size:11.5px}
+.badge{border-radius:999px;padding:1px 9px;font-size:10.5px;white-space:nowrap;
+  background:#1b2430;border:1px solid var(--line2);color:var(--fg2)}
+.badge.b1{background:#17324d;border-color:#1f4a72;color:#cfe6ff}
+.badge.b2{background:#2a2113;border-color:#4a3a1a;color:#e3b341}
+.badge.b3{background:#12281a;border-color:#1d4429;color:#5fd473}
+.cb{padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:1000px){.cb{grid-template-columns:1fr}}
+.blk h4{margin:0 0 6px;font-size:11px;color:var(--fg3);letter-spacing:.5px;text-transform:uppercase;font-weight:600}
+.blk ul{margin:0;padding-left:16px}
+.blk li{margin:3px 0;color:var(--fg2);font-size:12px}
+.blk li b{color:var(--fg);font-weight:500}
+.goal{grid-column:1/-1;color:#cfe6ff;font-size:12.5px;background:#0f1c28;
+  border:1px solid #1c3348;border-radius:6px;padding:8px 11px}
+.risk{grid-column:1/-1;color:#e3b341;font-size:11.5px;background:#1d1710;
+  border:1px solid #3b2d15;border-radius:6px;padding:7px 11px}
+.wtable td:first-child{white-space:nowrap;color:var(--fg2)}
+.legend{color:var(--fg3);font-size:11px;margin-top:9px;line-height:1.75}
+.legend b{color:var(--fg2);font-weight:500}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.fstep{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:11px 13px}
+.fstep .n{font-size:10.5px;color:var(--info);letter-spacing:.6px}
+.fstep .t{font-weight:600;margin:3px 0 5px;font-size:12.5px}
+.fstep .d{color:var(--fg3);font-size:11.5px;line-height:1.6}
+.tag{display:inline-block;font-size:10.5px;padding:0 7px;border-radius:4px;
+  background:#1b2430;border:1px solid var(--line2);color:var(--fg2);margin-right:4px}
+</style></head><body><div class="wrap">
+<header><div>
+<h1>Phase 3 版本排期计划 · 至 v1.0 GA</h1>
+<div class="sub">数据源 <b>backlog.csv</b>（788 包）｜ 生成器 <b>scripts/gen_release_plan.py</b> ｜ 生成于 2026-10-25 14:04 ｜ 版本边界与完成标志由生成器登记，包数与工时由台账算出，覆盖与依赖闭环经机器校验（重复/漏项/上游倒置即生成器失败）</div>
+</div></header>
+<div class="kpis">
+<div class="kpi"><div class="l">剩余包</div><div class="v">719</div><div class="d">总 788，已完成 69</div></div>
+<div class="kpi"><div class="l">剩余工时</div><div class="v">801.6h</div><div class="d">名义 1.12h/包</div></div>
+<div class="kpi"><div class="l">版本数</div><div class="v">14</div><div class="d">v0.1 至 v1.0 GA</div></div>
+<div class="kpi"><div class="l">计划工期</div><div class="v">227 日</div><div class="d">执行 184 + 缓冲 43，≈ 45.4 周</div></div>
+<div class="kpi"><div class="l">计划结束</div><div class="v">2027-09-07</div><div class="d">单执行者名义日期</div></div>
+<div class="kpi"><div class="l">双执行者</div><div class="v">150 日</div><div class="d">≈ 30 周，压缩 34%</div></div>
+</div>
+<div class="sect"><h2>一、工期三层口径（不确定性区间）</h2>
+<div class="tblbox"><table class="wtable"><thead><tr><th>口径</th><th class="r">工作日</th><th class="r">周</th><th>说明</th></tr></thead><tbody>
+<tr><td>名义（台账 1.12h/包 ÷ 6h）</td><td class="r">134</td><td class="r">27</td><td class="dim">台账工时直接折算，最乐观；历史上从未达到</td></tr>
+<tr><td>实测（1.47h/包 ÷ 6h）</td><td class="r">176</td><td class="r">35</td><td class="dim">含验证与取证开销，与 2026-10-25 三次连发实测吻合</td></tr>
+<tr><td><b>计划（按版取整 184 + 20% 缓冲 43）</b></td><td class="r"><b>227</b></td><td class="r"><b>45.4</b></td><td class="dim">本计划采用值；缓冲单列在每版工期里，不摊进执行日</td></tr>
+</tbody></table></div>
+<div class="legend">三个常数可质疑但不可隐去：<b>单包实测耗时</b> 1.47h（3 包 / 4h24m）、<b>有效产能</b> 4 包/工作日（6h ÷ 1.47h）、<b>单版缓冲</b> 20%。任一个被推翻，本页所有日期随之失效——故写在首页而非附录。</div>
+</div>
+<div class="sect"><h2>二、版本时间轴（单执行者）</h2>
+<div class="gantt">
+<div class="axis"><div></div><div class="axline"><span>2026-10-26</span><span>2027-09-07</span></div><div></div></div>
+<div class="grow">
+<div class="gname"><b>v0.1</b> 门禁收官</div>
+<div class="gtrack"><div class="gbar" style="left:0.000%;width:1.322%" title="v0.1 2026-10-26 至 2026-10-28"></div></div>
+<div class="gmeta">3日 · 7包</div>
+</div>
+<div class="grow">
+<div class="gname"><b>v0.2</b> 后端地基</div>
+<div class="gtrack"><div class="gbar" style="left:1.322%;width:6.608%" title="v0.2 2026-10-29 至 2026-11-18"></div></div>
+<div class="gmeta">15日 · 47包</div>
+</div>
+<div class="grow">
+<div class="gname"><b>v0.3</b> 前端骨架与交付基建</div>
+<div class="gtrack"><div class="gbar" style="left:7.930%;width:8.811%" title="v0.3 2026-11-19 至 2026-12-16"></div></div>
+<div class="gmeta">20日 · 64包</div>
+</div>
+<div class="grow">
+<div class="gname"><b>v0.4</b> 组件库基线</div>
+<div class="gtrack"><div class="gbar" style="left:16.740%;width:11.894%" title="v0.4 2026-12-17 至 2027-01-22"></div></div>
+<div class="gmeta">27日 · 85包</div>
+</div>
+<div class="grow">
+<div class="gname"><b>v0.5</b> 账户与权限</div>
+<div class="gtrack"><div class="gbar" style="left:28.634%;width:6.167%" title="v0.5 2027-01-25 至 2027-02-11"></div></div>
+<div class="gmeta">14日 · 42包</div>
+</div>
+<div class="grow">
+<div class="gname"><b>v0.6</b> SSO 与审计面</div>
+<div class="gtrack"><div class="gbar" style="left:34.802%;width:7.048%" title="v0.6 2027-02-12 至 2027-03-05"></div></div>
+<div class="gmeta">16日 · 51包</div>
+</div>
+<div class="grow">
+<div class="gname"><b>v0.7</b> 单人可用版（内测）</div>
+<div class="gtrack"><div class="gbar" style="left:41.850%;width:7.489%" title="v0.7 2027-03-08 至 2027-03-30"></div></div>
+<div class="gmeta">17日 · 53包</div>
+</div>
+<div class="grow">
+<div class="gname"><b>v0.8</b> 协同内核</div>
+<div class="gtrack"><div class="gbar" style="left:49.339%;width:9.692%" title="v0.8 2027-03-31 至 2027-04-29"></div></div>
+<div class="gmeta">22日 · 70包</div>
+</div>
+<div class="grow">
+<div class="gname"><b>v0.9</b> 协同完备</div>
+<div class="gtrack"><div class="gbar" style="left:59.031%;width:6.608%" title="v0.9 2027-04-30 至 2027-05-20"></div></div>
+<div class="gmeta">15日 · 47包</div>
+</div>
+<div class="grow">
+<div class="gname"><b>v0.10</b> 导入解析</div>
+<div class="gtrack"><div class="gbar" style="left:65.639%;width:5.286%" title="v0.10 2027-05-21 至 2027-06-07"></div></div>
+<div class="gmeta">12日 · 40包</div>
+</div>
+<div class="grow">
+<div class="gname"><b>v0.11</b> 导入保真</div>
+<div class="gtrack"><div class="gbar" style="left:70.925%;width:7.930%" title="v0.11 2027-06-08 至 2027-07-01"></div></div>
+<div class="gmeta">18日 · 59包</div>
+</div>
+<div class="grow">
+<div class="gname"><b>v0.12</b> 导出与互斥</div>
+<div class="gtrack"><div class="gbar" style="left:78.855%;width:6.167%" title="v0.12 2027-07-02 至 2027-07-21"></div></div>
+<div class="gmeta">14日 · 44包</div>
+</div>
+<div class="grow">
+<div class="gname"><b>v0.13</b> License 与降级</div>
+<div class="gtrack"><div class="gbar" style="left:85.022%;width:4.846%" title="v0.13 2027-07-22 至 2027-08-05"></div></div>
+<div class="gmeta">11日 · 34包</div>
+</div>
+<div class="grow">
+<div class="gname"><b>v0.14</b> 交付验收（v1.0 GA）</div>
+<div class="gtrack"><div class="gbar ga" style="left:89.868%;width:10.132%" title="v0.14 2027-08-06 至 2027-09-07"></div></div>
+<div class="gmeta">23日 · 76包</div>
+</div>
+</div>
+<div class="legend">条形宽度 = 工作日（含缓冲）。<b>v0.1</b> 只有 7 包却决定 719 包的起点；<b>v0.4</b> 单版 27 日是全程最长，属节奏风险点；<b>v0.7</b> 是第一个用户可见的产品级版本。</div>
+</div>
+<div class="sect"><h2>三、版本总表</h2><div class="tblbox"><table><thead><tr>
+<th>版本</th><th>名称</th><th>包含需求</th><th class="r">包数</th><th class="r">工时</th><th class="r">执行</th><th class="r">缓冲</th><th class="r">合计</th><th>起</th><th>止</th>
+</tr></thead><tbody>
+<tr><td class="vid">v0.1</td><td>门禁收官</td><td class="mono">P3-003</td><td class="r">7</td><td class="r">7.98</td><td class="r">2</td><td class="r dim">1</td><td class="r"><b>3</b></td><td class="dim mono">10-26</td><td class="dim mono">10-28</td></tr>
+<tr><td class="vid">v0.2</td><td>后端地基</td><td class="mono">P3-012 P3-013 P3-017 P3-016 P3-014 P3-015 P3-018</td><td class="r">47</td><td class="r">53.70</td><td class="r">12</td><td class="r dim">3</td><td class="r"><b>15</b></td><td class="dim mono">10-29</td><td class="dim mono">11-18</td></tr>
+<tr><td class="vid">v0.3</td><td>前端骨架与交付基建</td><td class="mono">P3-020 P3-030 P3-031 P3-032 P3-034 P3-036 P3-037 P3-019</td><td class="r">64</td><td class="r">71.88</td><td class="r">16</td><td class="r dim">4</td><td class="r"><b>20</b></td><td class="dim mono">11-19</td><td class="dim mono">12-16</td></tr>
+<tr><td class="vid">v0.4</td><td>组件库基线</td><td class="mono">P3-033 P3-035</td><td class="r">85</td><td class="r">94.35</td><td class="r">22</td><td class="r dim">5</td><td class="r"><b>27</b></td><td class="dim mono">12-17</td><td class="dim mono">01-22</td></tr>
+<tr><td class="vid">v0.5</td><td>账户与权限</td><td class="mono">P3-040 P3-041 P3-042 P3-043 P3-044 P3-045 P3-046</td><td class="r">42</td><td class="r">45.96</td><td class="r">11</td><td class="r dim">3</td><td class="r"><b>14</b></td><td class="dim mono">01-25</td><td class="dim mono">02-11</td></tr>
+<tr><td class="vid">v0.6</td><td>SSO 与审计面</td><td class="mono">P3-047 P3-048 P3-049 P3-050 P3-051 P3-060 P3-061</td><td class="r">51</td><td class="r">57.95</td><td class="r">13</td><td class="r dim">3</td><td class="r"><b>16</b></td><td class="dim mono">02-12</td><td class="dim mono">03-05</td></tr>
+<tr><td class="vid">v0.7</td><td>单人可用版（内测）</td><td class="mono">P3-062 P3-063 P3-064 P3-065 P3-066</td><td class="r">53</td><td class="r">58.04</td><td class="r">14</td><td class="r dim">3</td><td class="r"><b>17</b></td><td class="dim mono">03-08</td><td class="dim mono">03-30</td></tr>
+<tr><td class="vid">v0.8</td><td>协同内核</td><td class="mono">P3-070 P3-071 P3-072 P3-073 P3-074 P3-075 P3-076 P3-077</td><td class="r">70</td><td class="r">77.91</td><td class="r">18</td><td class="r dim">4</td><td class="r"><b>22</b></td><td class="dim mono">03-31</td><td class="dim mono">04-29</td></tr>
+<tr><td class="vid">v0.9</td><td>协同完备</td><td class="mono">P3-078 P3-079 P3-080 P3-081 P3-090 P3-091 P3-092</td><td class="r">47</td><td class="r">53.96</td><td class="r">12</td><td class="r dim">3</td><td class="r"><b>15</b></td><td class="dim mono">04-30</td><td class="dim mono">05-20</td></tr>
+<tr><td class="vid">v0.10</td><td>导入解析</td><td class="mono">P3-100 P3-101 P3-102 P3-103 P3-104 P3-105 P3-106</td><td class="r">40</td><td class="r">43.95</td><td class="r">10</td><td class="r dim">2</td><td class="r"><b>12</b></td><td class="dim mono">05-21</td><td class="dim mono">06-07</td></tr>
+<tr><td class="vid">v0.11</td><td>导入保真</td><td class="mono">P3-107 P3-108 P3-109 P3-110 P3-111</td><td class="r">59</td><td class="r">64.01</td><td class="r">15</td><td class="r dim">3</td><td class="r"><b>18</b></td><td class="dim mono">06-08</td><td class="dim mono">07-01</td></tr>
+<tr><td class="vid">v0.12</td><td>导出与互斥</td><td class="mono">P3-112 P3-113 P3-114 P3-115 P3-093 P3-082</td><td class="r">44</td><td class="r">48.02</td><td class="r">11</td><td class="r dim">3</td><td class="r"><b>14</b></td><td class="dim mono">07-02</td><td class="dim mono">07-21</td></tr>
+<tr><td class="vid">v0.13</td><td>License 与降级</td><td class="mono">P3-120 P3-121 P3-122 P3-123 P3-124 P3-125</td><td class="r">34</td><td class="r">39.96</td><td class="r">9</td><td class="r dim">2</td><td class="r"><b>11</b></td><td class="dim mono">07-22</td><td class="dim mono">08-05</td></tr>
+<tr><td class="vid">v0.14</td><td>交付验收（v1.0 GA）</td><td class="mono">P3-130 P3-131 P3-132 P3-133 P3-134 P3-135 P3-136 P3-137</td><td class="r">76</td><td class="r">83.97</td><td class="r">19</td><td class="r dim">4</td><td class="r"><b>23</b></td><td class="dim mono">08-06</td><td class="dim mono">09-07</td></tr>
+<tr><td colspan="3" class="r dim">合计</td><td class="r"><b>719</b></td><td class="r"><b>801.64</b></td><td class="r"><b>184</b></td><td class="r"><b>43</b></td><td class="r"><b>227</b></td><td colspan="2" class="dim mono">2027-09-07</td></tr>
+</tbody></table></div>
+<div class="legend">校验：各版包数之和 <b>719</b> = 台账未完成包数 <b>719</b>；工作项去重 <b>84</b> 个；依赖闭环无倒置（上游必在同版更前或更早版本）。</div>
+</div>
+<div class="sect"><h2>四、逐版本定义（目标 / 需求 / 完成标志 / 出闸证据）</h2><div class="cards">
+<div class="card gate">
+<div class="ch"><span class="t">v0.1 门禁收官</span>
+<span class="badge b1">1 项需求</span>
+<span class="badge">7 包</span>
+<span class="badge">7.98h</span>
+<span class="badge b2">3 工作日</span>
+<span class="badge b3">2026-10-28 止</span>
+<span class="g">2026-10-26 至 2026-10-28 ｜ 泳道 BE</span>
+</div>
+<div class="cb">
+<div class="goal">目标：M0 全部关闭：国产库契约在真机上站得住，后续所有数据层工作才有地基。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-003</span><b>金仓契约冒烟（10 表 DDL/CRUD/反查/敏感点）</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>在金仓实例上执行 10 表 DDL，无语法/类型报错</li>
+<li>CRUD 往返一致：写入值与读回值逐字段相等</li>
+<li>反查（按 id / 外键）返回预期行集</li>
+<li>敏感点清单逐项确认（大小写、标识符长度、时区、布尔、自增、索引名）</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>schema.md 7.2 节五条断言全绿；差异项逐条进 OPEN-DECISIONS 并给出回溯范围</li>
+<li>冒烟报告归档，ANCHORS 执行记录引用其路径</li>
+<li>verify 14/14（本版无代码改动，须仍为绿）</li>
+</ul></div>
+<div class="risk">依赖与风险：金仓授权未到位即全阻塞（本节 R1）；无实例时只能出「差异清单 + PG 等价预演」，不算完成。</div>
+</div></div>
+<div class="card">
+<div class="ch"><span class="t">v0.2 后端地基</span>
+<span class="badge b1">7 项需求</span>
+<span class="badge">47 包</span>
+<span class="badge">53.70h</span>
+<span class="badge b2">15 工作日</span>
+<span class="badge b3">2026-11-18 止</span>
+<span class="g">2026-10-29 至 2026-11-18 ｜ 泳道 BE</span>
+</div>
+<div class="cb">
+<div class="goal">目标：服务能从空库启动：配置、日志、契约、数据层、迁移、审计六件一次成型。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-012</span><b>配置 / 环境变量 / 统一错误码基线</b> <span class="dim">BE · 5 包 · 5.70h　含已完成 2 包</span></li>
+<li><span class="tag">P3-013</span><b>日志与请求上下文（traceId）</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
+<li><span class="tag">P3-017</span><b>OpenAPI 契约校验与类型生成</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-016</span><b>启动断言三级国密与健康检查</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
+<li><span class="tag">P3-014</span><b>TypeORM 数据源与 10 表实体</b> <span class="dim">BE · 13 包 · 14.04h</span></li>
+<li><span class="tag">P3-015</span><b>迁移脚本与种子数据</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-018</span><b>审计写入中间件</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>空库执行迁移，得到 10 张表 + 种子数据</li>
+<li>启动服务，GET /api/v1/health 返回 200 且体 status:ok</li>
+<li>GET /api/v1/health/ready 反映数据库连通（停库后转 503，不是 200）</li>
+<li>任一请求带 traceId，日志行与错误体中的 traceId 一致</li>
+<li>写操作后审计表多一行，含操作者与目标对象</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>迁移可重复执行（二次执行无变更、无报错）</li>
+<li>ready 在「库通 / 库断」两态下分别 200 / 503，两态实跑取证</li>
+<li>非法请求返回 {code,message,detail} 且 code 属已登记码表</li>
+<li>OpenAPI 契约门禁能拦住「改了代码没改契约」（反向验证一次）</li>
+<li>verify 14/14；jest 与 fixtures 全绿</li>
+</ul></div>
+<div class="risk">依赖与风险：D1-11 可选键清单仍拦读，配置项只覆盖必填三键 + 端口/日志级别；17 个业务阈值键留待收口轮统一补入。</div>
+</div></div>
+<div class="card">
+<div class="ch"><span class="t">v0.3 前端骨架与交付基建</span>
+<span class="badge b1">8 项需求</span>
+<span class="badge">64 包</span>
+<span class="badge">71.88h</span>
+<span class="badge b2">20 工作日</span>
+<span class="badge b3">2026-12-16 止</span>
+<span class="g">2026-11-19 至 2026-12-16 ｜ 泳道 FE / OPS / QA</span>
+</div>
+<div class="cb">
+<div class="goal">目标：前端能跑、交付能出：主题/字体/编辑器容器就位，CI 与离线安装链可用。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-020</span><b>verdaccio 离线源与依赖入库</b> <span class="dim">OPS · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-030</span><b>Vite+React 骨架与目录约定</b> <span class="dim">FE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-031</span><b>design-tokens 接入与 Canvas 主题桥接</b> <span class="dim">FE · 9 包 · 9.99h</span></li>
+<li><span class="tag">P3-032</span><b>字体就绪与 Univer 挂载骨架</b> <span class="dim">FE · 9 包 · 9.99h</span></li>
+<li><span class="tag">P3-034</span><b>路由与布局壳</b> <span class="dim">FE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-036</span><b>Vitest 与 Playwright 基线</b> <span class="dim">QA · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-037</span><b>CI 流水线（lint/type/test/门禁脚本）</b> <span class="dim">OPS · 9 包 · 9.99h</span></li>
+<li><span class="tag">P3-019</span><b>Docker 多架构镜像（amd64/arm64）</b> <span class="dim">OPS · 9 包 · 9.99h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>pnpm dev 起前端，路由与布局壳可导航</li>
+<li>改一个 design token，页面颜色随之变化（无硬编码色值兜底）</li>
+<li>中英文字体加载完成，Univer 容器可挂载空表</li>
+<li>CI 四段（lint / 类型 / 测试 / 门禁脚本）可拦住注入的错误</li>
+<li>离线源安装：断网状态下 pnpm i --offline 成功</li>
+<li>镜像构建后 docker run，curl health 返回 200</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>Playwright 冒烟至少 1 例绿，且能复现（命令入 ANCHORS）</li>
+<li>故意提交一处 lint 错误，CI 红灯；还原后绿灯——两态都留记录</li>
+<li>气隙模拟（禁用外网）下全量依赖安装成功</li>
+<li>镜像 amd64 可构建、可启动、health 200；arm64 若无 runner 则登记为环境阻塞</li>
+</ul></div>
+<div class="risk">依赖与风险：本机无 Docker（本节 R2），镜像两条验收只能「代码就绪、验收挂起」，不计入完成。</div>
+</div></div>
+<div class="card gate">
+<div class="ch"><span class="t">v0.4 组件库基线</span>
+<span class="badge b1">2 项需求</span>
+<span class="badge">85 包</span>
+<span class="badge">94.35h</span>
+<span class="badge b2">27 工作日</span>
+<span class="badge b3">2027-01-22 止</span>
+<span class="g">2026-12-17 至 2027-01-22 ｜ 泳道 FE</span>
+</div>
+<div class="cb">
+<div class="goal">目标：76 包组件可供业务页直接复用：视觉与 token 对齐，规则无豁免。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-033</span><b>组件库基线与基础组件</b> <span class="dim">FE · 76 包 · 84.36h</span></li>
+<li><span class="tag">P3-035</span><b>API 客户端与 token 刷新</b> <span class="dim">FE · 9 包 · 9.99h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>组件预览页逐组件可渲染，控制台零报错</li>
+<li>API 客户端完成登录态注入、401 自动刷新、失败重试</li>
+<li>组件属性与设计卡一致（无重复手写类型）</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>组件清单 76 项全部可渲染，逐项截图留档</li>
+<li>no-hardcoded-color / no-emoji 全绿，无 eslint-disable 豁免</li>
+<li>token 改动可传导到组件（抽 3 个组件验证）</li>
+<li>组件清单与设计卡逐项对齐，缺项登记 OPEN（不得静默略过）</li>
+</ul></div>
+<div class="risk">依赖与风险：本版为全程最长单版（约 85 包 / 27 工作日），是首个「反馈周期过长」风险点（R4）。</div>
+</div></div>
+<div class="card">
+<div class="ch"><span class="t">v0.5 账户与权限</span>
+<span class="badge b1">7 项需求</span>
+<span class="badge">42 包</span>
+<span class="badge">45.96h</span>
+<span class="badge b2">14 工作日</span>
+<span class="badge b3">2027-02-11 止</span>
+<span class="g">2027-01-25 至 2027-02-11 ｜ 泳道 BE</span>
+</div>
+<div class="cb">
+<div class="goal">目标：身份闭环：登录、刷新、登出、用户管理、文件 CRUD 与权限守卫可用。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-040</span><b>PBKDF2-HMAC-SM3 口令服务</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
+<li><span class="tag">P3-041</span><b>auth 登录/刷新/登出/me 四端点</b> <span class="dim">BE · 9 包 · 9.99h</span></li>
+<li><span class="tag">P3-042</span><b>登录失败锁定 AC-02</b> <span class="dim">BE · 4 包 · 4.00h</span></li>
+<li><span class="tag">P3-043</span><b>RBAC 守卫与请求用户上下文</b> <span class="dim">BE · 4 包 · 4.00h</span></li>
+<li><span class="tag">P3-044</span><b>用户管理 5 端点</b> <span class="dim">BE · 9 包 · 9.99h</span></li>
+<li><span class="tag">P3-045</span><b>文件 CRUD 与软删除</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-046</span><b>文件列表分页与关键字搜索</b> <span class="dim">BE · 4 包 · 4.00h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>curl 剧本：登录 -&gt; 拿 token -&gt; 刷新 -&gt; me -&gt; 登出，五步状态码符合预期</li>
+<li>连续 5 次错误口令触发锁定，第 6 次返回锁定码而非「密码错误」</li>
+<li>越权请求返回 403，其 code 属已登记码表</li>
+<li>软删除的文件默认列表不含、回收站可见、可恢复</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>口令库为 PBKDF2-HMAC-SM3，10 万轮，库内无明文（抽查表记录）</li>
+<li>锁定窗口与阈值与 D1-05/AC-02 一致，且时间可注入（单测不等真实 15 分钟）</li>
+<li>分页与关键字搜索在 1 万行样本上返回稳定（同一查询两次结果一致）</li>
+<li>verify 14/14；错误码无新增未登记码</li>
+</ul></div>
+<div class="risk">依赖与风险：D1-05 四层矩阵逐码映射仍未落（v0.2 只到 30 条骨架），403/423 的 UI 档位待补。</div>
+</div></div>
+<div class="card">
+<div class="ch"><span class="t">v0.6 SSO 与审计面</span>
+<span class="badge b1">7 项需求</span>
+<span class="badge">51 包</span>
+<span class="badge">57.95h</span>
+<span class="badge b2">16 工作日</span>
+<span class="badge b3">2027-03-05 止</span>
+<span class="g">2027-02-12 至 2027-03-05 ｜ 泳道 BE / FE</span>
+</div>
+<div class="cb">
+<div class="goal">目标：企业接入面完成：三种 SSO 可配可切，审计可查，登录页可用。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-047</span><b>SSO 配置端点与加密存储</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
+<li><span class="tag">P3-048</span><b>LDAP 认证适配</b> <span class="dim">BE · 9 包 · 9.99h</span></li>
+<li><span class="tag">P3-049</span><b>OAuth2 认证适配</b> <span class="dim">BE · 9 包 · 9.99h</span></li>
+<li><span class="tag">P3-050</span><b>CAS 认证适配</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-051</span><b>审计查询端点与过滤</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
+<li><span class="tag">P3-060</span><b>登录页</b> <span class="dim">FE · 11 包 · 11.99h</span></li>
+<li><span class="tag">P3-061</span><b>SSO 入口与回跳处理</b> <span class="dim">FE · 5 包 · 6.00h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>三种 provider（LDAP / OAuth2 / CAS）各用 mock 服务跑通一次登录</li>
+<li>SSO 配置在库内加密存储，接口回显脱敏</li>
+<li>审计查询按操作者与时间过滤结果正确</li>
+<li>登录页错误提示不泄露账号是否存在</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>SSO 配置切换后无需重启即生效（配置热读或明确「需重启」并写入文档）</li>
+<li>mock provider 脚本入库，可复跑</li>
+<li>登录页在 375 / 768 / 1440 三个宽度下无横向滚动</li>
+<li>verify 14/14；前端 lint 无新增告警</li>
+</ul></div>
+<div class="risk">依赖与风险：三种 SSO 均无真实企业环境，只能 mock 验收；真机联调推至 v0.14 交付验收（R7）。</div>
+</div></div>
+<div class="card">
+<div class="ch"><span class="t">v0.7 单人可用版（内测）</span>
+<span class="badge b1">5 项需求</span>
+<span class="badge">53 包</span>
+<span class="badge">58.04h</span>
+<span class="badge b2">17 工作日</span>
+<span class="badge b3">2027-03-30 止</span>
+<span class="g">2027-03-08 至 2027-03-30 ｜ 泳道 FE</span>
+</div>
+<div class="cb">
+<div class="goal">目标：第一个产品级里程碑：登录、建文件、编辑、保存、刷新内容不丢。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-062</span><b>文件列表页</b> <span class="dim">FE · 13 包 · 14.04h</span></li>
+<li><span class="tag">P3-063</span><b>编辑器页面壳</b> <span class="dim">FE · 15 包 · 16.05h</span></li>
+<li><span class="tag">P3-064</span><b>快照加载与保存联调</b> <span class="dim">FE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-065</span><b>管理后台壳与用户管理 Tab</b> <span class="dim">FE · 11 包 · 11.99h</span></li>
+<li><span class="tag">P3-066</span><b>管理后台 SSO 与审计 Tab</b> <span class="dim">FE · 7 包 · 7.98h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>浏览器实操：登录 -&gt; 新建文件 -&gt; 输入内容 -&gt; 保存 -&gt; 刷新 -&gt; 内容一致</li>
+<li>文件列表页支持分页、搜索、重命名、删除、回收站</li>
+<li>管理后台可管用户、看审计、配 SSO</li>
+<li>编辑器保存后再次打开，样式与内容一致</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>上述四条在干净库上从零走通一次，录屏或步骤清单入 ANCHORS</li>
+<li>全流程无 500、无裸 alert、无 console error</li>
+<li>打 tag v0.7-internal，作为首个可交付内测版本</li>
+<li>verify 14/14；面板口径 match</li>
+</ul></div>
+<div class="risk">依赖与风险：本版结束即用户可试用，反馈会改变后续优先级——v0.8 起允许按反馈调序，但不减包。</div>
+</div></div>
+<div class="card">
+<div class="ch"><span class="t">v0.8 协同内核</span>
+<span class="badge b1">8 项需求</span>
+<span class="badge">70 包</span>
+<span class="badge">77.91h</span>
+<span class="badge b2">22 工作日</span>
+<span class="badge b3">2027-04-29 止</span>
+<span class="g">2027-03-31 至 2027-04-29 ｜ 泳道 BE</span>
+</div>
+<div class="cb">
+<div class="goal">目标：多人同编成立：内容通道、结构定序、持久化与加载重建四件闭环。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-070</span><b>WS ticket 握手</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
+<li><span class="tag">P3-071</span><b>Yjs 服务端接入与 LOAD 帧</b> <span class="dim">BE · 9 包 · 9.99h</span></li>
+<li><span class="tag">P3-072</span><b>内容通道 Y.Map 双向同步</b> <span class="dim">BE · 11 包 · 11.99h</span></li>
+<li><span class="tag">P3-073</span><b>结构操作服务端定序 oplog</b> <span class="dim">BE · 11 包 · 11.99h</span></li>
+<li><span class="tag">P3-074</span><b>awareness 光标通道</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-075</span><b>write-through 与 group-commit</b> <span class="dim">BE · 11 包 · 11.99h</span></li>
+<li><span class="tag">P3-076</span><b>快照物化与 base_seq 事务</b> <span class="dim">BE · 9 包 · 9.99h</span></li>
+<li><span class="tag">P3-077</span><b>加载协议重建（snapshot + 增量）</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>两个浏览器同文档并发编辑 30 分钟，结束后两侧内容 hash 一致</li>
+<li>断网 5 分钟后重连，增量补齐，内容与在线侧一致</li>
+<li>强杀进程后重启，刷新页面从 snapshot + 增量重建一致</li>
+<li>oplog 序号单调递增无空洞（抽查 1000 条）</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>并发 30 分钟无分叉，记录双方 hash 与 seq 区间</li>
+<li>重连与重建两条路径各有实跑日志，非单测模拟</li>
+<li>write-through 落库延迟 P95 达标（阈值引 D1-06，未定则记录实测值待裁）</li>
+<li>verify 14/14；新增 WS 通道有契约条目且 schema 命名门禁绿</li>
+</ul></div>
+<div class="risk">依赖与风险：D1-01 / D1-06 卡虽已完成但拦读，抑制矩阵与加载状态机的细节需在开工前取得（R3）。</div>
+</div></div>
+<div class="card">
+<div class="ch"><span class="t">v0.9 协同完备</span>
+<span class="badge b1">7 项需求</span>
+<span class="badge">47 包</span>
+<span class="badge">53.96h</span>
+<span class="badge b2">15 工作日</span>
+<span class="badge b3">2027-05-20 止</span>
+<span class="g">2027-04-30 至 2027-05-20 ｜ 泳道 BE / FE</span>
+</div>
+<div class="cb">
+<div class="goal">目标：协同可运营：席位、水位、优雅关闭、前端多人体验全部到位。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-078</span><b>优雅关闭序列 AC-15</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
+<li><span class="tag">P3-079</span><b>席位计量与 close 码</b> <span class="dim">BE · 9 包 · 9.99h</span></li>
+<li><span class="tag">P3-080</span><b>内存水位 LRU 与 close 4412</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
+<li><span class="tag">P3-081</span><b>四个可替换接口抽象</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-090</span><b>协同接入与 doc-rebuild 处理</b> <span class="dim">FE · 11 包 · 11.99h</span></li>
+<li><span class="tag">P3-091</span><b>多人光标与协同头像</b> <span class="dim">FE · 5 包 · 6.00h</span></li>
+<li><span class="tag">P3-092</span><b>断线重连与状态提示</b> <span class="dim">FE · 5 包 · 6.00h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>kill -TERM 后客户端收到约定 close 码，日志按序记录关闭步骤</li>
+<li>超席位与超内存水位各有专属 close 码，前端提示可区分</li>
+<li>三人同编：光标可见、头像正确、成员进出实时</li>
+<li>触发 doc-rebuild 后前端不崩，状态回正</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>四种 close 码（正常/席位/水位/异常）各实跑一次并记录</li>
+<li>优雅关闭后未落库的增量不丢（对比重启前后 seq 与内容）</li>
+<li>前端断线重连有可见状态提示，且不产生重复连接</li>
+<li>verify 14/14</li>
+</ul></div>
+<div class="risk">依赖与风险：席位与水位阈值键仍未入配置表（R1 衍生），本版可能就地写死——须登记并归收口轮统一。</div>
+</div></div>
+<div class="card">
+<div class="ch"><span class="t">v0.10 导入解析</span>
+<span class="badge b1">7 项需求</span>
+<span class="badge">40 包</span>
+<span class="badge">43.95h</span>
+<span class="badge b2">12 工作日</span>
+<span class="badge b3">2027-06-07 止</span>
+<span class="g">2027-05-21 至 2027-06-07 ｜ 泳道 BE / QA</span>
+</div>
+<div class="cb">
+<div class="goal">目标：XLSX 进得来：中间模型、类型识别、编码探测、四桶判定全部可验证。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-100</span><b>WI-2 IR 中间模型与类型系统</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-101</span><b>WI-1 解析骨架与 fixtures</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-102</span><b>WI-1 类型识别与文本数字判定</b> <span class="dim">BE · 4 包 · 4.00h</span></li>
+<li><span class="tag">P3-103</span><b>WI-1 CSV 编码探测链</b> <span class="dim">BE · 4 包 · 4.00h</span></li>
+<li><span class="tag">P3-104</span><b>WI-1 桶判定器</b> <span class="dim">BE · 4 包 · 4.00h</span></li>
+<li><span class="tag">P3-105</span><b>WI-3 结构映射</b> <span class="dim">BE · 9 包 · 9.99h</span></li>
+<li><span class="tag">P3-106</span><b>WI-3 突变测试（反例鉴别力）</b> <span class="dim">QA · 5 包 · 6.00h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>fixtures 样本（含反例）全部按预期解析或按预期拒绝</li>
+<li>四桶判定结果与 D1-03 判定表逐行对齐</li>
+<li>GBK / UTF-8-BOM / UTF-16 三类 CSV 编码探测正确</li>
+<li>文本型数字与数值型数字判定符合预期（不把订单号变科学计数）</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>fixtures 全绿，且反例鉴别力有突变测试佐证（P3-106 达标）</li>
+<li>四桶判定表 100% 覆盖，无一桶无样本</li>
+<li>解析失败样本给出明确错误码与可读原因，不静默丢弃</li>
+<li>verify 14/14；夹具不破坏既有 44 例</li>
+</ul></div>
+<div class="risk">依赖与风险：D1-02 / D1-03 / D1-04 三卡拦读，IR 结构与投影规则必须开工前取得（R3），否则本版不可启动。</div>
+</div></div>
+<div class="card">
+<div class="ch"><span class="t">v0.11 导入保真</span>
+<span class="badge b1">5 项需求</span>
+<span class="badge">59 包</span>
+<span class="badge">64.01h</span>
+<span class="badge b2">18 工作日</span>
+<span class="badge b3">2027-07-01 止</span>
+<span class="g">2027-06-08 至 2027-07-01 ｜ 泳道 BE</span>
+</div>
+<div class="cb">
+<div class="goal">目标：搬得准：结构、样式、合并、数字格式、公式五类保真到位。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-107</span><b>WI-4 样式基础映射</b> <span class="dim">BE · 11 包 · 11.99h</span></li>
+<li><span class="tag">P3-108</span><b>WI-4 合并/边框/数字格式</b> <span class="dim">BE · 11 包 · 11.99h</span></li>
+<li><span class="tag">P3-109</span><b>WI-5 公式档案侧车</b> <span class="dim">BE · 15 包 · 16.05h</span></li>
+<li><span class="tag">P3-110</span><b>WI-5 结构迁移器与值校验</b> <span class="dim">BE · 11 包 · 11.99h</span></li>
+<li><span class="tag">P3-111</span><b>WI-5 差分导入管线</b> <span class="dim">BE · 11 包 · 11.99h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>20 个真实样本导入后抽查结构与样式一致</li>
+<li>公式进侧车后可再算，值校验不放过陈旧缓存值</li>
+<li>差分导入只改差异单元格，未变区域 op 数为 0</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>20 样本抽查表逐项签字（结构 / 样式 / 合并 / 格式 / 公式）</li>
+<li>公式侧车往返：导入 -&gt; 导出 -&gt; 再导入，公式仍可算</li>
+<li>差分导入的 op 数与实际变更单元格数相等（误差 0）</li>
+<li>降级样本（超限/不支持特性）有明确策略且已实现</li>
+</ul></div>
+<div class="risk">依赖与风险：样式映射边界（主题色、条件格式）可能与预期不符，需在 v0.10 结束前先做 3 样本预演。</div>
+</div></div>
+<div class="card">
+<div class="ch"><span class="t">v0.12 导出与互斥</span>
+<span class="badge b1">6 项需求</span>
+<span class="badge">44 包</span>
+<span class="badge">48.02h</span>
+<span class="badge b2">14 工作日</span>
+<span class="badge b3">2027-07-21 止</span>
+<span class="g">2027-07-02 至 2027-07-21 ｜ 泳道 BE / FE / OPS / QA</span>
+</div>
+<div class="cb">
+<div class="goal">目标：出得去、不打架：导出可被 Excel 打开，导入与协同互斥。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-112</span><b>WI-6 导出层</b> <span class="dim">BE · 15 包 · 16.05h</span></li>
+<li><span class="tag">P3-113</span><b>WI-6 往返校验与 Excel 打开验证</b> <span class="dim">QA · 4 包 · 4.00h</span></li>
+<li><span class="tag">P3-114</span><b>导入任务队列与状态端点</b> <span class="dim">BE · 9 包 · 9.99h</span></li>
+<li><span class="tag">P3-115</span><b>CI 门禁接入（白名单/桶/版本）</b> <span class="dim">OPS · 4 包 · 4.00h</span></li>
+<li><span class="tag">P3-093</span><b>导入导出 UI 与任务状态</b> <span class="dim">FE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-082</span><b>导入与活跃协同互斥协议</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>导出的 xlsx 在 Excel 真机打开无「需要修复」提示</li>
+<li>往返（导入 -&gt; 导出 -&gt; 再导入）无内容丢失</li>
+<li>文档处于活跃协同时发起导入被拒绝，返回互斥码</li>
+<li>导入任务可查进度，失败可看原因</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>Excel 真机打开验证留截图与文件（至少 5 个样本）</li>
+<li>往返一致性由脚本断言，非人工目测</li>
+<li>互斥协议两方向都测（协同中导入 / 导入中进协同）</li>
+<li>CI 门禁接入白名单（未登记特性即红）</li>
+<li>verify 14/14</li>
+</ul></div>
+<div class="risk">依赖与风险：Excel 真机验证依赖本机 Office 环境，缺则退化为「结构等价断言 + 用户代验」。</div>
+</div></div>
+<div class="card">
+<div class="ch"><span class="t">v0.13 License 与降级</span>
+<span class="badge b1">6 项需求</span>
+<span class="badge">34 包</span>
+<span class="badge">39.96h</span>
+<span class="badge b2">11 工作日</span>
+<span class="badge b3">2027-08-05 止</span>
+<span class="g">2027-07-22 至 2027-08-05 ｜ 泳道 BE / FE</span>
+</div>
+<div class="cb">
+<div class="goal">目标：可控商用：验签、席位、到期、只读降级四层成立。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-120</span><b>机器指纹采集</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-121</span><b>激活申请码与安装端点</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
+<li><span class="tag">P3-122</span><b>SM2 验签与 License 解析</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
+<li><span class="tag">P3-123</span><b>席位与到期判定 + 时钟三层</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
+<li><span class="tag">P3-124</span><b>只读降级三层防线</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-125</span><b>License 管理 Tab</b> <span class="dim">FE · 5 包 · 6.00h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>伪造签名的 License 被拒，错误码明确</li>
+<li>过期或超席位进入只读，前端可见且不可写</li>
+<li>系统时钟回拨 24 小时被识别</li>
+<li>License 管理页可导入、查看席位与到期</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>伪造 / 篡改 / 过期 / 超席位 四种非法态各实跑一次</li>
+<li>只读降级三层防线逐层单独失效测试（单层失效仍能兜住）</li>
+<li>降级只阻断写、不阻断读（对照实验）</li>
+<li>verify 14/14；码表无新增未登记码</li>
+</ul></div>
+<div class="risk">依赖与风险：D1-10 判定链与时钟三层拦读，需在 v0.12 结束前取得（R3）；否则本版只能做「验签通路」不做判定。</div>
+</div></div>
+<div class="card ga">
+<div class="ch"><span class="t">v0.14 交付验收（v1.0 GA）</span>
+<span class="badge b1">8 项需求</span>
+<span class="badge">76 包</span>
+<span class="badge">83.97h</span>
+<span class="badge b2">23 工作日</span>
+<span class="badge b3">2027-09-07 止</span>
+<span class="g">2027-08-06 至 2027-09-07 ｜ 泳道 BE / OPS / QA</span>
+</div>
+<div class="cb">
+<div class="goal">目标：可交付：气隙环境从安装包到全功能验收一次通过。</div>
+<div class="blk"><h4>包含需求</h4><ul>
+<li><span class="tag">P3-130</span><b>Nginx+Tongsuo TLCP 网关</b> <span class="dim">OPS · 11 包 · 11.99h</span></li>
+<li><span class="tag">P3-131</span><b>离线安装包与安装脚本</b> <span class="dim">OPS · 11 包 · 11.99h</span></li>
+<li><span class="tag">P3-132</span><b>备份恢复脚本与 SOP</b> <span class="dim">OPS · 7 包 · 7.98h</span></li>
+<li><span class="tag">P3-133</span><b>麒麟/UOS 双架构安装验证</b> <span class="dim">QA · 9 包 · 9.99h</span></li>
+<li><span class="tag">P3-134</span><b>AC-05 性能基线与真机复核</b> <span class="dim">QA · 11 包 · 11.99h</span></li>
+<li><span class="tag">P3-135</span><b>E2E 验收脚本 AC-01~15</b> <span class="dim">QA · 15 包 · 16.05h</span></li>
+<li><span class="tag">P3-136</span><b>气隙断网全功能验证 AC-12</b> <span class="dim">QA · 5 包 · 6.00h</span></li>
+<li><span class="tag">P3-137</span><b>等保配套三项（口令策略/留存/首登改密）</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
+</ul></div>
+<div class="blk"><h4>完成标志（能力演示）</h4><ul>
+<li>气隙环境：安装包 -&gt; 启动 -&gt; 登录 -&gt; 建文件 -&gt; 编辑 -&gt; 导入导出全流程走通</li>
+<li>AC-01 至 AC-15 端到端脚本全绿</li>
+<li>麒麟 / UOS 双架构安装成功</li>
+<li>备份恢复按 SOP 演练一次，数据完整</li>
+</ul></div>
+<div class="blk" style="grid-column:1/-1"><h4>出闸证据（关版留档）</h4><ul>
+<li>E2E 15 条验收用例全绿，且可一键复跑</li>
+<li>性能基线达标（阈值以 D1-12 为准，未定则实测值待裁并登记）</li>
+<li>双架构安装验证记录齐（截图 / 日志 / 版本号）</li>
+<li>等保三项（口令策略 / 留存 / 首登改密）实跑</li>
+<li>打 tag v1.0；交付件清单齐（安装包 / 手册 / SOP / 报告）</li>
+<li>verify 14/14；工作项收口断言全部实跑通过</li>
+</ul></div>
+<div class="risk">依赖与风险：本版依赖前置全部完成且外部环境齐备（Docker / 麒麟 / UOS / 金仓），是最可能延期的一版。</div>
+</div></div>
+</div></div>
+<div class="sect"><h2>五、出闸闸门 V-Gate（七条硬判，所有版本共用）</h2>
+<div class="tblbox"><table class="wtable"><thead><tr><th>#</th><th>闸门</th><th>判定内容</th></tr></thead><tbody>
+<tr><td class="mono">V1</td><td><b>包级收口</b></td><td class="dim">本版所有包状态为已完成；每个工作项的收口断言逐条实跑通过，不以「编译过」代替断言。</td></tr>
+<tr><td class="mono">V2</td><td><b>门禁全绿</b></td><td class="dim">node scripts/verify.mjs 全段通过；gen_status_panel.py 口径校验 match，无「不一致」告警。</td></tr>
+<tr><td class="mono">V3</td><td><b>构建可复现</b></td><td class="dim">根 build 退出码 0；jest 全绿；fixtures-run 全绿；本版新增脚本已接入 verify，否则不计入交付。</td></tr>
+<tr><td class="mono">V4</td><td><b>能力演示</b></td><td class="dim">本版「演示」清单在干净环境从零走通一次，命令与输出摘录入 ANCHORS 执行记录。</td></tr>
+<tr><td class="mono">V5</td><td><b>契约不欠账</b></td><td class="dim">openapi 改动已走解冻流程；码表 / 契约 schema / 命名三方无漂移（对应门禁段绿）。</td></tr>
+<tr><td class="mono">V6</td><td><b>遗留可问责</b></td><td class="dim">未完成项全部进 OPEN-DECISIONS，每条带归属包与解除条件；无口头遗留。</td></tr>
+<tr><td class="mono">V7</td><td><b>文档同步</b></td><td class="dim">ANCHORS 补本版执行记录（含反向验证与踩坑）；重生成状态面板与版本计划。</td></tr>
+</tbody></table></div>
+<div class="legend">判据只认证据，不认「已完成」三个字。任一条不满足即不得开下一版；<b>V3</b> 之所以要求「新增脚本须接入 verify」，是因为 2026-10-25 收口时发现两处「文档声称已机检、脚本里没有」的纸面防线——没进自检面的检查等于没有。</div>
+</div>
+<div class="sect"><h2>六、版本流转协议（闭版与开版必须分开做）</h2><div class="flow">
+<div class="fstep"><div class="n">阶段 A</div><div class="t">出闸判定</div><div class="d">逐条核 V-Gate 七条，跑门禁三连。判定结果只有三种：PASS / 条件 PASS / FAIL；「条件 PASS」必须写明条件与解除日，否则视同 FAIL。</div></div>
+<div class="fstep"><div class="n">阶段 B</div><div class="t">闭版</div><div class="d">打 tag、补 ANCHORS 执行记录、遗留进 OPEN-DECISIONS、重生成状态面板与本计划。遗留项无归属包即不得闭版。</div></div>
+<div class="fstep"><div class="n">阶段 C</div><div class="t">开版</div><div class="d">下一版首包派单（锚点预置），开工前确认外部前提。R1/R2/R3 未解除且本版依赖它，则不开版——这是唯一允许「等」的情形。</div></div>
+<div class="fstep"><div class="n">阶段 D</div><div class="t">超期处置</div><div class="d">超期 > 30% 时二择一：减包（低优项移补丁版）或加人。不得延期而不减范围，否则后续版本日期全部失效。</div></div>
+</div>
+<div class="legend">顺序不可倒：先闭版再开版，上一版遗留才是下一版的<b>已知项</b>；并行开版会让遗留以「反正后面会补」的形式消失——这正是纸面防线的成因。</div>
+</div>
+<div class="sect"><h2>七、风险登记</h2><div class="tblbox"><table class="wtable"><thead><tr>
+<th>ID</th><th>风险</th><th>影响版本</th><th>证据</th><th>缓解</th></tr></thead><tbody>
+<tr><td class="mono">R1</td><td><b>金仓授权未到位</b></td><td class="dim">v0.1 及其全部下游（M2 起的数据层）</td><td class="dim">2026-10-21 记录：官网授权页 404，harbor 超时，走人工申请 3-5 工作日；本机 NO_DOCKER</td><td class="dim">立即提交申请并跟踪；同期用 PG16 做等价 DDL 预演，产出差异清单并入 v0.1 交付；超 5 个工作日未到位，v0.1 转为「差异清单版」并明确不视为完成</td></tr>
+<tr><td class="mono">R2</td><td><b>本机无 Docker</b></td><td class="dim">v0.3 镜像两条、v0.14 双架构与气隙安装</td><td class="dim">docker 与 buildx 均不在 PATH</td><td class="dim">申请远端 runner 或 CI 构建；不可得时这两类验收一律挂「环境阻塞」，不得以「代码已写」计入完成</td></tr>
+<tr><td class="mono">R3</td><td><b>设计卡拦读（D1-01/02/03/04/06/10）</b></td><td class="dim">v0.8 协同内核、v0.10 导入解析、v0.13 License</td><td class="dim">六卡状态为已完成，但 Security Center 对逐文件读取 deny</td><td class="dim">按版本提前一版索取卡内容（v0.7 末取 01/06/10，v0.9 末取 02/03/04）；取不到则该版不得启动，避免按猜测实现污染 138 个下游包</td></tr>
+<tr><td class="mono">R4</td><td><b>v0.4 单版过长（85 包 / 27 工作日）</b></td><td class="dim">排期节奏与反馈周期</td><td class="dim">76 包组件库属同一工作项，中途无自然收口点</td><td class="dim">设 4 个内部检查点（每约 19 包）做可视化验收；若实际超期 30%，按「减包不移期」把低优组件移至 v0.5 后的补丁版</td></tr>
+<tr><td class="mono">R5</td><td><b>单执行者无并行</b></td><td class="dim">总工期 从 184 增至不可压缩</td><td class="dim">当前为一Agent串行，FE 与 BE 无法真正并行</td><td class="dim">增一名前端后可双车道：BE+OPS+QA 500 包与 FE 219 包并行，关键路径由 180 降至 125 工作日，压缩约 30%</td></tr>
+<tr><td class="mono">R6</td><td><b>默认端口 3000 被占</b></td><td class="dim">v0.2 起的本地验证口径</td><td class="dim">本机 umi dev server 长期占用 3000，历轮以 PORT=3100 通过</td><td class="dim">配置键落地时明确默认端口；占用方释放后补一次默认端口 200 且验体</td></tr>
+<tr><td class="mono">R7</td><td><b>SSO / 金仓 / 国产 OS 无真实环境</b></td><td class="dim">v0.6、v0.1、v0.14</td><td class="dim">三类均无生产级实例可联调</td><td class="dim">mock 验收 + 交付验收阶段真机复核；真机失败的回溯范围预先按包登记</td></tr>
+</tbody></table></div>
+<div class="legend"><b>R1</b> 与 <b>R3</b> 是「不开工」级风险：前者卡 v0.1，后者卡 v0.8 起三个版本；两者都必须<b>提前一版</b>清障，不能等到开工日才发现。</div>
+</div>
+<div class="sect"><h2>八、与既有文档的口径关系</h2><div class="tblbox"><table class="wtable"><thead><tr><th>文档</th><th>关系</th></tr></thead><tbody>
+<tr><td class="mono">backlog.csv</td><td class="dim">包级唯一事实源；本页所有数量与工时由它算出，台账先改、本页重生成</td></tr>
+<tr><td class="mono">TASKS.md</td><td class="dim">里程碑与批次口径。批次 = 同质工作聚类；版本 = 可交付增量，两者不正交</td></tr>
+<tr><td class="mono">PACKAGE-PLAN.html</td><td class="dim">包级视图（788 包全量、批次、可派队列），与本页同源不同粒度</td></tr>
+<tr><td class="mono">ANCHORS.md</td><td class="dim">包级执行锚点；每版闭版时在其后追加该版执行记录，本页不复写</td></tr>
+<tr><td class="mono">OPEN-DECISIONS.md</td><td class="dim">遗留项唯一登记点；V6 闸门要求每条带归属包与解除条件</td></tr>
+</tbody></table></div>
+<div class="legend">重生成：<span class="mono">python -X utf8 scripts/gen_release_plan.py</span>　只校验不写盘：加 <span class="mono">--check</span></div>
+</div>
+</div></body></html>
