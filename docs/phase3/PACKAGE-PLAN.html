@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Web Office · Phase 3 拆解计划表（788 包）</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#12181f; --bg3:#161d26; --line:#232c38; --line2:#2c3746;
+  --fg:#e6edf3; --fg2:#9aa7b4; --fg3:#6b7785;
+  --ok:#3fb950; --warn:#d29922; --bad:#f85149; --info:#58a6ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+  font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;
+  font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1600px;margin:0 auto;padding:22px 26px 60px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  padding-bottom:14px;border-bottom:1px solid var(--line)}
+h1{font-size:19px;margin:0 0 4px;font-weight:600;letter-spacing:.3px}
+.sub{color:var(--fg3);font-size:12px}
+.sub b{color:var(--fg2);font-weight:500}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0 6px}
+.kpi{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:11px 13px}
+.kpi .l{color:var(--fg3);font-size:11px;letter-spacing:.4px}
+.kpi .v{font-size:22px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums}
+.kpi .d{color:var(--fg3);font-size:11px;margin-top:2px}
+.sect{margin-top:26px}
+.sect h2{font-size:12.5px;font-weight:600;color:var(--fg2);margin:0 0 10px;letter-spacing:.6px;
+  text-transform:uppercase}
+.tblbox{border:1px solid var(--line);border-radius:8px;overflow:auto;background:var(--bg2)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px}
+thead th{position:sticky;top:0;z-index:3;background:#151c25;color:var(--fg2);font-weight:500;
+  font-size:11px;letter-spacing:.4px;text-align:left;padding:8px 10px;
+  border-bottom:1px solid var(--line2);white-space:nowrap}
+tbody td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:hover{background:var(--bg3)}
+td.c{text-align:center;white-space:nowrap} td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+th.c{text-align:center} th.r{text-align:right}
+td.nm{min-width:280px}
+.sid{display:block;color:var(--fg3);font-size:11px;margin-top:1px}
+.dim{color:var(--fg3)}
+.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;color:var(--fg2)}
+.pb{height:5px;background:#1c242f;border-radius:3px;overflow:hidden;margin-bottom:3px;min-width:56px}
+.pb i{display:block;height:100%;border-radius:3px;background:var(--warn)}
+.pb i.ok{background:var(--ok)} .pb i.none{background:#28313d}
+.pct{color:var(--fg3);font-size:10.5px;font-variant-numeric:tabular-nums}
+.rdy{color:#cfe6ff;background:#17324d;border:1px solid #1f4a72;border-radius:999px;
+  padding:1px 8px;font-size:10.5px;white-space:nowrap}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+input[type=search]{background:var(--bg2);border:1px solid var(--line2);color:var(--fg);
+  border-radius:6px;padding:6px 9px;font-size:12px;outline:none;min-width:240px;font-family:inherit}
+input[type=search]:focus{border-color:var(--info)}
+.chipbtn{background:#1b2430;border:1px solid var(--line2);color:var(--fg2);border-radius:999px;
+  padding:4px 11px;font-size:11.5px;cursor:pointer;user-select:none;font-family:inherit}
+.chipbtn:hover{color:var(--fg);border-color:var(--fg3)}
+.chipbtn.on{background:#17324d;border-color:var(--info);color:#cfe6ff}
+.cnt{color:var(--fg3);font-size:11px;margin-left:auto}
+.legend{color:var(--fg3);font-size:11px;margin-top:8px;line-height:1.7}
+.legend b{color:var(--fg2);font-weight:500}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:13px 15px}
+.card h3{margin:0 0 9px;font-size:12px;color:var(--fg2);font-weight:600;letter-spacing:.3px}
+.card table{border:none}
+.card td,.card th{border-bottom:1px solid var(--line);padding:6px 8px}
+.lane{display:flex;align-items:center;gap:9px;margin:7px 0;font-size:11.5px}
+.lane span{width:34px;color:var(--fg3)}
+.lane .pb{flex:1;margin:0}
+.lane b{width:64px;text-align:right;font-weight:500;color:var(--fg2);font-variant-numeric:tabular-nums}
+.tot{background:#151c25}
+td.ok b{color:var(--ok)}
+.path{color:var(--fg2);font-size:11.5px;line-height:1.9;
+  font-family:ui-monospace,Consolas,monospace;white-space:pre-wrap}
+.note{color:var(--fg3);font-size:11.5px;line-height:1.85}
+.note b{color:var(--warn);font-weight:500}
+.note code{background:#1b2430;border:1px solid var(--line2);border-radius:4px;padding:1px 5px;font-size:10.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>Phase 3 拆解计划表</h1>
+    <div class="sub">生成源 <b>docs/phase3/backlog.csv</b>（<b>788 行</b>） · 口径见 <b>TASKS.md v1.5</b> §1/§3/§5 · 包级锚点见 <b>ANCHORS.md</b></div>
+  </div>
+  <div class="sub">由 <b>scripts/gen_package_plan.py</b> 生成 · 已完成 <b>69</b> 包 / 80.26h</div>
+</header>
+
+<div class="kpis">
+  <div class="kpi"><div class="l">派发包</div><div class="v">788</div><div class="d">平均 1.12h/包</div></div>
+  <div class="kpi"><div class="l">工作项</div><div class="v">101</div><div class="d">101 项 · 已收官 17</div></div>
+  <div class="kpi"><div class="l">总工时</div><div class="v">881.9h</div><div class="d">110.2 人日（8h/人日）</div></div>
+  <div class="kpi"><div class="l">已完成</div><div class="v">69</div><div class="d">包 · 80.26h · 9.1%</div></div>
+  <div class="kpi"><div class="l">剩余</div><div class="v">719</div><div class="d">包 · 801.64h</div></div>
+  <div class="kpi"><div class="l">可立即派发</div><div class="v">6</div><div class="d">包 · 6 个工作项</div></div>
+</div>
+
+<div class="sect">
+  <h2>1 · 四层拆分口径</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>层与数量</h3>
+      <table>
+        <thead><tr><th>层</th><th class="r">数量</th><th>粒度 / 用途</th></tr></thead>
+        <tbody>
+          <tr><td>需求域 R0~R7</td><td class="r">8</td><td class="dim">里程碑规划、人力分配</td></tr>
+          <tr><td>工作项</td><td class="r">101</td><td class="dim">一人可独立验收（2.4~16h）</td></tr>
+          <tr><td>派发包</td><td class="r"><b>788</b></td><td class="dim">1.0~1.2h，单次派发即完成</td></tr>
+          <tr><td>设计卡 D1</td><td class="r">13</td><td class="dim">卡 35 包 / 42h，覆盖 417 包</td></tr>
+        </tbody>
+      </table>
+      <div class="note">拆包规则（脚本强制）：<code>n = round(工时/1.1)</code>，且 工时/n 落在 [1.0,1.2]；包内固定五段。</div>
+    </div>
+    <div class="card">
+      <h3>泳道分布（包数）</h3>
+      <div class="lane"><span>BE</span><div class="pb"><i style="width:55%"></i></div><b>435 包</b></div><div class="lane"><span>FE</span><div class="pb"><i style="width:30%"></i></div><b>233 包</b></div><div class="lane"><span>OPS</span><div class="pb"><i style="width:7%"></i></div><b>58 包</b></div><div class="lane"><span>QA</span><div class="pb"><i style="width:7%"></i></div><b>58 包</b></div><div class="lane"><span>DOC</span><div class="pb"><i style="width:1%"></i></div><b>4 包</b></div>
+      <div class="note">BE 占比约 55%——M3 是后端重活，BE 只上 1 人时 M3 单独约 309h（38.7 人日），是工期单点。</div>
+    </div>
+    <div class="card">
+      <h3>关键路径（依赖主干）</h3>
+      <div class="path">P3-001 → P3-010 → D1-13 → P3-011 → D1-05/11 → P3-012 → P3-014 → P3-015
+P3-010 → P3-030 → P3-031 → P3-032 → P3-063
+P3-002 → D1-04/03/02 → P3-100 → P3-101..105 → P3-109 → P3-110 → P3-111
+P3-002 → D1-01 → P3-071 → P3-072 / P3-073 → P3-075 → P3-076 → P3-077
+P3-041 → P3-070 → P3-071   ·   D1-10 → P3-122 → P3-123 → P3-124</div>
+    </div>
+  </div>
+</div>
+
+<div class="sect">
+  <h2>2 · 批次计划（B0~B6 + D1 设计卡）</h2>
+  <div class="tblbox">
+    <table>
+      <thead><tr><th class="c">批次</th><th>内容</th><th class="r">包数</th><th class="r">工时</th><th class="r">人日</th><th class="r">进度</th><th class="r">可派</th></tr></thead>
+      <tbody><tr><td class="c"><b>B0</b></td><td>M0 开工门禁<div class="sid">P3-001 基线评审 / P3-002 公式 spike / P3-003 金仓冒烟；全阻塞</div></td><td class="r">22</td><td class="r">24.0</td><td class="r">3.0</td><td class="r"><div class="pb"><i class="" style="width:68%"></i></div><span class="pct">15/22 包</span></td><td class="r">1</td></tr>
+<tr><td class="c"><b>B1</b></td><td>M1 基础三件套<div class="sid">monorepo / Nest 骨架 / 前端骨架；关键路径起点</div></td><td class="r">24</td><td class="r">28.0</td><td class="r">3.5</td><td class="r"><div class="pb"><i class="" style="width:71%"></i></div><span class="pct">17/24 包</span></td><td class="r">1</td></tr>
+<tr><td class="c"><b>B2</b></td><td>M1 其余<div class="sid">实体·迁移·CI·镜像·组件库·token·离线源；BE 重活</div></td><td class="r">191</td><td class="r">214.2</td><td class="r">26.8</td><td class="r"><div class="pb"><i class="" style="width:1%"></i></div><span class="pct">2/191 包</span></td><td class="r">3</td></tr>
+<tr><td class="c"><b>B3</b></td><td>M2 账户与文件<div class="sid">需 P3-003 金仓冒烟通过 + B2 主干通</div></td><td class="r">146</td><td class="r">161.9</td><td class="r">20.2</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/146 包</span></td><td class="r"><span class="dim">—</span></td></tr>
+<tr><td class="c"><b>B4</b></td><td>M3 协同与持久化<div class="sid">Yjs / oplog / write-through / 物化重建；与 B5 可并行</div></td><td class="r">122</td><td class="r">137.9</td><td class="r">17.2</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/122 包</span></td><td class="r"><span class="dim">—</span></td></tr>
+<tr><td class="c"><b>B5</b></td><td>M3 导入导出<div class="sid">P3-002 spike PASS 为前提；转换层 + 差分 + 迁移器</div></td><td class="r">121</td><td class="r">132.0</td><td class="r">16.5</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/121 包</span></td><td class="r">1</td></tr>
+<tr><td class="c"><b>B6</b></td><td>M3 License + 导入导出 UI + 交付验收<div class="sid">验签三层防线 / E2E AC-01~15 / 性能基线</div></td><td class="r">127</td><td class="r">141.9</td><td class="r">17.7</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/127 包</span></td><td class="r"><span class="dim">—</span></td></tr>
+<tr><td class="c"><b>D1</b></td><td>设计卡（D1 十三卡）<div class="sid">跨包共享决策的唯一载体，随批次前置，不集中成阶段</div></td><td class="r">35</td><td class="r">42.0</td><td class="r">5.2</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">35/35 包</span></td><td class="r"><span class="dim">—</span></td></tr></tbody>
+    </table>
+  </div>
+  <div class="legend">批次按 <b>门禁与依赖</b>切，不按人头切。B4（协同）与 B5（导入导出）依赖不同，<b>可并行</b>——这是缩短 M3 的唯一杠杆。D1 十三卡（35 包 / 42h）已全部完成，单列不计入 B0~B6。<br>本表 B0~B6 合计 <b>753 包 + D1 35 包 = 788</b>；TASKS §5 批次表合计 <b>721</b>，缺 67 包 = P3-033 由 9 包重估为 76 包后<b>未回填批次表</b>（v1.5 只改了 §1/§2 的总账）。</div>
+</div>
+
+<div class="sect">
+  <h2>3 · 里程碑 × 需求域（包数 / 工时 / 已完成）</h2>
+  <div class="tblbox">
+    <table>
+      <thead><tr><th class="c">里程碑</th><th class="c">R0</th><th class="c">R1</th><th class="c">R2</th><th class="c">R3</th><th class="c">R4</th><th class="c">R5</th><th class="c">R6</th><th class="c">R7</th><th class="c">合计</th></tr></thead>
+      <tbody><tr><td class="c"><b>M0</b></td><td class="c "><b>22</b><span class="sid">24h · 15/22</span></td><td class="c dim">—</td><td class="c dim">—</td><td class="c dim">—</td><td class="c dim">—</td><td class="c dim">—</td><td class="c dim">—</td><td class="c dim">—</td><td class="c tot"><b>22</b><span class="sid">24h · 15/22</span></td></tr>
+<tr><td class="c"><b>M1</b></td><td class="c dim">—</td><td class="c "><b>215</b><span class="sid">242h · 19/215</span></td><td class="c dim">—</td><td class="c dim">—</td><td class="c dim">—</td><td class="c dim">—</td><td class="c dim">—</td><td class="c ok"><b>9</b><span class="sid">11h · 9/9</span></td><td class="c tot"><b>224</b><span class="sid">253h · 28/224</span></td></tr>
+<tr><td class="c"><b>M2</b></td><td class="c dim">—</td><td class="c dim">—</td><td class="c "><b>146</b><span class="sid">162h · 0/146</span></td><td class="c dim">—</td><td class="c dim">—</td><td class="c dim">—</td><td class="c dim">—</td><td class="c ok"><b>3</b><span class="sid">4h · 3/3</span></td><td class="c tot"><b>149</b><span class="sid">166h · 3/149</span></td></tr>
+<tr><td class="c"><b>M3</b></td><td class="c dim">—</td><td class="c dim">—</td><td class="c dim">—</td><td class="c "><b>122</b><span class="sid">138h · 0/122</span></td><td class="c "><b>138</b><span class="sid">150h · 0/138</span></td><td class="c "><b>34</b><span class="sid">40h · 0/34</span></td><td class="c "><b>76</b><span class="sid">84h · 0/76</span></td><td class="c ok"><b>23</b><span class="sid">28h · 23/23</span></td><td class="c tot"><b>393</b><span class="sid">439h · 23/393</span></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="sect">
+  <h2>4 · 可立即派发队列（依赖全绿）</h2>
+  <div class="tblbox">
+    <table>
+      <thead><tr><th class="c">工作项</th><th>名称</th><th class="c">批次</th><th class="r">工时</th><th class="r">可派包</th><th>包 ID</th></tr></thead>
+      <tbody><tr><td class="c"><b>P3-003</b></td><td>金仓契约冒烟（10 表 DDL/CRUD/反查/敏感点）</td><td class="c dim">B0</td><td class="r">7.98</td><td class="r">1</td><td class="mono">P3-003-01</td></tr><tr><td class="c"><b>P3-012</b></td><td>配置 / 环境变量 / 统一错误码基线</td><td class="c dim">B2</td><td class="r">7.98</td><td class="r">1</td><td class="mono">P3-012-03</td></tr><tr><td class="c"><b>P3-019</b></td><td>Docker 多架构镜像（amd64/arm64）</td><td class="c dim">B2</td><td class="r">9.99</td><td class="r">1</td><td class="mono">P3-019-01</td></tr><tr><td class="c"><b>P3-020</b></td><td>verdaccio 离线源与依赖入库</td><td class="c dim">B2</td><td class="r">7.98</td><td class="r">1</td><td class="mono">P3-020-01</td></tr><tr><td class="c"><b>P3-030</b></td><td>Vite+React 骨架与目录约定</td><td class="c dim">B1</td><td class="r">7.98</td><td class="r">1</td><td class="mono">P3-030-01</td></tr><tr><td class="c"><b>P3-100</b></td><td>WI-2 IR 中间模型与类型系统</td><td class="c dim">B5</td><td class="r">7.98</td><td class="r">1</td><td class="mono">P3-100-01</td></tr></tbody>
+    </table>
+  </div>
+  <div class="legend">其余工作项均被上游未完成包阻塞；阻塞项见下方明细「前置未完成」列。派发前仍须核每包 <code>依赖包</code> 字段（依赖未完成不得派）。</div>
+</div>
+
+<div class="sect">
+  <h2>5 · 101 工作项明细</h2>
+  <div class="toolbar">
+    <input type="search" id="q" placeholder="搜索工作项 ID / 名称 / 里程碑…">
+    <button class="chipbtn on" data-f="all">全部</button>
+    <button class="chipbtn" data-f="B0">B0</button>
+    <button class="chipbtn" data-f="B1">B1</button>
+    <button class="chipbtn" data-f="B2">B2</button>
+    <button class="chipbtn" data-f="B3">B3</button>
+    <button class="chipbtn" data-f="B4">B4</button>
+    <button class="chipbtn" data-f="B5">B5</button>
+    <button class="chipbtn" data-f="B6">B6</button>
+    <button class="chipbtn" data-f="D1">D1</button>
+    <button class="chipbtn" data-f="ready">仅可派</button>
+    <span class="cnt" id="cnt"></span>
+  </div>
+  <div class="tblbox" style="max-height:76vh">
+    <table>
+      <thead><tr><th class="c">批次</th><th class="c">里程碑</th><th class="c">域</th><th>工作项</th><th class="c">泳道</th><th class="r">包数</th><th class="r">工时</th><th class="r">完成</th><th class="c">可派</th><th class="c">状态</th><th>前置未完成</th></tr></thead>
+      <tbody id="tb"><tr data-b="B0" data-r="0"><td class="c"><b>B0</b></td><td class="c dim">M0</td><td class="c dim">R0</td><td class="nm">工程化基线评审与落盘<div class="sid">P3-001</div></td><td class="c dim">DOC</td><td class="r">4</td><td class="r">4.00</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">4/4</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="B0" data-r="0"><td class="c"><b>B0</b></td><td class="c dim">M0</td><td class="c dim">R0</td><td class="nm">公式运行时 spike（四问 + B11/B12 探针）<div class="sid">P3-002</div></td><td class="c dim">FE</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">11/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="B0" data-r="1"><td class="c"><b>B0</b></td><td class="c dim">M0</td><td class="c dim">R0</td><td class="nm">金仓契约冒烟（10 表 DDL/CRUD/反查/敏感点）<div class="sid">P3-003</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="rdy">1 包可派</span></td><td class="c">待派发</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="B1" data-r="0"><td class="c"><b>B1</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">pnpm workspace 与 TS/ESLint/Pretti…<div class="sid">P3-010</div></td><td class="c dim">BE</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">11/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="B1" data-r="0"><td class="c"><b>B1</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">NestJS 应用骨架与模块划分<div class="sid">P3-011</div></td><td class="c dim">BE</td><td class="r">6</td><td class="r">8.00</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">6/6</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="B1" data-r="1"><td class="c"><b>B1</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">Vite+React 骨架与目录约定<div class="sid">P3-030</div></td><td class="c dim">FE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="rdy">1 包可派</span></td><td class="c">待派发</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="B2" data-r="1"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">配置 / 环境变量 / 统一错误码基线<div class="sid">P3-012</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="" style="width:29%"></i></div><span class="pct">2/7</span></td><td class="c"><span class="rdy">1 包可派</span></td><td class="c">进行中</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="B2" data-r="0"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">日志与请求上下文（traceId）<div class="sid">P3-013</div></td><td class="c dim">BE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-012</td></tr>
+<tr data-b="B2" data-r="0"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">TypeORM 数据源与 10 表实体<div class="sid">P3-014</div></td><td class="c dim">BE</td><td class="r">13</td><td class="r">14.04</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/13</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-003、P3-012</td></tr>
+<tr data-b="B2" data-r="0"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">迁移脚本与种子数据<div class="sid">P3-015</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-014</td></tr>
+<tr data-b="B2" data-r="0"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">启动断言三级国密与健康检查<div class="sid">P3-016</div></td><td class="c dim">BE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-013</td></tr>
+<tr data-b="B2" data-r="0"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">OpenAPI 契约校验与类型生成<div class="sid">P3-017</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-012</td></tr>
+<tr data-b="B2" data-r="0"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">审计写入中间件<div class="sid">P3-018</div></td><td class="c dim">BE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-014</td></tr>
+<tr data-b="B2" data-r="1"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">Docker 多架构镜像（amd64/arm64）<div class="sid">P3-019</div></td><td class="c dim">OPS</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="rdy">1 包可派</span></td><td class="c">待派发</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="B2" data-r="1"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">verdaccio 离线源与依赖入库<div class="sid">P3-020</div></td><td class="c dim">OPS</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="rdy">1 包可派</span></td><td class="c">待派发</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="B2" data-r="0"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">design-tokens 接入与 Canvas 主题桥接<div class="sid">P3-031</div></td><td class="c dim">FE</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-030</td></tr>
+<tr data-b="B2" data-r="0"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">字体就绪与 Univer 挂载骨架<div class="sid">P3-032</div></td><td class="c dim">FE</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-031</td></tr>
+<tr data-b="B2" data-r="0"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">组件库基线与基础组件<div class="sid">P3-033</div></td><td class="c dim">FE</td><td class="r">76</td><td class="r">84.36</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/76</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-031</td></tr>
+<tr data-b="B2" data-r="0"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">路由与布局壳<div class="sid">P3-034</div></td><td class="c dim">FE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-030</td></tr>
+<tr data-b="B2" data-r="0"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">API 客户端与 token 刷新<div class="sid">P3-035</div></td><td class="c dim">FE</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-017、P3-030</td></tr>
+<tr data-b="B2" data-r="0"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">Vitest 与 Playwright 基线<div class="sid">P3-036</div></td><td class="c dim">QA</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-030</td></tr>
+<tr data-b="B2" data-r="0"><td class="c"><b>B2</b></td><td class="c dim">M1</td><td class="c dim">R1</td><td class="nm">CI 流水线（lint/type/test/门禁脚本）<div class="sid">P3-037</div></td><td class="c dim">OPS</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-036</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">PBKDF2-HMAC-SM3 口令服务<div class="sid">P3-040</div></td><td class="c dim">BE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-016</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">auth 登录/刷新/登出/me 四端点<div class="sid">P3-041</div></td><td class="c dim">BE</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-015、P3-040</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">登录失败锁定 AC-02<div class="sid">P3-042</div></td><td class="c dim">BE</td><td class="r">4</td><td class="r">4.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/4</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-041</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">RBAC 守卫与请求用户上下文<div class="sid">P3-043</div></td><td class="c dim">BE</td><td class="r">4</td><td class="r">4.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/4</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-041</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">用户管理 5 端点<div class="sid">P3-044</div></td><td class="c dim">BE</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-043</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">文件 CRUD 与软删除<div class="sid">P3-045</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-043</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">文件列表分页与关键字搜索<div class="sid">P3-046</div></td><td class="c dim">BE</td><td class="r">4</td><td class="r">4.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/4</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-045</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">SSO 配置端点与加密存储<div class="sid">P3-047</div></td><td class="c dim">BE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-043</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">LDAP 认证适配<div class="sid">P3-048</div></td><td class="c dim">BE</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-047</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">OAuth2 认证适配<div class="sid">P3-049</div></td><td class="c dim">BE</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-047</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">CAS 认证适配<div class="sid">P3-050</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-047</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">审计查询端点与过滤<div class="sid">P3-051</div></td><td class="c dim">BE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-018</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">登录页<div class="sid">P3-060</div></td><td class="c dim">FE</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-033、P3-035</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">SSO 入口与回跳处理<div class="sid">P3-061</div></td><td class="c dim">FE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-047、P3-060</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">文件列表页<div class="sid">P3-062</div></td><td class="c dim">FE</td><td class="r">13</td><td class="r">14.04</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/13</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-035、P3-046</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">编辑器页面壳<div class="sid">P3-063</div></td><td class="c dim">FE</td><td class="r">15</td><td class="r">16.05</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/15</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-032</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">快照加载与保存联调<div class="sid">P3-064</div></td><td class="c dim">FE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-063</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">管理后台壳与用户管理 Tab<div class="sid">P3-065</div></td><td class="c dim">FE</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-034、P3-044</td></tr>
+<tr data-b="B3" data-r="0"><td class="c"><b>B3</b></td><td class="c dim">M2</td><td class="c dim">R2</td><td class="nm">管理后台 SSO 与审计 Tab<div class="sid">P3-066</div></td><td class="c dim">FE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-065</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">WS ticket 握手<div class="sid">P3-070</div></td><td class="c dim">BE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-043</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">Yjs 服务端接入与 LOAD 帧<div class="sid">P3-071</div></td><td class="c dim">BE</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-070</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">内容通道 Y.Map 双向同步<div class="sid">P3-072</div></td><td class="c dim">BE</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-071</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">结构操作服务端定序 oplog<div class="sid">P3-073</div></td><td class="c dim">BE</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-071</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">awareness 光标通道<div class="sid">P3-074</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-071</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">write-through 与 group-commit<div class="sid">P3-075</div></td><td class="c dim">BE</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-073</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">快照物化与 base_seq 事务<div class="sid">P3-076</div></td><td class="c dim">BE</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-075</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">加载协议重建（snapshot + 增量）<div class="sid">P3-077</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-076</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">优雅关闭序列 AC-15<div class="sid">P3-078</div></td><td class="c dim">BE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-075</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">席位计量与 close 码<div class="sid">P3-079</div></td><td class="c dim">BE</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-072</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">内存水位 LRU 与 close 4412<div class="sid">P3-080</div></td><td class="c dim">BE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-079</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">四个可替换接口抽象<div class="sid">P3-081</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-071</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">导入与活跃协同互斥协议<div class="sid">P3-082</div></td><td class="c dim">BE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-077、P3-114</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">协同接入与 doc-rebuild 处理<div class="sid">P3-090</div></td><td class="c dim">FE</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-064、P3-072</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">多人光标与协同头像<div class="sid">P3-091</div></td><td class="c dim">FE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-074、P3-090</td></tr>
+<tr data-b="B4" data-r="0"><td class="c"><b>B4</b></td><td class="c dim">M3</td><td class="c dim">R3</td><td class="nm">断线重连与状态提示<div class="sid">P3-092</div></td><td class="c dim">FE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-090</td></tr>
+<tr data-b="B5" data-r="0"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">导入导出 UI 与任务状态<div class="sid">P3-093</div></td><td class="c dim">FE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-062、P3-114</td></tr>
+<tr data-b="B5" data-r="1"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-2 IR 中间模型与类型系统<div class="sid">P3-100</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="rdy">1 包可派</span></td><td class="c">待派发</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="B5" data-r="0"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-1 解析骨架与 fixtures<div class="sid">P3-101</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-100</td></tr>
+<tr data-b="B5" data-r="0"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-1 类型识别与文本数字判定<div class="sid">P3-102</div></td><td class="c dim">BE</td><td class="r">4</td><td class="r">4.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/4</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-101</td></tr>
+<tr data-b="B5" data-r="0"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-1 CSV 编码探测链<div class="sid">P3-103</div></td><td class="c dim">BE</td><td class="r">4</td><td class="r">4.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/4</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-101</td></tr>
+<tr data-b="B5" data-r="0"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-1 桶判定器<div class="sid">P3-104</div></td><td class="c dim">BE</td><td class="r">4</td><td class="r">4.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/4</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-101</td></tr>
+<tr data-b="B5" data-r="0"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-3 结构映射<div class="sid">P3-105</div></td><td class="c dim">BE</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-102</td></tr>
+<tr data-b="B5" data-r="0"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-3 突变测试（反例鉴别力）<div class="sid">P3-106</div></td><td class="c dim">QA</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-105</td></tr>
+<tr data-b="B5" data-r="0"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-4 样式基础映射<div class="sid">P3-107</div></td><td class="c dim">BE</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-105</td></tr>
+<tr data-b="B5" data-r="0"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-4 合并/边框/数字格式<div class="sid">P3-108</div></td><td class="c dim">BE</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-107</td></tr>
+<tr data-b="B5" data-r="0"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-5 公式档案侧车<div class="sid">P3-109</div></td><td class="c dim">BE</td><td class="r">15</td><td class="r">16.05</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/15</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-105</td></tr>
+<tr data-b="B5" data-r="0"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-5 结构迁移器与值校验<div class="sid">P3-110</div></td><td class="c dim">BE</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-109</td></tr>
+<tr data-b="B5" data-r="0"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-5 差分导入管线<div class="sid">P3-111</div></td><td class="c dim">BE</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-110</td></tr>
+<tr data-b="B5" data-r="0"><td class="c"><b>B5</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-6 导出层<div class="sid">P3-112</div></td><td class="c dim">BE</td><td class="r">15</td><td class="r">16.05</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/15</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-108</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">WI-6 往返校验与 Excel 打开验证<div class="sid">P3-113</div></td><td class="c dim">QA</td><td class="r">4</td><td class="r">4.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/4</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-112</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">导入任务队列与状态端点<div class="sid">P3-114</div></td><td class="c dim">BE</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-105</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R4</td><td class="nm">CI 门禁接入（白名单/桶/版本）<div class="sid">P3-115</div></td><td class="c dim">OPS</td><td class="r">4</td><td class="r">4.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/4</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-037</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R5</td><td class="nm">机器指纹采集<div class="sid">P3-120</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-016</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R5</td><td class="nm">激活申请码与安装端点<div class="sid">P3-121</div></td><td class="c dim">BE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-120</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R5</td><td class="nm">SM2 验签与 License 解析<div class="sid">P3-122</div></td><td class="c dim">BE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-121</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R5</td><td class="nm">席位与到期判定 + 时钟三层<div class="sid">P3-123</div></td><td class="c dim">BE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-122</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R5</td><td class="nm">只读降级三层防线<div class="sid">P3-124</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-123</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R5</td><td class="nm">License 管理 Tab<div class="sid">P3-125</div></td><td class="c dim">FE</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-066、P3-123</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R6</td><td class="nm">Nginx+Tongsuo TLCP 网关<div class="sid">P3-130</div></td><td class="c dim">OPS</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-019</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R6</td><td class="nm">离线安装包与安装脚本<div class="sid">P3-131</div></td><td class="c dim">OPS</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-019、P3-020</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R6</td><td class="nm">备份恢复脚本与 SOP<div class="sid">P3-132</div></td><td class="c dim">OPS</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-015</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R6</td><td class="nm">麒麟/UOS 双架构安装验证<div class="sid">P3-133</div></td><td class="c dim">QA</td><td class="r">9</td><td class="r">9.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/9</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-131</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R6</td><td class="nm">AC-05 性能基线与真机复核<div class="sid">P3-134</div></td><td class="c dim">QA</td><td class="r">11</td><td class="r">11.99</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/11</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-090</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R6</td><td class="nm">E2E 验收脚本 AC-01~15<div class="sid">P3-135</div></td><td class="c dim">QA</td><td class="r">15</td><td class="r">16.05</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/15</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-124</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R6</td><td class="nm">气隙断网全功能验证 AC-12<div class="sid">P3-136</div></td><td class="c dim">QA</td><td class="r">5</td><td class="r">6.00</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/5</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-131</td></tr>
+<tr data-b="B6" data-r="0"><td class="c"><b>B6</b></td><td class="c dim">M3</td><td class="c dim">R6</td><td class="nm">等保配套三项（口令策略/留存/首登改密）<div class="sid">P3-137</div></td><td class="c dim">BE</td><td class="r">7</td><td class="r">7.98</td><td class="r"><div class="pb"><i class="none" style="width:0%"></i></div><span class="pct">0/7</span></td><td class="c"><span class="dim">—</span></td><td class="c">待派发</td><td class="blk dim">P3-042</td></tr>
+<tr data-b="D1" data-r="0"><td class="c"><b>D1</b></td><td class="c dim">M3</td><td class="c dim">R7</td><td class="nm">设计卡：协同三通道时序与抑制矩阵<div class="sid">D1-01</div></td><td class="c dim">BE</td><td class="r">4</td><td class="r">4.80</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">4/4</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="D1" data-r="0"><td class="c"><b>D1</b></td><td class="c dim">M3</td><td class="c dim">R7</td><td class="nm">设计卡：档案坐标键生命周期与迁移<div class="sid">D1-02</div></td><td class="c dim">BE</td><td class="r">4</td><td class="r">4.80</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">4/4</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="D1" data-r="0"><td class="c"><b>D1</b></td><td class="c dim">M3</td><td class="c dim">R7</td><td class="nm">设计卡：导入四桶判定与降级政策<div class="sid">D1-03</div></td><td class="c dim">BE</td><td class="r">3</td><td class="r">3.60</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">3/3</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="D1" data-r="0"><td class="c"><b>D1</b></td><td class="c dim">M3</td><td class="c dim">R7</td><td class="nm">设计卡：IR↔snapshot 双向投影规则表<div class="sid">D1-04</div></td><td class="c dim">BE</td><td class="r">3</td><td class="r">3.60</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">3/3</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="D1" data-r="0"><td class="c"><b>D1</b></td><td class="c dim">M1</td><td class="c dim">R7</td><td class="nm">设计卡：错误码与降级四层矩阵<div class="sid">D1-05</div></td><td class="c dim">BE</td><td class="r">3</td><td class="r">3.60</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">3/3</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="D1" data-r="0"><td class="c"><b>D1</b></td><td class="c dim">M3</td><td class="c dim">R7</td><td class="nm">设计卡：快照物化与加载状态机<div class="sid">D1-06</div></td><td class="c dim">BE</td><td class="r">3</td><td class="r">3.60</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">3/3</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="D1" data-r="0"><td class="c"><b>D1</b></td><td class="c dim">M2</td><td class="c dim">R7</td><td class="nm">设计卡：前端状态分层与乐观更新<div class="sid">D1-07</div></td><td class="c dim">FE</td><td class="r">3</td><td class="r">3.60</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">3/3</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="D1" data-r="0"><td class="c"><b>D1</b></td><td class="c dim">M3</td><td class="c dim">R7</td><td class="nm">设计卡：连接与席位状态机<div class="sid">D1-08</div></td><td class="c dim">BE</td><td class="r">2</td><td class="r">2.40</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">2/2</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="D1" data-r="0"><td class="c"><b>D1</b></td><td class="c dim">M1</td><td class="c dim">R7</td><td class="nm">设计卡：认证与 token 生命周期<div class="sid">D1-09</div></td><td class="c dim">BE</td><td class="r">2</td><td class="r">2.40</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">2/2</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="D1" data-r="0"><td class="c"><b>D1</b></td><td class="c dim">M3</td><td class="c dim">R7</td><td class="nm">设计卡：License 判定链与时钟<div class="sid">D1-10</div></td><td class="c dim">BE</td><td class="r">2</td><td class="r">2.40</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">2/2</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="D1" data-r="0"><td class="c"><b>D1</b></td><td class="c dim">M1</td><td class="c dim">R7</td><td class="nm">设计卡：配置装载与启动断言链<div class="sid">D1-11</div></td><td class="c dim">BE</td><td class="r">2</td><td class="r">2.40</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">2/2</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="D1" data-r="0"><td class="c"><b>D1</b></td><td class="c dim">M3</td><td class="c dim">R7</td><td class="nm">设计卡：AC↔用例↔环境追溯矩阵<div class="sid">D1-12</div></td><td class="c dim">QA</td><td class="r">2</td><td class="r">2.40</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">2/2</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr>
+<tr data-b="D1" data-r="0"><td class="c"><b>D1</b></td><td class="c dim">M1</td><td class="c dim">R7</td><td class="nm">设计卡：请求校验链与 API 契约生成门禁<div class="sid">D1-13</div></td><td class="c dim">BE</td><td class="r">2</td><td class="r">2.40</td><td class="r"><div class="pb"><i class="ok" style="width:100%"></i></div><span class="pct">2/2</span></td><td class="c"><span class="dim">—</span></td><td class="c">已完成</td><td class="blk dim"><span class="dim">无</span></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="sect">
+  <h2>6 · 口径注记</h2>
+  <div class="card">
+    <div class="note">
+      · 工时合计 <b>881.9h</b> 与工作项工时对账一致（TASKS §2 记 882.0h，差 0.1h 为逐包四舍五入）。<br>
+      · 「已归并」8 包计入完成（内容并入相邻包实施），故完成数 = 已完成 + 已归并。<br>
+      · <b>TASKS v1.5 变更记录写「722→789 包」，而正文 §1/§2 与台账均为 788</b>；本表以台账实测为准，789 属文档笔误（历史变更行不改，待收口轮订正）。<br>
+      · <b>TASKS §5 批次表合计 721 包</b>（22+26+131+149+131+141+121），缺 67 包 = P3-033 重估增量；该表还把 D1 卡按批次重复计入，与「卡单列」口径不同。本表逐包归属唯一，按台账机器统计。<br>
+      · 批次归属由里程碑 + 需求域 + 工作项 ID 区段推断，与 TASKS §5 的批次口径一致（B1 仅 P3-010/011/030 三件套）。<br>
+      · 设计卡 D1 共 13 卡 35 包 42h，2026-10-22 全部完成，故 D1 批次进度 100%。
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const rows = [...document.querySelectorAll('#tb tr')];
+const q = document.getElementById('q');
+const cnt = document.getElementById('cnt');
+let filter = 'all';
+function apply(){
+  const kw = q.value.trim().toLowerCase();
+  let n = 0;
+  rows.forEach(r => {
+    const okF = filter === 'all' || (filter === 'ready' ? r.dataset.r === '1' : r.dataset.b === filter);
+    const okK = !kw || r.textContent.toLowerCase().includes(kw);
+    const show = okF && okK;
+    r.style.display = show ? '' : 'none';
+    if (show) n++;
+  });
+  cnt.textContent = n + ' / ' + rows.length + ' 工作项';
+}
+q.addEventListener('input', apply);
+document.querySelectorAll('.chipbtn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.chipbtn').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  filter = b.dataset.f;
+  apply();
+}));
+apply();
+</script>
+</body>
+</html>
