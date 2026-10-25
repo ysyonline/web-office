@@ -1,0 +1,18 @@
+[
+  {
+    "schema": "AuditLogListResponse",
+    "side": "response",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "total": "x" },
+        "source": "V-S2 每个 schema 必失败样本"
+      }
+    ],
+    "strip-control": {
+      "input": { "__probe_unknown__": 1 },
+      "note": "对照面：响应侧 strip 语义（-03 裁决）"
+    }
+  }
+]

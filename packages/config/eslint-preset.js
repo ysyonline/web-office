@@ -8,7 +8,10 @@
  *
  * 设计约束：
  * - 只用 flat config（ESLint 9 起唯一可得形态；10 起旧格式彻底移除）。
- * - 三条 P0 一律 error：wo/no-emoji、wo/no-hardcoded-color、no-restricted-imports（图标唯一）。
+ * - 三条 P0 一律 error：wo/no-emoji、wo/no-hardcoded-color、no-restricted-imports（图标唯一）；
+ *   第四条 error 面为 wo/request-schema-strict（D1-13 A-STRICT，P3-011-05 落）——执法面
+ *   只圈 apps/** + packages/shared/src/schemas/**（响应侧 z.object 是 -03 裁决的合法存量，
+ *   不进全局 base 段，避免对非契约代码误伤）。
  * - typeAware=true 时才启用需要类型信息的规则（no-floating-promises 等）——它要求被检查的
  *   文件已在某个 tsconfig 的 include 内，故由调用方按「后端骨架已就绪」的时机打开（P3-011）。
  */
@@ -114,6 +117,17 @@ export function woPreset({ typeAware = false, withReact = true, tsconfigRootDir 
         'no-var': 'error',
         'prefer-const': 'error',
       },
+    },
+    {
+      name: 'wo/request-schema-strict',
+      // D1-13 A-STRICT 判据 1 的执法面（P3-011-05）：apps/** 全拦裸 z.object(；
+      // schemas/** 只拦 *Request 声明器内（分流逻辑在规则内部，files 圈定是外层保证）。
+      files: [
+        'apps/**/*.{ts,tsx,mts,cts,js,mjs,cjs,jsx}',
+        'packages/shared/src/schemas/**/*.{ts,tsx,mts,cts}',
+      ],
+      ignores: ['**/internal/**'],
+      rules: { 'wo/request-schema-strict': 'error' },
     },
     {
       name: 'wo/typescript',

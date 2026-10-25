@@ -1,0 +1,54 @@
+[
+  {
+    "schema": "ValidationErrorItem",
+    "side": "request",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "field": 123, "rule": "x", "message": "y" },
+        "source": "E-CV ① 错类型"
+      },
+      {
+        "name": "unknown-key",
+        "expect": "fail",
+        "input": { "__probe_unknown__": 1 },
+        "source": "E-CV ① 未知键（A-STRICT 判据 2 测试面）"
+      }
+    ]
+  },
+  {
+    "schema": "ValidationErrorDetail",
+    "side": "request",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "errors": "not-an-array" },
+        "source": "E-CV ① 错类型"
+      },
+      {
+        "name": "unknown-key",
+        "expect": "fail",
+        "input": { "__probe_unknown__": 1 },
+        "source": "E-CV ① 未知键（A-STRICT 判据 2 测试面）"
+      }
+    ]
+  },
+  {
+    "schema": "Error",
+    "side": "response",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "code": "x", "message": "m" },
+        "source": "V-S2 每个 schema 必失败样本"
+      }
+    ],
+    "strip-control": {
+      "input": { "__probe_unknown__": 1, "code": 1, "message": "m" },
+      "note": "对照面：响应侧 strip 语义（-03 裁决）；ErrorSchema 的 code/message 为必填，样本补足"
+    }
+  }
+]

@@ -6,8 +6,9 @@
  */
 import noEmoji from './no-emoji.js';
 import noHardcodedColor from './no-hardcoded-color.js';
+import requestSchemaStrict from './request-schema-strict.js';
 
-export const WO_RULE_NAMES = ['no-emoji', 'no-hardcoded-color'];
+export const WO_RULE_NAMES = ['no-emoji', 'no-hardcoded-color', 'request-schema-strict'];
 
 export const woPlugin = {
   meta: {
@@ -17,6 +18,7 @@ export const woPlugin = {
   rules: {
     'no-emoji': noEmoji,
     'no-hardcoded-color': noHardcodedColor,
+    'request-schema-strict': requestSchemaStrict,
   },
 };
 

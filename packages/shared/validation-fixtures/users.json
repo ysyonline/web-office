@@ -1,0 +1,70 @@
+[
+  {
+    "schema": "UserCreateRequest",
+    "side": "request",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "username": 123, "displayName": "张三", "role": "admin" },
+        "source": "E-CV ① 错类型"
+      },
+      {
+        "name": "unknown-key",
+        "expect": "fail",
+        "input": { "__probe_unknown__": 1 },
+        "source": "E-CV ① 未知键（A-STRICT 判据 2 测试面）"
+      }
+    ]
+  },
+  {
+    "schema": "UserUpdateRequest",
+    "side": "request",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "displayName": 123 },
+        "source": "E-CV ① 错类型"
+      },
+      {
+        "name": "unknown-key",
+        "expect": "fail",
+        "input": { "__probe_unknown__": 1 },
+        "source": "E-CV ① 未知键（A-STRICT 判据 2 测试面）"
+      }
+    ]
+  },
+  {
+    "schema": "UserResponse",
+    "side": "response",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "id": 123 },
+        "source": "V-S2 每个 schema 必失败样本"
+      }
+    ],
+    "strip-control": {
+      "input": { "__probe_unknown__": 1 },
+      "note": "对照面：响应侧 strip 语义（-03 裁决）"
+    }
+  },
+  {
+    "schema": "UserAdminResponse",
+    "side": "response",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "failedAttempts": "x" },
+        "source": "V-S2 每个 schema 必失败样本"
+      }
+    ],
+    "strip-control": {
+      "input": { "__probe_unknown__": 1 },
+      "note": "对照面：响应侧 strip 语义（-03 裁决）"
+    }
+  }
+]

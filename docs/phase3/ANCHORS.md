@@ -1,6 +1,6 @@
 # 包级锚点台账（产出物路径 / 检查命令 / 通过判据）
 
-> 版本：**v1.8**（2026-10-25 议题一 A 案落盘：shared 构建顺序裁决入 §2 决策表 + P3-011-02 防线解除；v1.7 补 P3-011-01/-02 执行记录；v1.5 补 §3「P3-011 六包派发锚点」｜2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条；v1.4（2026-10-24）P3-010-03 落地 + `-04~11` 归并收口登记 + 类型段拆三 project）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
+> 版本：**v1.9**（2026-10-25 P3-011-05 交付：§3 补执行记录 + 锚点表 -05 标已完成；v1.8 议题一 A 案落盘：shared 构建顺序裁决入 §2 决策表 + P3-011-02 防线解除；v1.7 补 P3-011-01/-02 执行记录；v1.5 补 §3「P3-011 六包派发锚点」｜2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条；v1.4（2026-10-24）P3-010-03 落地 + `-04~11` 归并收口登记 + 类型段拆三 project）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
 >
 > 为什么单独成表：锚点三项原先只写在包级验收断言里（「本包须填锚点三项」），但**没有载体**——填在哪、谁来核，都没定义。本表就是那个载体：一包一行，写死路径与可复制执行的命令。
 >
@@ -125,7 +125,7 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 | **P3-011-02**（已完成） | 引导与模块骨架 | `apps/server/src/main.ts`、`app.module.ts`、`src/modules/<tag>/`（10 个 tag 各一）、`scripts/check-module-graph.mjs`、`scripts/check-endpoint-groups.mjs` | `pnpm --filter @wo/server build` → 起服务 → `curl -s -o /dev/null -w '%{http_code}' 127.0.0.1:3000/api/v1/health` → `node scripts/check-module-graph.mjs` → `node scripts/check-endpoint-groups.mjs` | health=200 且体为 `status:ok`；模块图零环；模块目录与 `openapi.tags` 10 组**逐一对应**（缺一组或多一组即 fail） |
 | **P3-011-03**（已完成） | 契约 schema 定义 | `packages/shared/src/schemas/`（22 个契约 schema + `internal/`）、`scripts/check-schema-names.mjs` | `node scripts/check-schema-names.mjs && pnpm typecheck` | 22 个导出名与 `components.schemas` **双向逐字相等**（改名/多一/少一即 fail）；每个 schema 的 `z.toJSONSchema` 产物含 `additionalProperties:false`；shared 类型检查 exit=0 |
 | **P3-011-04**（已完成） | 校验管道与错误映射 | `apps/server/src/common/pipes/zod-validation.pipe.ts`、`filters/all-exceptions.filter.ts`、`errors/validation-codes.ts` + 管道单测 | `pnpm --filter @wo/server test -- zod-validation` | 四例全绿：body 未知键/错类型→400+7001、query 越界→400+7002、path 非法→400+7004、非法 JSON→400+7003；**断言非恒真**（摘掉 pipe 挂载后该组必红）；错误体形状 `{code,message,detail:{errors:[{field,rule,message}]}}` |
-| **P3-011-05**（待派发） | 断言与夹具 | `packages/shared/validation-fixtures/*.json`、`scripts/fixtures-run.mjs`、`packages/config/rules/request-schema-strict.js` | `node scripts/fixtures-run.mjs && pnpm test:rules && pnpm lint` | 夹具逐样本断言 `code`/`field`/`rule`/`message` 四者齐全；V-S2 黑名单正则命中即 fail；A-PATH 每条 issue 满足 `path.length>0` 或 `code==='unrecognized_keys'`；规则对 `apps/` 内裸 `z.object(` 报 error，RuleTester 红/绿各一例 |
+| **P3-011-05**（已完成） | 断言与夹具 | `packages/shared/validation-fixtures/*.json`、`scripts/fixtures-run.mjs`、`packages/config/rules/request-schema-strict.js` | `node scripts/fixtures-run.mjs && pnpm test:rules && pnpm lint` | 夹具逐样本断言 `code`/`field`/`rule`/`message` 四者齐全；V-S2 黑名单正则命中即 fail；A-PATH 每条 issue 满足 `path.length>0` 或 `code==='unrecognized_keys'`；规则对 `apps/` 内裸 `z.object(` 报 error，RuleTester 红/绿各一例 |
 | **P3-011-06**（待派发） | 联调与收口 | 本文件 §3 六行执行记录 + 三条新脚本纳入 `verify.mjs` + `OPEN-DECISIONS` 遗留登记 | `node scripts/verify.mjs && python -X utf8 scripts/gen_status_panel.py` | verify 全段 exit=0（含本工作项新增三段）；面板口径校验带无「不一致」；遗留项已登记且带归属包 |
 
 **执行记录（P3-011-01，2026-10-24 交付）**
@@ -170,6 +170,17 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 - **反向验证**：R1 禁用 7003 分支（`if (false && …)`）→ e2e 回落 9001，还原后 7003；R2 管道 schema 注入 strip 语义（`z.object` 替代 `strictObject`）→ ① 用例红（未知键不再失败）；R3 ③ 的合法 uuid 注入非法尾字符 → 用例红。三条均还原并复跑全绿。
 - **边界遵守**：不生成 X-Request-Id / traceId（归 P3-013）；HttpException 家族逐码映射只落 9001 骨架（完整映射归后续包）；9001 detail.requestId 未落（同归 P3-013）；`entity.too.large` 类容量越界暂落 7003 并在过滤器注释登记（3001 是导入域业务码，全局层不区分端点）。
 - **verify**：10/10 段通过；`tsconfig.json` 的 `types` 补 `jest`（spec 进了编译面）；build 链 exit=0，产物含 `dist/common/`。
+
+**执行记录（P3-011-05，2026-10-25 交付）**
+
+- **交付面**：`packages/shared/validation-fixtures/`（7 域 JSON，22 schema 全覆盖，44 个断言样本）+ `scripts/fixtures-run.mjs`（零依赖纯 node，仅 node builtin）+ `packages/config/rules/request-schema-strict.js`（RuleTester 红绿双向 13 例）+ 根 `test:rules` 挂第三测试文件 + `WO_RULE_NAMES` 登记（§3.1 第三行回写动作，`check-workspace-deps` 复核一致）+ preset 执法面段（`wo/request-schema-strict: error`，files 圈 apps/** + schemas/**，ignores internal/**）。
+- **执法面双裁（本包核心决策）**：规则内部分流——`apps/**` 任何裸 `z.object(` 即 error（派单断言原文）；`packages/shared/src/schemas/**` 只拦变量名以 `Request` 结尾的声明器内裸起造（**含嵌套层**——顶层 strictObject 挡不住嵌套 z.object 的静默剥离）。依据：schemas/ 内响应侧 11 处 `z.object` 是 -03 裁决的合法存量（「响应侧收紧属契约变更」），一刀切即 13 处误报；`*Request` 命名约定是 -03 机检名单的静态映射。响应侧/派生链/`internal/`/测试文件四类豁免各有卡面依据。
+- **夹具样本纪律**：E-CV ①逐行落——每个请求侧 schema 各一条错类型 + 一条未知键（`{"__probe_unknown__":1}`），不私扩约束；22 schema 全覆盖来自 V-S2「每个 schema 喂必失败样本」（请求侧 11 strict + 响应侧 11 loose）；响应侧另加 `strip-control` 对照样本（-03 裁决的回归探测器，非 E-CV 样本，JSON 内 note 标明，防有人把响应侧改成 strict 走私契约变更）。`Error` schema 夹具引用**契约逐字名** `Error`（`export { ErrorSchema as Error }` 的别名后导出名），引用 `ErrorSchema` 常量名即落空。
+- **运行器技术决策（须传承）**：① **CJS 单实例通道**——`createRequire`（以 packages/shared 为基准）解析 zod + `require(dist/cjs/index.js)`；ESM/CJS 双包混用会拿到两个 zod 实例，`z.config` 只影响其一，zhCN 断言会系统性假绿。② 运行器**自己执行** `z.config(z.locales.zhCN())`——这是 `apps/server/src/common/pipes/zh-locale.ts` 的运行时等价物（生产入口 app.module side-effect import），若有人删掉那行，此处 V-S2 黑名单立刻命中（回归探测器设计）。③ **dist 新鲜度门**——src 任一 `.ts` 比 `dist/cjs/index.js` 新即自动重建，防陈旧产物假绿。
+- **实测**：`node scripts/fixtures-run.mjs` → 44 样本 ALL GREEN（四者齐全 + V-S2 + A-PATH + unrecognized_keys 内联键名 + strip 对照全过）；`corepack pnpm test:rules` → 3/3 文件全绿；`corepack pnpm lint` → 全仓 0 error（22 存量零误报）；`verify` → 10/10；`check-workspace-deps` exit=0。
+- **反向验证（四条，探针全部用后即删）**：R1 毒丸——把 `UserUpdateRequest` 的 wrong-type 样本改成合法值 → runner exit=1 报「期望失败但 safeParse 成功」，还原后绿（断言链端到端咬合实证）；R2 V-S2 非死断言——无 zhCN 的 zod 实例 message 为 `"Invalid input: expected string, received number"` 命中黑名单，zhCN 为 `"无效输入：期望 string，实际接收 数字"` 不命中；R3 判据 4 咬合——全 optional schema strip 化后喂未知键 → success 且无 unrecognized_keys（runner 必红的形态实证）；R4 lint 执法面——`apps/server/src/` 造裸 `z.object` 探针 → lint exit=1 命中；`schemas/` 造 `ProbeRequest` 探针 → exit=1 命中；`schemas/internal/` 造裸 `z.object` → 豁免 PASS。
+- **踩坑（影响后续规则/测试开发者）**：① **ESLint 9 flat config 对无扩展名 glob 的 `files` 段按目录语义处理**——RuleTester 用例 filename 全是 `.ts`，顶层配置必须写带扩展名的显式模式（`**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts}`），否则所有用例落空且只报「No matching configuration found」（报错不指明根因，本包耗三轮定位）；② Linter/RuleTester 直呼时 filename 可能是相对路径，规则内路径正则**不能要求前导分隔符**（须 `(^|\/)apps\//` 形态，`[\\/]apps[\\/]/` 漏掉 `apps/` 开头形态导致规则静默不触发）；③ 裸 `pnpm` 命中的是系统 node 20 的另一入口，`node --test` 下报 `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`——必须用 `corepack pnpm` 显式入口（§0 既有约定，本包再证）。
+- **边界遵守**：不把 `fixtures-run.mjs` 纳入 verify（三条新脚本纳入 verify 是 `-06` 的交付物）；不动 P3-037 遍历门禁与 V-S1 本体（apps 面规则只是 schema 单一落点的纵深防线）；不上报 7xxx（夹具锁 schema 层行为，HTTP 层分流已有 -04 单测覆盖）。
 
 ### 3.1 与相邻工作项的边界（本段三处越界已定界）
 

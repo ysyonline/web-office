@@ -1,0 +1,36 @@
+[
+  {
+    "schema": "ShareCreateRequest",
+    "side": "request",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "userId": 123, "perm": "view" },
+        "source": "E-CV ① 错类型"
+      },
+      {
+        "name": "unknown-key",
+        "expect": "fail",
+        "input": { "__probe_unknown__": 1 },
+        "source": "E-CV ① 未知键（A-STRICT 判据 2 测试面）"
+      }
+    ]
+  },
+  {
+    "schema": "ShareResponse",
+    "side": "response",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "perm": "bogus" },
+        "source": "V-S2 每个 schema 必失败样本（enum 外取值）"
+      }
+    ],
+    "strip-control": {
+      "input": { "__probe_unknown__": 1 },
+      "note": "对照面：响应侧 strip 语义（-03 裁决）"
+    }
+  }
+]

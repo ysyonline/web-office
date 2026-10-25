@@ -1,0 +1,102 @@
+[
+  {
+    "schema": "FileCreateRequest",
+    "side": "request",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "name": 123 },
+        "source": "E-CV ① 错类型"
+      },
+      {
+        "name": "unknown-key",
+        "expect": "fail",
+        "input": { "__probe_unknown__": 1 },
+        "source": "E-CV ① 未知键（A-STRICT 判据 2 测试面）"
+      }
+    ]
+  },
+  {
+    "schema": "FileRenameRequest",
+    "side": "request",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "name": 123 },
+        "source": "E-CV ① 错类型"
+      },
+      {
+        "name": "unknown-key",
+        "expect": "fail",
+        "input": { "__probe_unknown__": 1 },
+        "source": "E-CV ① 未知键（A-STRICT 判据 2 测试面）"
+      }
+    ]
+  },
+  {
+    "schema": "FileResponse",
+    "side": "response",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "id": 123 },
+        "source": "V-S2 每个 schema 必失败样本"
+      }
+    ],
+    "strip-control": {
+      "input": { "__probe_unknown__": 1 },
+      "note": "对照面：响应侧 strip 语义（-03 裁决）"
+    }
+  },
+  {
+    "schema": "FileListResponse",
+    "side": "response",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "total": "x" },
+        "source": "V-S2 每个 schema 必失败样本"
+      }
+    ],
+    "strip-control": {
+      "input": { "__probe_unknown__": 1 },
+      "note": "对照面：响应侧 strip 语义（-03 裁决）"
+    }
+  },
+  {
+    "schema": "SnapshotResponse",
+    "side": "response",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "version": "x" },
+        "source": "V-S2 每个 schema 必失败样本"
+      }
+    ],
+    "strip-control": {
+      "input": { "__probe_unknown__": 1 },
+      "note": "对照面：响应侧 strip 语义（-03 裁决）"
+    }
+  },
+  {
+    "schema": "ImportTaskStatus",
+    "side": "response",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "status": 123 },
+        "source": "V-S2 每个 schema 必失败样本"
+      }
+    ],
+    "strip-control": {
+      "input": { "__probe_unknown__": 1 },
+      "note": "对照面：响应侧 strip 语义（-03 裁决）"
+    }
+  }
+]

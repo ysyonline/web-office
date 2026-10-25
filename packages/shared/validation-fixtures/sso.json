@@ -1,0 +1,38 @@
+[
+  {
+    "schema": "SsoCallbackRequest",
+    "side": "request",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "code": 123 },
+        "source": "E-CV ① 错类型"
+      },
+      {
+        "name": "unknown-key",
+        "expect": "fail",
+        "input": { "__probe_unknown__": 1 },
+        "source": "E-CV ① 未知键；本 schema 全字段 optional，是 A-PATH unrecognized_keys 分支（path=[]）的唯一纯载体"
+      }
+    ]
+  },
+  {
+    "schema": "SsoConfig",
+    "side": "request",
+    "samples": [
+      {
+        "name": "wrong-type",
+        "expect": "fail",
+        "input": { "type": 123, "enabled": true },
+        "source": "E-CV ① 错类型"
+      },
+      {
+        "name": "unknown-key",
+        "expect": "fail",
+        "input": { "__probe_unknown__": 1 },
+        "source": "E-CV ① 未知键（A-STRICT 判据 2 测试面）"
+      }
+    ]
+  }
+]
