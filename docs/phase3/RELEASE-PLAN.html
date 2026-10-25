@@ -88,11 +88,11 @@ th.c{text-align:center} th.r{text-align:right}
 </style></head><body><div class="wrap">
 <header><div>
 <h1>Phase 3 版本排期计划 · 至 v1.0 GA</h1>
-<div class="sub">数据源 <b>backlog.csv</b>（788 包）｜ 生成器 <b>scripts/gen_release_plan.py</b> ｜ 生成于 2026-10-25 14:04 ｜ 版本边界与完成标志由生成器登记，包数与工时由台账算出，覆盖与依赖闭环经机器校验（重复/漏项/上游倒置即生成器失败）</div>
+<div class="sub">数据源 <b>backlog.csv</b>（788 包）｜ 生成器 <b>scripts/gen_release_plan.py</b> ｜ 生成于 2026-10-25 19:17 ｜ 版本边界与完成标志由生成器登记，包数与工时由台账算出，覆盖与依赖闭环经机器校验（重复/漏项/上游倒置即生成器失败）</div>
 </div></header>
 <div class="kpis">
-<div class="kpi"><div class="l">剩余包</div><div class="v">719</div><div class="d">总 788，已完成 69</div></div>
-<div class="kpi"><div class="l">剩余工时</div><div class="v">801.6h</div><div class="d">名义 1.12h/包</div></div>
+<div class="kpi"><div class="l">剩余包</div><div class="v">718</div><div class="d">总 788，已完成 70</div></div>
+<div class="kpi"><div class="l">剩余工时</div><div class="v">800.5h</div><div class="d">名义 1.12h/包</div></div>
 <div class="kpi"><div class="l">版本数</div><div class="v">14</div><div class="d">v0.1 至 v1.0 GA</div></div>
 <div class="kpi"><div class="l">计划工期</div><div class="v">227 日</div><div class="d">执行 184 + 缓冲 43，≈ 45.4 周</div></div>
 <div class="kpi"><div class="l">计划结束</div><div class="v">2027-09-07</div><div class="d">单执行者名义日期</div></div>
@@ -101,7 +101,7 @@ th.c{text-align:center} th.r{text-align:right}
 <div class="sect"><h2>一、工期三层口径（不确定性区间）</h2>
 <div class="tblbox"><table class="wtable"><thead><tr><th>口径</th><th class="r">工作日</th><th class="r">周</th><th>说明</th></tr></thead><tbody>
 <tr><td>名义（台账 1.12h/包 ÷ 6h）</td><td class="r">134</td><td class="r">27</td><td class="dim">台账工时直接折算，最乐观；历史上从未达到</td></tr>
-<tr><td>实测（1.47h/包 ÷ 6h）</td><td class="r">176</td><td class="r">35</td><td class="dim">含验证与取证开销，与 2026-10-25 三次连发实测吻合</td></tr>
+<tr><td>实测（1.47h/包 ÷ 6h）</td><td class="r">175</td><td class="r">35</td><td class="dim">含验证与取证开销，与 2026-10-25 三次连发实测吻合</td></tr>
 <tr><td><b>计划（按版取整 184 + 20% 缓冲 43）</b></td><td class="r"><b>227</b></td><td class="r"><b>45.4</b></td><td class="dim">本计划采用值；缓冲单列在每版工期里，不摊进执行日</td></tr>
 </tbody></table></div>
 <div class="legend">三个常数可质疑但不可隐去：<b>单包实测耗时</b> 1.47h（3 包 / 4h24m）、<b>有效产能</b> 4 包/工作日（6h ÷ 1.47h）、<b>单版缓冲</b> 20%。任一个被推翻，本页所有日期随之失效——故写在首页而非附录。</div>
@@ -117,7 +117,7 @@ th.c{text-align:center} th.r{text-align:right}
 <div class="grow">
 <div class="gname"><b>v0.2</b> 后端地基</div>
 <div class="gtrack"><div class="gbar" style="left:1.322%;width:6.608%" title="v0.2 2026-10-29 至 2026-11-18"></div></div>
-<div class="gmeta">15日 · 47包</div>
+<div class="gmeta">15日 · 46包</div>
 </div>
 <div class="grow">
 <div class="gname"><b>v0.3</b> 前端骨架与交付基建</div>
@@ -180,13 +180,13 @@ th.c{text-align:center} th.r{text-align:right}
 <div class="gmeta">23日 · 76包</div>
 </div>
 </div>
-<div class="legend">条形宽度 = 工作日（含缓冲）。<b>v0.1</b> 只有 7 包却决定 719 包的起点；<b>v0.4</b> 单版 27 日是全程最长，属节奏风险点；<b>v0.7</b> 是第一个用户可见的产品级版本。</div>
+<div class="legend">条形宽度 = 工作日（含缓冲）。<b>v0.1</b> 只有 7 包却决定 718 包的起点；<b>v0.4</b> 单版 27 日是全程最长，属节奏风险点；<b>v0.7</b> 是第一个用户可见的产品级版本。</div>
 </div>
 <div class="sect"><h2>三、版本总表</h2><div class="tblbox"><table><thead><tr>
 <th>版本</th><th>名称</th><th>包含需求</th><th class="r">包数</th><th class="r">工时</th><th class="r">执行</th><th class="r">缓冲</th><th class="r">合计</th><th>起</th><th>止</th>
 </tr></thead><tbody>
 <tr><td class="vid">v0.1</td><td>门禁收官</td><td class="mono">P3-003</td><td class="r">7</td><td class="r">7.98</td><td class="r">2</td><td class="r dim">1</td><td class="r"><b>3</b></td><td class="dim mono">10-26</td><td class="dim mono">10-28</td></tr>
-<tr><td class="vid">v0.2</td><td>后端地基</td><td class="mono">P3-012 P3-013 P3-017 P3-016 P3-014 P3-015 P3-018</td><td class="r">47</td><td class="r">53.70</td><td class="r">12</td><td class="r dim">3</td><td class="r"><b>15</b></td><td class="dim mono">10-29</td><td class="dim mono">11-18</td></tr>
+<tr><td class="vid">v0.2</td><td>后端地基</td><td class="mono">P3-012 P3-013 P3-017 P3-016 P3-014 P3-015 P3-018</td><td class="r">46</td><td class="r">52.56</td><td class="r">12</td><td class="r dim">3</td><td class="r"><b>15</b></td><td class="dim mono">10-29</td><td class="dim mono">11-18</td></tr>
 <tr><td class="vid">v0.3</td><td>前端骨架与交付基建</td><td class="mono">P3-020 P3-030 P3-031 P3-032 P3-034 P3-036 P3-037 P3-019</td><td class="r">64</td><td class="r">71.88</td><td class="r">16</td><td class="r dim">4</td><td class="r"><b>20</b></td><td class="dim mono">11-19</td><td class="dim mono">12-16</td></tr>
 <tr><td class="vid">v0.4</td><td>组件库基线</td><td class="mono">P3-033 P3-035</td><td class="r">85</td><td class="r">94.35</td><td class="r">22</td><td class="r dim">5</td><td class="r"><b>27</b></td><td class="dim mono">12-17</td><td class="dim mono">01-22</td></tr>
 <tr><td class="vid">v0.5</td><td>账户与权限</td><td class="mono">P3-040 P3-041 P3-042 P3-043 P3-044 P3-045 P3-046</td><td class="r">42</td><td class="r">45.96</td><td class="r">11</td><td class="r dim">3</td><td class="r"><b>14</b></td><td class="dim mono">01-25</td><td class="dim mono">02-11</td></tr>
@@ -199,9 +199,9 @@ th.c{text-align:center} th.r{text-align:right}
 <tr><td class="vid">v0.12</td><td>导出与互斥</td><td class="mono">P3-112 P3-113 P3-114 P3-115 P3-093 P3-082</td><td class="r">44</td><td class="r">48.02</td><td class="r">11</td><td class="r dim">3</td><td class="r"><b>14</b></td><td class="dim mono">07-02</td><td class="dim mono">07-21</td></tr>
 <tr><td class="vid">v0.13</td><td>License 与降级</td><td class="mono">P3-120 P3-121 P3-122 P3-123 P3-124 P3-125</td><td class="r">34</td><td class="r">39.96</td><td class="r">9</td><td class="r dim">2</td><td class="r"><b>11</b></td><td class="dim mono">07-22</td><td class="dim mono">08-05</td></tr>
 <tr><td class="vid">v0.14</td><td>交付验收（v1.0 GA）</td><td class="mono">P3-130 P3-131 P3-132 P3-133 P3-134 P3-135 P3-136 P3-137</td><td class="r">76</td><td class="r">83.97</td><td class="r">19</td><td class="r dim">4</td><td class="r"><b>23</b></td><td class="dim mono">08-06</td><td class="dim mono">09-07</td></tr>
-<tr><td colspan="3" class="r dim">合计</td><td class="r"><b>719</b></td><td class="r"><b>801.64</b></td><td class="r"><b>184</b></td><td class="r"><b>43</b></td><td class="r"><b>227</b></td><td colspan="2" class="dim mono">2027-09-07</td></tr>
+<tr><td colspan="3" class="r dim">合计</td><td class="r"><b>718</b></td><td class="r"><b>800.50</b></td><td class="r"><b>184</b></td><td class="r"><b>43</b></td><td class="r"><b>227</b></td><td colspan="2" class="dim mono">2027-09-07</td></tr>
 </tbody></table></div>
-<div class="legend">校验：各版包数之和 <b>719</b> = 台账未完成包数 <b>719</b>；工作项去重 <b>84</b> 个；依赖闭环无倒置（上游必在同版更前或更早版本）。</div>
+<div class="legend">校验：各版包数之和 <b>718</b> = 台账未完成包数 <b>718</b>；工作项去重 <b>84</b> 个；依赖闭环无倒置（上游必在同版更前或更早版本）。</div>
 </div>
 <div class="sect"><h2>四、逐版本定义（目标 / 需求 / 完成标志 / 出闸证据）</h2><div class="cards">
 <div class="card gate">
@@ -229,13 +229,13 @@ th.c{text-align:center} th.r{text-align:right}
 <li>冒烟报告归档，ANCHORS 执行记录引用其路径</li>
 <li>verify 14/14（本版无代码改动，须仍为绿）</li>
 </ul></div>
-<div class="risk">依赖与风险：金仓授权未到位即全阻塞（本节 R1）；无实例时只能出「差异清单 + PG 等价预演」，不算完成。</div>
+<div class="risk">依赖与风险：金仓授权未到位即全阻塞（本节 R1）；无实例时只能出「差异清单 + PG 等价预演」，不算完成。**2026-10-25 复核：申请无回音，且本机无 PG16——「等价预演」这条缓解措施当前为空**，故本版 7 包在授权到位前没有可交付执行面（-01 骨架除外）。</div>
 </div></div>
 <div class="card">
 <div class="ch"><span class="t">v0.2 后端地基</span>
 <span class="badge b1">7 项需求</span>
-<span class="badge">47 包</span>
-<span class="badge">53.70h</span>
+<span class="badge">46 包</span>
+<span class="badge">52.56h</span>
 <span class="badge b2">15 工作日</span>
 <span class="badge b3">2026-11-18 止</span>
 <span class="g">2026-10-29 至 2026-11-18 ｜ 泳道 BE</span>
@@ -243,7 +243,7 @@ th.c{text-align:center} th.r{text-align:right}
 <div class="cb">
 <div class="goal">目标：服务能从空库启动：配置、日志、契约、数据层、迁移、审计六件一次成型。</div>
 <div class="blk"><h4>包含需求</h4><ul>
-<li><span class="tag">P3-012</span><b>配置 / 环境变量 / 统一错误码基线</b> <span class="dim">BE · 5 包 · 5.70h　含已完成 2 包</span></li>
+<li><span class="tag">P3-012</span><b>配置 / 环境变量 / 统一错误码基线</b> <span class="dim">BE · 4 包 · 4.56h　含已完成 3 包</span></li>
 <li><span class="tag">P3-013</span><b>日志与请求上下文（traceId）</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
 <li><span class="tag">P3-017</span><b>OpenAPI 契约校验与类型生成</b> <span class="dim">BE · 7 包 · 7.98h</span></li>
 <li><span class="tag">P3-016</span><b>启动断言三级国密与健康检查</b> <span class="dim">BE · 5 包 · 6.00h</span></li>
@@ -693,7 +693,7 @@ th.c{text-align:center} th.r{text-align:right}
 </div>
 <div class="sect"><h2>七、风险登记</h2><div class="tblbox"><table class="wtable"><thead><tr>
 <th>ID</th><th>风险</th><th>影响版本</th><th>证据</th><th>缓解</th></tr></thead><tbody>
-<tr><td class="mono">R1</td><td><b>金仓授权未到位</b></td><td class="dim">v0.1 及其全部下游（M2 起的数据层）</td><td class="dim">2026-10-21 记录：官网授权页 404，harbor 超时，走人工申请 3-5 工作日；本机 NO_DOCKER</td><td class="dim">立即提交申请并跟踪；同期用 PG16 做等价 DDL 预演，产出差异清单并入 v0.1 交付；超 5 个工作日未到位，v0.1 转为「差异清单版」并明确不视为完成</td></tr>
+<tr><td class="mono">R1</td><td><b>金仓授权未到位</b></td><td class="dim">v0.1 及其全部下游（M2 起的数据层）</td><td class="dim">2026-10-21 记录：官网授权页 404，harbor 超时，走人工申请 3-5 工作日；本机 NO_DOCKER。**2026-10-25 19:15 复核：申请仍无回音**（距申请满 5 个工作日 = 2026-10-28，与 v0.1 名义结束日同一天，即本版缓冲为零）；本机亦无 PG16 可做等价预演（无 5432 监听 / 无 psql / 无 Docker）</td><td class="dim">立即提交申请并跟踪；同期用 PG16 做等价 DDL 预演，产出差异清单并入 v0.1 交付；超 5 个工作日未到位，v0.1 转为「差异清单版」并明确不视为完成</td></tr>
 <tr><td class="mono">R2</td><td><b>本机无 Docker</b></td><td class="dim">v0.3 镜像两条、v0.14 双架构与气隙安装</td><td class="dim">docker 与 buildx 均不在 PATH</td><td class="dim">申请远端 runner 或 CI 构建；不可得时这两类验收一律挂「环境阻塞」，不得以「代码已写」计入完成</td></tr>
 <tr><td class="mono">R3</td><td><b>设计卡拦读（D1-01/02/03/04/06/10）</b></td><td class="dim">v0.8 协同内核、v0.10 导入解析、v0.13 License</td><td class="dim">六卡状态为已完成，但 Security Center 对逐文件读取 deny</td><td class="dim">按版本提前一版索取卡内容（v0.7 末取 01/06/10，v0.9 末取 02/03/04）；取不到则该版不得启动，避免按猜测实现污染 138 个下游包</td></tr>
 <tr><td class="mono">R4</td><td><b>v0.4 单版过长（85 包 / 27 工作日）</b></td><td class="dim">排期节奏与反馈周期</td><td class="dim">76 包组件库属同一工作项，中途无自然收口点</td><td class="dim">设 4 个内部检查点（每约 19 包）做可视化验收；若实际超期 30%，按「减包不移期」把低优组件移至 v0.5 后的补丁版</td></tr>
