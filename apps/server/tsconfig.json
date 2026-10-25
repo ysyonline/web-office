@@ -2,6 +2,7 @@
   "extends": "../../packages/config/tsconfig.server.json",
   "compilerOptions": {
     "noEmit": true,
+    "types": ["node", "jest"],
     "paths": {
       "@wo/shared": ["../../packages/shared/src/index.ts"]
     }

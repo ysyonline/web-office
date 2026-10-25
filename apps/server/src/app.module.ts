@@ -14,7 +14,9 @@
  * 二者在契约里本就不一致，详见这两个 controller 的首部注释。
  */
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CollabModule } from './modules/collab/collab.module';
@@ -25,8 +27,18 @@ import { ShareModule } from './modules/share/share.module';
 import { SsoModule } from './modules/sso/sso.module';
 import { SystemModule } from './modules/system/system.module';
 import { UsersModule } from './modules/users/users.module';
+// 中文错误文案的全局配置（z.config 进程级，单一 side-effect 入口，见文件头注）。
+import './common/pipes/zh-locale';
 
 @Module({
+  providers: [
+    // 异常过滤器是「任何异常都必须吐契约形状」的兜底，全局注册是它的本意——
+    // 与 D1-13「自研 pipe 不能全局注册」不冲突：漏挂的是校验（管道），漏挂后端点
+    // 收到的非法载荷不抛异常、直接进服务层，那是 P3-037 遍历门禁要抓的缺陷；
+    // 而过滤器漏挂的后果是裸 500 / Nest 默认错误体，全局兜住恰恰是 D1-13 ④ 栏
+    // 「错误码映射」的执行前提。
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
+  ],
   imports: [
     AuditModule,
     AuthModule,

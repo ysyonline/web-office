@@ -124,7 +124,7 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 | **P3-011-01**（已完成） | 依赖与工具链落位 | `apps/server/package.json`、`apps/server/jest.config.cjs`、`pnpm-workspace.yaml`（`allowBuilds`）、`pnpm-lock.yaml` | `pnpm install --frozen-lockfile && node scripts/check-workspace-deps.mjs && pnpm --filter @wo/server exec jest --listTests` | 三条 exit=0；lock 可解析 `@nestjs/core@11` / `jest@30.5.2` / `ts-jest` / `@nestjs/testing` / `supertest`；`jest --listTests` 输出 0 用例仍 exit=0（装配成立而非空跑） |
 | **P3-011-02**（已完成） | 引导与模块骨架 | `apps/server/src/main.ts`、`app.module.ts`、`src/modules/<tag>/`（10 个 tag 各一）、`scripts/check-module-graph.mjs`、`scripts/check-endpoint-groups.mjs` | `pnpm --filter @wo/server build` → 起服务 → `curl -s -o /dev/null -w '%{http_code}' 127.0.0.1:3000/api/v1/health` → `node scripts/check-module-graph.mjs` → `node scripts/check-endpoint-groups.mjs` | health=200 且体为 `status:ok`；模块图零环；模块目录与 `openapi.tags` 10 组**逐一对应**（缺一组或多一组即 fail） |
 | **P3-011-03**（已完成） | 契约 schema 定义 | `packages/shared/src/schemas/`（22 个契约 schema + `internal/`）、`scripts/check-schema-names.mjs` | `node scripts/check-schema-names.mjs && pnpm typecheck` | 22 个导出名与 `components.schemas` **双向逐字相等**（改名/多一/少一即 fail）；每个 schema 的 `z.toJSONSchema` 产物含 `additionalProperties:false`；shared 类型检查 exit=0 |
-| **P3-011-04**（待派发） | 校验管道与错误映射 | `apps/server/src/common/pipes/zod-validation.pipe.ts`、`filters/all-exceptions.filter.ts`、`errors/validation-codes.ts` + 管道单测 | `pnpm --filter @wo/server test -- zod-validation` | 四例全绿：body 未知键/错类型→400+7001、query 越界→400+7002、path 非法→400+7004、非法 JSON→400+7003；**断言非恒真**（摘掉 pipe 挂载后该组必红）；错误体形状 `{code,message,detail:{errors:[{field,rule,message}]}}` |
+| **P3-011-04**（已完成） | 校验管道与错误映射 | `apps/server/src/common/pipes/zod-validation.pipe.ts`、`filters/all-exceptions.filter.ts`、`errors/validation-codes.ts` + 管道单测 | `pnpm --filter @wo/server test -- zod-validation` | 四例全绿：body 未知键/错类型→400+7001、query 越界→400+7002、path 非法→400+7004、非法 JSON→400+7003；**断言非恒真**（摘掉 pipe 挂载后该组必红）；错误体形状 `{code,message,detail:{errors:[{field,rule,message}]}}` |
 | **P3-011-05**（待派发） | 断言与夹具 | `packages/shared/validation-fixtures/*.json`、`scripts/fixtures-run.mjs`、`packages/config/rules/request-schema-strict.js` | `node scripts/fixtures-run.mjs && pnpm test:rules && pnpm lint` | 夹具逐样本断言 `code`/`field`/`rule`/`message` 四者齐全；V-S2 黑名单正则命中即 fail；A-PATH 每条 issue 满足 `path.length>0` 或 `code==='unrecognized_keys'`；规则对 `apps/` 内裸 `z.object(` 报 error，RuleTester 红/绿各一例 |
 | **P3-011-06**（待派发） | 联调与收口 | 本文件 §3 六行执行记录 + 三条新脚本纳入 `verify.mjs` + `OPEN-DECISIONS` 遗留登记 | `node scripts/verify.mjs && python -X utf8 scripts/gen_status_panel.py` | verify 全段 exit=0（含本工作项新增三段）；面板口径校验带无「不一致」；遗留项已登记且带归属包 |
 
@@ -159,6 +159,17 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 - **端到端**：根 build（含新第四段）exit=0；`dist/cjs/index.js` 22 导出齐全且 `LoginRequest.safeParse` 未知键拒绝（strict 在 CJS 产物成立）；dist 产物起服务 `PORT=3100` health 200 `{"status":"ok"}`。
 - **台账口径注记**：「请求 9 + 响应 13」按引用方向机械复现实为 8（仅 requestBody）+ 12（responses）+ 2（Error 树内嵌），9/13 无法从 openapi 导出（SsoConfig 同时是 requestBody）；`check-schema-names.mjs` 只断言 22 集合双向相等，不写死拆分数（交接件缺陷 2 修法落地）。拆分说明已写进 `schemas/common.ts`。
 - **verify**：10/10 段通过（含本包新增文件进 lint/typecheck 面）。
+
+**执行记录（P3-011-04，2026-10-25 交付）**
+
+- **交付面**：`apps/server/src/common/{errors/validation-codes.ts, pipes/zod-validation.pipe.ts, pipes/zh-locale.ts, filters/all-exceptions.filter.ts}` + `pipes/zod-validation.pipe.spec.ts`（四条分流 + 两条反断言，6 例全绿）+ `app.module.ts` 挂 `APP_FILTER`（全局过滤器）+ `zod@4.6.7` 显式进 server 依赖（pnpm isolated 布局不 hoist，类型/运行期都需要）。
+- **分流实测**：①body 未知键/错类型→400+7001（错误体逐字段 `{field,rule,message}`，三键无第四）；②query 越界→400+7002（coerce 形态 `z.coerce.number().int().min(1).max(100)`，`limit=0`/`''`/`'101'` 三样本全拦——`limit=0` 是 D1-13-B 点名的「缺 `.min(1)` 唯一探测器」）；③path 非法→400+7004；④非法 JSON→400+7003（e2e 真实栈验证）。
+- **7003 的实证弯路（必须传承）**：过滤器最初按 body-parser 的 `type='entity.parse.failed'` 判据写单测全绿，但 e2e 真实栈落 9001——**Nest core 的 `routes-resolver.js mapExternalException` 在路由层把 body-parser 的 SyntaxError 包装成 `BadRequestException(err.message)`，原始属性面已丢失**。用一次性探针过滤器抓真实异常证实（name=BadRequestException，type 属性不存在）。最终判据 = `HttpException && status===400 && message 命中解析特征词`（unexpected token / is not valid JSON / in json at position），e2e 复测 7003 成立。**教训：单测的手造异常对象必须先与真实栈核对属性面——「单测全绿」与「真实栈工作」是两件事，本包的 e2e 探针就是把这一课落成纪律。**
+- **两个注册判据的分界（D1-13 决议执行）**：管道**不**全局注册（漏挂=零校验，是 P3-037 遍历门禁要抓的缺陷）；过滤器**必须**全局注册（漏挂=裸 500/Nest 默认错误体，全局兜底正是 D1-13 ④ 栏错误映射的执行前提）。`zh-locale.ts` 单独成文件由 app.module 显式 side-effect import——`z.config` 是进程级全局副作用，写进管道会让 import 即变更全局。
+- **错误体中文文案**：`z.locales.zhCN()` 全局生效后 `unrecognized_keys` 默认文案自带键名（「出现未知的键(key): \"__probe_unknown__\"」），满足 D1-13-B「message 必须内联未知键名」；单测断言了「含键名 + 中文」双条件，泛化文案过不了。
+- **反向验证**：R1 禁用 7003 分支（`if (false && …)`）→ e2e 回落 9001，还原后 7003；R2 管道 schema 注入 strip 语义（`z.object` 替代 `strictObject`）→ ① 用例红（未知键不再失败）；R3 ③ 的合法 uuid 注入非法尾字符 → 用例红。三条均还原并复跑全绿。
+- **边界遵守**：不生成 X-Request-Id / traceId（归 P3-013）；HttpException 家族逐码映射只落 9001 骨架（完整映射归后续包）；9001 detail.requestId 未落（同归 P3-013）；`entity.too.large` 类容量越界暂落 7003 并在过滤器注释登记（3001 是导入域业务码，全局层不区分端点）。
+- **verify**：10/10 段通过；`tsconfig.json` 的 `types` 补 `jest`（spec 进了编译面）；build 链 exit=0，产物含 `dist/common/`。
 
 ### 3.1 与相邻工作项的边界（本段三处越界已定界）
 
