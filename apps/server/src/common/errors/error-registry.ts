@@ -7,7 +7,9 @@
  * 2. **四层矩阵**：`ERROR_LAYER_MATRIX` 是形状占位，**取值为空**——逐码的 HTTP 映射与
  *    UI 档位是 D1-05 卡裁决内容，归 P3-012-04。本包不填：填一份猜的矩阵会让下游
  *    （-02 的响应封装、前端错误呈现）按假映射实现，比空着更坏。
- * 3. **错误体封装**：`buildErrorBody` 只落签名，实现归 P3-012-03（happy path 2/2）。
+ * 3. **错误体封装**：`buildErrorBody` 是唯一的出站拼装点（P3-012-03）——文案默认取
+ *    码表，`detail` 恒存在（缺省补 `null`）。三个 HTTP 出口（校验 / HttpException /
+ *    未知异常）都经它出站，因此「响应体形状一致」不是靠三处各写一遍对齐来的。
  *
  * 与 `validation-codes.ts` 的关系：那份文件是 7xxx 的**管道/过滤器执行面**（P3-011-04
  * 已落地并在运行），本文件是**全码表**的公共面。二者合并的口径：7xxx 字面量留在原处
@@ -16,12 +18,11 @@
  */
 import {
   ERROR_CODE_MESSAGES,
+  errorMessage,
   type ErrorBody,
   type ErrorCode,
   type ErrorLayerRow,
 } from '@wo/shared';
-
-import { NotImplementedError } from '../not-implemented.js';
 
 /** 全码表（升序，30 条）。`Object.keys` 返回字符串，这里一次性转成数字并冻结。 */
 export const ALL_ERROR_CODES: readonly ErrorCode[] = Object.freeze(
@@ -43,11 +44,29 @@ export const ERROR_LAYER_MATRIX: Readonly<Partial<Record<ErrorCode, ErrorLayerRo
 /**
  * 组装统一错误体（Spec §10：`{code,message,detail}`）。
  *
- * 签名先定：`code` 必须是码表内的码（类型层锁住），`message` 默认取码表文案、允许
- * 调用方覆盖（校验类错误要带逐字段明细，文案由管道给），`detail` 透传。
+ * `code` 由类型层锁在码表内（`ErrorCode` 是 30 个字面量联合），因此「响应里出现码表
+ * 外的数字」在编译期即被挡住——不需要运行期白名单。
  *
- * @throws `NotImplementedError` 本包为骨架期占位，实现归 P3-012-03
+ * 三条约定，各有原因：
+ *
+ * 1. **`message` 默认取码表文案**，允许调用方覆盖。覆盖不是逃生门而是**责任转移**：
+ *    校验类错误要带逐字段明细、文案由管道给（它知道是哪一段 body/query/path 失败），
+ *    HttpException 的 message 是框架/业务抛出的既有信息——这两类覆盖有据；其余一律
+ *    吃表内文案，避免各出口各写一份中文。**没有第三个来源**：码表之外的字面量就是漂移。
+ * 2. **`detail` 恒存在**：`detail ?? null`。不是「顺手补个默认值」——`JSON.stringify`
+ *    会把 `undefined` 值的键整个丢掉，若透传 `undefined`，响应体就变成 `{code,message}`，
+ *    「三出口形状一致」当场破功，而 tsc 看不见（`detail?: unknown` 允许缺席）。
+ *    用 `null` 而不是空对象：契约 `Error.detail` 声明为 nullable，空对象会多出契约
+ *    没有的结构。
+ * 3. **空串 `message` 不兜底**：`''` 是调用方的明确取值，按原样输出（与 -02 配置层
+ *    「空串等同未设置」刻意不同）。配置空串是**部署形态产物**（compose 的 `- FOO=`），
+ *    静默吞掉会让必填键带着空口令启动；而错误文案空串是**代码缺陷**，兜底反而把它
+ *    藏起来。两处选择相反，是因为要处理的错误来源不同。
  */
-export function buildErrorBody(_code: ErrorCode, _detail?: unknown, _message?: string): ErrorBody {
-  throw new NotImplementedError('apps/server/src/common/errors/error-registry.ts#buildErrorBody');
+export function buildErrorBody(code: ErrorCode, detail?: unknown, message?: string): ErrorBody {
+  return {
+    code,
+    message: message ?? errorMessage(code),
+    detail: detail ?? null,
+  };
 }
