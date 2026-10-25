@@ -1,6 +1,6 @@
 # 包级锚点台账（产出物路径 / 检查命令 / 通过判据）
 
-> 版本：**v1.9**（2026-10-25 P3-011-05 交付：§3 补执行记录 + 锚点表 -05 标已完成；v1.8 议题一 A 案落盘：shared 构建顺序裁决入 §2 决策表 + P3-011-02 防线解除；v1.7 补 P3-011-01/-02 执行记录；v1.5 补 §3「P3-011 六包派发锚点」｜2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条；v1.4（2026-10-24）P3-010-03 落地 + `-04~11` 归并收口登记 + 类型段拆三 project）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
+> 版本：**v2.0**（2026-10-25 P3-011-06 收官交付：`verify.mjs` 段数 **10 → 13**——P3-011 的三条结构断言（模块图零环 / 端点分组 / 契约 schema 命名）接入自检，规则测试段补齐 -05 的第三测试文件，§0 门禁三连段数口径同步；§3 补 -06 执行记录、六行全标已完成；v1.9 P3-011-05 交付：§3 补执行记录 + 锚点表 -05 标已完成；v1.8 议题一 A 案落盘：shared 构建顺序裁决入 §2 决策表 + P3-011-02 防线解除；v1.7 补 P3-011-01/-02 执行记录；v1.5 补 §3「P3-011 六包派发锚点」｜2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条；v1.4（2026-10-24）P3-010-03 落地 + `-04~11` 归并收口登记 + 类型段拆三 project）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
 >
 > 为什么单独成表：锚点三项原先只写在包级验收断言里（「本包须填锚点三项」），但**没有载体**——填在哪、谁来核，都没定义。本表就是那个载体：一包一行，写死路径与可复制执行的命令。
 >
@@ -32,7 +32,7 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 **两条登记 / 编辑纪律**（2026-10-22 从交接件回填，此前无正式载体）：
 
 3. REVIEW-INDEX / OPEN-DECISIONS / 日志的**长表格行追加或锚点替换一律用 python 按行检测操作，不用 Edit 长串匹配**——Edit 工具对含表格线与全角字符的长行匹配不稳定（2026-10-22 实测失败两次，含 D1-06 卡表格行）。
-4. **门禁三连**（每轮收口即跑，缺一不可）：`node scripts/verify.mjs`（**十段自检**，2026-10-24 条 Q ③ + 条 S① 代码批起已含 openapi 契约门禁与文档纪律段，`check_openapi_contract.py` 不再需要单独跑；同日后半段 P3-010-03 把类型段由 1 段拆为 shared/server/web 3 段 → 8→10 段）→ `python -X utf8 scripts/gen_status_panel.py`（面板刷新 + 三口径校验带）。两条全 exit=0 才算收口；面板生成器若被 Security Center 拦截转用户侧实跑（R-6 口径不变）。
+4. **门禁三连**（每轮收口即跑，缺一不可）：`node scripts/verify.mjs`（**十三段自检**，2026-10-24 条 Q ③ + 条 S① 代码批起已含 openapi 契约门禁与文档纪律段，`check_openapi_contract.py` 不再需要单独跑；同日后半段 P3-010-03 把类型段由 1 段拆为 shared/server/web 3 段 → 8→10 段；2026-10-25 P3-011-06 把三条结构断言（模块图零环 / 端点分组 / 契约 schema 命名）接入 → 10→13 段，且规则测试段补齐 `request-schema-strict.test.mjs`）→ `python -X utf8 scripts/gen_status_panel.py`（面板刷新 + 三口径校验带）。两条全 exit=0 才算收口；面板生成器若被 Security Center 拦截转用户侧实跑（R-6 口径不变）。
 
 ## 1. 接口签名表（P3-010 的「签名」，下游按此引用）
 
@@ -40,7 +40,7 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 |---|---|---|---|
 | `woPreset` | `packages/config/eslint-preset.js` | `woPreset({ typeAware?: boolean, withReact?: boolean, tsconfigRootDir?: string }) => LintConfig[]` | 根 `eslint.config.mjs`；后续 apps/* 若需独立 config 也复用 |
 | `BANNED_ICON_SOURCES` | 同上 | `readonly string[]`（10 个第二图标源） | `scripts/check-workspace-deps.mjs` 同源维护 |
-| `woPlugin` / `WO_RULE_NAMES` | `packages/config/rules/index.js` | `{ meta, rules }` / `['no-emoji','no-hardcoded-color']` | preset；新增规则必须同步登记 |
+| `woPlugin` / `WO_RULE_NAMES` | `packages/config/rules/index.js` | `{ meta, rules }` / `['no-emoji','no-hardcoded-color','request-schema-strict']` | preset；新增规则必须同步登记（**2026-10-25 P3-011-06 补机检**：`check-workspace-deps.mjs` J 段三面双向断言，此前只有文字纪律） |
 | tsconfig 三段 | `packages/config/tsconfig.{base,web,server}.json` | base＝ES2023 strict 全开；web＝DOM+react-jsx+noEmit；server＝CommonJS+装饰器+node 类型 | `packages/shared`、后续 `apps/*` |
 | `@wo/shared` 出口 | `packages/shared/package.json` | `exports["."] = { types: dist/esm/index.d.ts, import: dist/esm/index.js, require: dist/cjs/index.js }` | 前后端（ESM/CJS 各取一支） |
 | `fnv1a32` | `packages/shared/src/utils/fnv1a32.ts` | `(input: string) => number`（UTF-8 字节、FNV-1a、返回 uint32） | 协同配色/光标（前后端必须同值） |
@@ -126,7 +126,7 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 | **P3-011-03**（已完成） | 契约 schema 定义 | `packages/shared/src/schemas/`（22 个契约 schema + `internal/`）、`scripts/check-schema-names.mjs` | `node scripts/check-schema-names.mjs && pnpm typecheck` | 22 个导出名与 `components.schemas` **双向逐字相等**（改名/多一/少一即 fail）；每个 schema 的 `z.toJSONSchema` 产物含 `additionalProperties:false`；shared 类型检查 exit=0 |
 | **P3-011-04**（已完成） | 校验管道与错误映射 | `apps/server/src/common/pipes/zod-validation.pipe.ts`、`filters/all-exceptions.filter.ts`、`errors/validation-codes.ts` + 管道单测 | `pnpm --filter @wo/server test -- zod-validation` | 四例全绿：body 未知键/错类型→400+7001、query 越界→400+7002、path 非法→400+7004、非法 JSON→400+7003；**断言非恒真**（摘掉 pipe 挂载后该组必红）；错误体形状 `{code,message,detail:{errors:[{field,rule,message}]}}` |
 | **P3-011-05**（已完成） | 断言与夹具 | `packages/shared/validation-fixtures/*.json`、`scripts/fixtures-run.mjs`、`packages/config/rules/request-schema-strict.js` | `node scripts/fixtures-run.mjs && pnpm test:rules && pnpm lint` | 夹具逐样本断言 `code`/`field`/`rule`/`message` 四者齐全；V-S2 黑名单正则命中即 fail；A-PATH 每条 issue 满足 `path.length>0` 或 `code==='unrecognized_keys'`；规则对 `apps/` 内裸 `z.object(` 报 error，RuleTester 红/绿各一例 |
-| **P3-011-06**（待派发） | 联调与收口 | 本文件 §3 六行执行记录 + 三条新脚本纳入 `verify.mjs` + `OPEN-DECISIONS` 遗留登记 | `node scripts/verify.mjs && python -X utf8 scripts/gen_status_panel.py` | verify 全段 exit=0（含本工作项新增三段）；面板口径校验带无「不一致」；遗留项已登记且带归属包 |
+| **P3-011-06**（已完成） | 联调与收口 | 本文件 §3 六行执行记录 + 三条新脚本纳入 `verify.mjs` + `OPEN-DECISIONS` 遗留登记 | `node scripts/verify.mjs && python -X utf8 scripts/gen_status_panel.py` | verify 全段 exit=0（含本工作项新增三段）；面板口径校验带无「不一致」；遗留项已登记且带归属包 |
 
 **执行记录（P3-011-01，2026-10-24 交付）**
 
@@ -181,6 +181,20 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 - **反向验证（四条，探针全部用后即删）**：R1 毒丸——把 `UserUpdateRequest` 的 wrong-type 样本改成合法值 → runner exit=1 报「期望失败但 safeParse 成功」，还原后绿（断言链端到端咬合实证）；R2 V-S2 非死断言——无 zhCN 的 zod 实例 message 为 `"Invalid input: expected string, received number"` 命中黑名单，zhCN 为 `"无效输入：期望 string，实际接收 数字"` 不命中；R3 判据 4 咬合——全 optional schema strip 化后喂未知键 → success 且无 unrecognized_keys（runner 必红的形态实证）；R4 lint 执法面——`apps/server/src/` 造裸 `z.object` 探针 → lint exit=1 命中；`schemas/` 造 `ProbeRequest` 探针 → exit=1 命中；`schemas/internal/` 造裸 `z.object` → 豁免 PASS。
 - **踩坑（影响后续规则/测试开发者）**：① **ESLint 9 flat config 对无扩展名 glob 的 `files` 段按目录语义处理**——RuleTester 用例 filename 全是 `.ts`，顶层配置必须写带扩展名的显式模式（`**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts}`），否则所有用例落空且只报「No matching configuration found」（报错不指明根因，本包耗三轮定位）；② Linter/RuleTester 直呼时 filename 可能是相对路径，规则内路径正则**不能要求前导分隔符**（须 `(^|\/)apps\//` 形态，`[\\/]apps[\\/]/` 漏掉 `apps/` 开头形态导致规则静默不触发）；③ 裸 `pnpm` 命中的是系统 node 20 的另一入口，`node --test` 下报 `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`——必须用 `corepack pnpm` 显式入口（§0 既有约定，本包再证）。
 - **边界遵守**：不把 `fixtures-run.mjs` 纳入 verify（三条新脚本纳入 verify 是 `-06` 的交付物）；不动 P3-037 遍历门禁与 V-S1 本体（apps 面规则只是 schema 单一落点的纵深防线）；不上报 7xxx（夹具锁 schema 层行为，HTTP 层分流已有 -04 单测覆盖）。
+
+**执行记录（P3-011-06，2026-10-25 交付，工作项收官）**
+
+- **交付面**：`scripts/verify.mjs`（三条结构断言接入 + 规则测试段补齐第三测试文件）、`scripts/check-workspace-deps.mjs`（新增 J 段：规则注册表三面一致）、本文件 §3 六行执行记录与 §0 段数口径、`docs/decisions/OPEN-DECISIONS.md` 遗留三项、`docs/phase3/backlog.csv` 的 -06 行状态回写。**未新增任何业务代码**——两处代码改动都是门禁本身的修缮。
+- **verify 13/13 段通过**（实测耗时 ms）：格式 2677 / lint 5824 / tsc shared 1891 / tsc server 3295 / tsc web 1331 / RuleTester 1538 / 依赖面 333 / **模块图 271** / **端点分组 278** / **schema 命名 295** / 临时件 297 / 文档纪律 2515 / openapi 契约 345。新增三段合计 847ms——语料是文本正则，无编译，代价可忽略。
+- **面板口径**：`gen_status_panel.py` exit=0，`done=59`（P3-011 六包 6/6）、`merged=8`、`openTotal=41`（本轮新增三条遗留登记，38 → 41）；自带口径校验 `declared == computed`（49 项 / 417 包 / 463.9h）→ **无「不一致」**。
+- **工作项收口断言四条复核**（这是工作项级、不是包级的判定，故逐条实跑）：① `GET /api/v1/health` → **200 且体 `{"status":"ok"}`**（dist 产物 + `PORT=3100`，只查状态码不算数——3000 上那个 umi dev server 对同路径也回 200 的 HTML，-02 已记）；② 模块图零环（10 模块 / 0 边 / 根模块全量注册）；③ 模块目录与 `openapi.tags` **10 组双向一致**；④ A-STRICT 两条防线均已实体化——判据 1（strict）由 `check-schema-names` + `request-schema-strict` 规则守着，判据 2（未知键 400）由 `fixtures-run` 44 样本 + `zod-validation.pipe.spec` 6 例守着。
+- **配套实跑（非门禁段，收口取证）**：根 `build` 四段链 exit=0；`jest` 6/6 绿；`fixtures-run` 44 样本 ALL GREEN；`/api/v1/health/ready` 与 `/api/v1/auth` 均 **404**（前者归 P3-016、后者是占位控制器不伪造路由，边界未被本轮放松）。
+- **反向验证（三条，探针用后即删）**：R1 在 `modules/` 下造空目录 `__probe/` → 模块图段 FAIL（「0 个 *.module.ts」）+ 端点分组段 FAIL（「多一组」），`11/13 段通过`，删后回 13/13——**证明新接入的段确实按失败传播，不是恒真装饰**；R2 `schemas/index.ts` 把 `LoginRequest` 导出改名为 `LoginRequestX`（tsc 仍绿，绕过类型段）→ 命名段 exit=1 并双向报出 `openapi 有 zod 无 / zod 有 openapi 无`，还原后 22=22；R3 规则测试段的三文件写法实测 `node --test request-schema-strict.test.mjs` 单跑绿（13 例在同一文件内），补齐后 verify 规则段仍 1538ms 级别、未退化。
+- **收口时发现并修掉的口径分叉一（`verify.mjs`，非派单明列但属「六行收口」应发现项）**：-05 把 `request-schema-strict.test.mjs` 挂进了根 `test:rules`，但 `verify.mjs` 的「规则测试（RuleTester）」段**仍只列两个文件**——门禁与脚本口径分叉，A-STRICT 判据 1 的规则测试实际不在自检面上。与 P3-010-03「类型段只覆盖 shared」同型（脚本扩了、门禁没跟）。**已补齐为三文件**，并在段内注释登记理由。
+- **收口时发现并修掉的口径分叉二（`check-workspace-deps.mjs` 新增 J 段）**：派单要求「收口时核对 §1『新增规则必须同步登记 `WO_RULE_NAMES`』（本包已登记，`check-workspace-deps` 会机检）」——**核对结果是这条机检并不存在**。脚本此前只有 A~I 九项，而 §1 接口签名表与 `packages/config/rules/index.js` 文件头都写着「`check-workspace-deps` 会断言 preset 里 error 级规则名与本表一致」，即**文档承诺了一道脚本里没有的防线**（-05 新增第三条规则时，登记漏写不会有任何东西变红）。这类「文档说已机检、脚本里没有」比「明说没有」更危险，故补 J 段：`WO_RULE_NAMES`（登记表）↔ `woPlugin.rules`（规则体）↔ preset 里 error 级 `wo/*`（执法面）三面双向一致，且三面任一解析为空即判 FAIL（防「结构变了脚本没跟上」伪装成零漂移）。**反向验证**：摘掉 `WO_RULE_NAMES` 里的 `request-schema-strict` → exit=1 并同时报出「plugin.rules 有但未登记」「preset 启用了但未登记」两条；还原后 exit=0。J 段本意只抓「登记表漏登记」这一面（preset 写了不存在的规则时 ESLint 自己会报 `Definition for rule not found`，那面本就有兜底）。
+- **踩坑（短，须传承）**：在脚本注释里用 `↔`（U+2194）表达「三面对应」会被 `wo/no-emoji` 判为 emoji 拦下（lint exit=1，报「U+2194」）。该规则按码位判而不区分「符号」与「表情」，**箭头类字符（↔ / ⇄）一律当 emoji**；改写为「/」与括注即过。文档（`.md`）不受该规则约束，只有源码面受影响。
+- **遗留三项登记（OPEN-DECISIONS，逐条带归属包）**：① `GET /ws/collab/{id}` 的**契约缺陷陈述已过期**——附录件 D1-13-A ③ 表称「路径占位符是 `fileId`、组件 `name` 是 `id`，全仓唯一一处不匹配」，但**机读实况已是 `{id}` 与 `name: id` 一致**：该缺陷已随 `91d5462`（2026-10-24 10:06 解冻批，提交信息即含「ws-collab {id}」）改名消除，附录件未同步。**故不触发解冻流程、不改 yaml**，改登记「文档陈述待订正」，归属 **P3-037**（E-CV 遍历实施时按实际占位符发请求，先订正该行再落样本）；② **3000 端口被 umi dev server（PID 10900，`D://code//yun//4.x//corpadmin`）持续占用**，本轮实测 3100 通过、3000 复核仍不可得，归属 **P3-016**（配置装载与启动断言链会定端口口径，届时复核默认端口）；③ **`entity.too.large` 容量越界暂落 7003**（3001 是导入域业务码，全局过滤器不区分端点），归属 **P3-012**（统一错误码基线，完整 HttpException 逐码映射的落点）。
+- **边界遵守**：`fixtures-run.mjs` **不进** verify（它自带 dist 新鲜度门，src 比产物新即**重建 dist**——属构建副作用，与「verify 只装检查」冲突，-05 已按此定界）；build 亦不进（§2 副决策 (c) 原文口径不变）；面板生成器仍由人跑（Security Center 拦读设计卡时它走 git HEAD 回退，本轮日志可见 13 张卡全部回退读取，与工作区一致）。
 
 ### 3.1 与相邻工作项的边界（本段三处越界已定界）
 

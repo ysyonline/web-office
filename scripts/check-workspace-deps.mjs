@@ -14,6 +14,13 @@
  *  G 全仓不得出现第二图标库（与 packages/config/eslint-preset.js 的 BANNED_ICON_SOURCES 同源）
  *  H @wo/shared 源码不得 import React / Nest / univer / yjs
  *  I 三面对账：package.json 声明 / pnpm-lock.yaml importer / 包内 node_modules
+ *  J 规则注册表三面一致：WO_RULE_NAMES（登记表）/ woPlugin.rules（规则体）/ preset 里 error 级 `wo/*`（执法面）
+ *
+ * J 的存在理由（2026-10-25 P3-011-06 收口核对时发现）：ANCHORS §1 与
+ * `packages/config/rules/index.js` 的文件头都写着「新增规则必须同步登记 WO_RULE_NAMES，
+ * `scripts/check-workspace-deps.mjs` 会机检」——但本脚本此前只有 A~I，**这条断言是纸面承诺**：
+ * P3-011-05 新增第三条规则 `request-schema-strict` 时，登记漏写不会有任何东西变红。
+ * 「文档说已机检、脚本里没有」比「明说没有」更危险——它让人以为防线在。故本包补 J。
  *
  * I 的存在理由（2026-10-23 第五轮审核 P0-2）：只校验「声明面」的门禁是**假绿**——
  * 它只证明声明没写错，不证明装得上。当时 package.json 加了 sm-crypto 却没跑 pnpm install，
@@ -250,6 +257,69 @@ reconcile('.', '根 importer', rootDeps, rootJson.dependencies ?? {});
 for (const p of pkgs) {
   const json = JSON.parse(readFileSync(join(ROOT, p.id, 'package.json'), 'utf8'));
   reconcile(p.id, p.id, p.deps, json.dependencies ?? {});
+}
+
+// J 规则注册表三面一致
+//
+// 三面：`WO_RULE_NAMES`（唯一登记点）/ `woPlugin.rules`（规则体出口）/ preset 里
+// error 级的 `wo/*`（执法面）。任何一面单独漂移都不会被 ESLint 自己发现——
+// preset 里多写一条不存在的规则，ESLint 会报「Definition for rule not found」（这条能兜住）；
+// 但**登记表漏登记**（WO_RULE_NAMES 少一条而 plugin.rules 有）ESLint 完全不报，
+// 这才是 J 要抓的那一面。故双向都断言。
+const RULES_INDEX = join(ROOT, 'packages/config/rules/index.js');
+const PRESET = join(ROOT, 'packages/config/eslint-preset.js');
+
+/** 从 `X = [ 'a', 'b' ]` 形态里取字符串项。 */
+const readStringArray = (text, key) => {
+  const block = new RegExp(`${key}\\s*=\\s*\\[([^\\]]*)\\]`).exec(text);
+  if (!block) return [];
+  return [...block[1].matchAll(/['"]([^'"]+)['"]/g)].map((m) => m[1]);
+};
+
+/** 从 `rules: { 'a': x, ... }` 形态里取键名。 */
+const readRuleKeys = (text) => {
+  const block = /rules:\s*\{([\s\S]*?)\n\s*\}/.exec(text);
+  if (!block) return [];
+  return [...block[1].matchAll(/^\s*['"]([^'"]+)['"]\s*:/gm)].map((m) => m[1]);
+};
+
+if (!existsSync(RULES_INDEX)) {
+  fail('packages/config', '规则注册表 packages/config/rules/index.js 不存在——J 段不可用');
+} else if (!existsSync(PRESET)) {
+  fail('packages/config', 'eslint-preset.js 不存在——J 段不可用');
+} else {
+  const rulesText = readFileSync(RULES_INDEX, 'utf8');
+  const registered = readStringArray(rulesText, 'WO_RULE_NAMES');
+  const pluginRules = readRuleKeys(rulesText);
+  const presetErrors = new Set(
+    [...readFileSync(PRESET, 'utf8').matchAll(/['"]wo\/([a-z0-9-]+)['"]\s*:\s*['"]error['"]/g)].map(
+      (m) => m[1],
+    ),
+  );
+
+  // 防假绿：三面任一解析为空即判据失效（结构变了而脚本没跟上，会伪装成「零漂移」）
+  if (registered.length === 0) fail('packages/config', 'WO_RULE_NAMES 解析出 0 条——判据失效');
+  if (pluginRules.length === 0) fail('packages/config', 'woPlugin.rules 解析出 0 条——判据失效');
+  if (presetErrors.size === 0)
+    fail('packages/config', 'preset 里 error 级 wo/* 解析出 0 条——判据失效');
+
+  for (const n of registered) {
+    if (!pluginRules.includes(n))
+      fail('packages/config/rules', `WO_RULE_NAMES 登记了「${n}」，但 woPlugin.rules 没有规则体`);
+    if (!presetErrors.has(n))
+      fail('packages/config/rules', `WO_RULE_NAMES 登记了 wo/${n}，但 preset 未按 error 启用`);
+  }
+  for (const n of pluginRules) {
+    if (!registered.includes(n))
+      fail(
+        'packages/config/rules',
+        `woPlugin.rules 有「${n}」，但 WO_RULE_NAMES 未登记（登记表漂移）`,
+      );
+  }
+  for (const n of presetErrors) {
+    if (!registered.includes(n))
+      fail('packages/config/rules', `preset 启用了 wo/${n}，但 WO_RULE_NAMES 未登记（登记表漂移）`);
+  }
 }
 
 if (failures.length) {

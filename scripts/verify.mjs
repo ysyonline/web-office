@@ -9,6 +9,12 @@
  *     （corepack 的 ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING）——那是环境问题，不该冒充代码红。
  * 所以这里直接用当前 node 进程 spawn 各工具的 JS 入口，与 pnpm/PATH 解耦。
  *
+ * P3-011-06（2026-10-25 收官包）：把 P3-011 期间交付的三条结构断言脚本
+ * （模块图零环 / 端点分组 / 契约 schema 命名）从「单独人跑」接入本自检，段数 10 → 13。
+ * 三条脚本都是**只读文本检查**（不产副作用），符合 §2 副决策 (c) 的「verify 只装检查」
+ * 前提——build 段仍不进 verify（会写 dist/）。此前它们只在包内验收时跑过一次，
+ * 之后任何新模块/改名/聚合改动都不会被自动拦住，这是接入的真正理由。
+ *
  * 第七段（2026-10-24 条 Q ③ + 条 S① 代码批，用户放行「继续」）：
  *  - check-doc-discipline.mjs：卡体量阈值（warn 8,000 / fail 12,000）+ 状态行 ≤400
  *    + 措辞族传导机检（curated 短语表）；
@@ -56,9 +62,23 @@ const STEPS = [
       '--test',
       'packages/config/rules/no-emoji.test.mjs',
       'packages/config/rules/no-hardcoded-color.test.mjs',
+      // 2026-10-25 P3-011-06 收口补齐：-05 把本文件挂进了根 `test:rules`，
+      // 但 verify 的规则测试段仍是两文件——门禁与脚本口径分叉（同 P3-010-03
+      // 「类型段只覆盖 shared」的教训：脚本扩了、门禁没跟，等于没进自检）。
+      'packages/config/rules/request-schema-strict.test.mjs',
     ],
   },
-  { name: '依赖面断言（A~I）', cmd: null, args: ['scripts/check-workspace-deps.mjs'] },
+  { name: '依赖面断言（A~J）', cmd: null, args: ['scripts/check-workspace-deps.mjs'] },
+  // 2026-10-25 P3-011-06：P3-011 三条结构断言进自检（段数 10 → 13）。
+  // 三者都是只读文本解析、零依赖、不写盘，属于「检查」而非「构建」，故可进 verify；
+  // build（会写 dist/）依旧不进（ANCHORS §2 副决策 (c)）。
+  { name: '模块图（零环/根模块全量注册）', cmd: null, args: ['scripts/check-module-graph.mjs'] },
+  {
+    name: '端点分组（openapi.tags 10 组）',
+    cmd: null,
+    args: ['scripts/check-endpoint-groups.mjs'],
+  },
+  { name: '契约 schema 命名（双向逐字相等）', cmd: null, args: ['scripts/check-schema-names.mjs'] },
   // 2026-10-22 新增：临时件必须在结论落盘后回收到 .workbuddy/trash/，
   // 这条纪律此前只有文字、没有 fail 条件，同日就残留了一份 handoff。
   { name: '文档临时件回收', cmd: null, args: ['scripts/check-temp-docs.mjs'] },
