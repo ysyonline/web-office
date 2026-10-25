@@ -15,6 +15,8 @@
  * 前提——build 段仍不进 verify（会写 dist/）。此前它们只在包内验收时跑过一次，
  * 之后任何新模块/改名/聚合改动都不会被自动拦住，这是接入的真正理由。
  *
+ * P3-012-01（2026-10-25）：错误码表漂移断言（`check-error-codes.mjs`）接入，13 → 14 段。
+ *
  * 第七段（2026-10-24 条 Q ③ + 条 S① 代码批，用户放行「继续」）：
  *  - check-doc-discipline.mjs：卡体量阈值（warn 8,000 / fail 12,000）+ 状态行 ≤400
  *    + 措辞族传导机检（curated 短语表）；
@@ -79,6 +81,11 @@ const STEPS = [
     args: ['scripts/check-endpoint-groups.mjs'],
   },
   { name: '契约 schema 命名（双向逐字相等）', cmd: null, args: ['scripts/check-schema-names.mjs'] },
+  // 2026-10-25 P3-012-01：错误码表漂移（段数 13 → 14）。
+  // 码表在仓库里必然两份形态——契约（openapi `x-error-code-registry`，事实源）与
+  // 代码（shared 常量，执行面）。只比键集合不够：文案会直接进用户可见的错误体
+  // `message`，改一个字都是语义变更而编译器看不见，故键与文案双向逐字比。
+  { name: '错误码表漂移（键与文案逐字）', cmd: null, args: ['scripts/check-error-codes.mjs'] },
   // 2026-10-22 新增：临时件必须在结论落盘后回收到 .workbuddy/trash/，
   // 这条纪律此前只有文字、没有 fail 条件，同日就残留了一份 handoff。
   { name: '文档临时件回收', cmd: null, args: ['scripts/check-temp-docs.mjs'] },

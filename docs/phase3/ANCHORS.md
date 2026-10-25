@@ -1,6 +1,6 @@
 # 包级锚点台账（产出物路径 / 检查命令 / 通过判据）
 
-> 版本：**v2.0**（2026-10-25 P3-011-06 收官交付：`verify.mjs` 段数 **10 → 13**——P3-011 的三条结构断言（模块图零环 / 端点分组 / 契约 schema 命名）接入自检，规则测试段补齐 -05 的第三测试文件，§0 门禁三连段数口径同步；§3 补 -06 执行记录、六行全标已完成；v1.9 P3-011-05 交付：§3 补执行记录 + 锚点表 -05 标已完成；v1.8 议题一 A 案落盘：shared 构建顺序裁决入 §2 决策表 + P3-011-02 防线解除；v1.7 补 P3-011-01/-02 执行记录；v1.5 补 §3「P3-011 六包派发锚点」｜2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条；v1.4（2026-10-24）P3-010-03 落地 + `-04~11` 归并收口登记 + 类型段拆三 project）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
+> 版本：**v2.1**（2026-10-25 P3-012-01 交付：新增 §4 P3-012 七行派发锚点 + -01 执行记录；`verify.mjs` 段数 **13 → 14**——错误码表漂移断言（`check-error-codes.mjs`）接入；§1 补 shared 错误码表与 server 配置骨架三行签名；v2.0 P3-011-06 收官交付：`verify.mjs` 段数 **10 → 13**——P3-011 的三条结构断言（模块图零环 / 端点分组 / 契约 schema 命名）接入自检，规则测试段补齐 -05 的第三测试文件，§0 门禁三连段数口径同步；§3 补 -06 执行记录、六行全标已完成；v1.9 P3-011-05 交付：§3 补执行记录 + 锚点表 -05 标已完成；v1.8 议题一 A 案落盘：shared 构建顺序裁决入 §2 决策表 + P3-011-02 防线解除；v1.7 补 P3-011-01/-02 执行记录；v1.5 补 §3「P3-011 六包派发锚点」｜2026-10-22 起用；v1.1 补「接口签名表」；v1.2 补依赖/版本控制纪律两条、自检升六段；v1.3 补登记/编辑纪律两条；v1.4（2026-10-24）P3-010-03 落地 + `-04~11` 归并收口登记 + 类型段拆三 project）｜ 依据 `TASKS.md` §4bis 派单四件套：每包必须带**锚点三项**，同段内不得重叠。
 >
 > 为什么单独成表：锚点三项原先只写在包级验收断言里（「本包须填锚点三项」），但**没有载体**——填在哪、谁来核，都没定义。本表就是那个载体：一包一行，写死路径与可复制执行的命令。
 >
@@ -32,7 +32,7 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 **两条登记 / 编辑纪律**（2026-10-22 从交接件回填，此前无正式载体）：
 
 3. REVIEW-INDEX / OPEN-DECISIONS / 日志的**长表格行追加或锚点替换一律用 python 按行检测操作，不用 Edit 长串匹配**——Edit 工具对含表格线与全角字符的长行匹配不稳定（2026-10-22 实测失败两次，含 D1-06 卡表格行）。
-4. **门禁三连**（每轮收口即跑，缺一不可）：`node scripts/verify.mjs`（**十三段自检**，2026-10-24 条 Q ③ + 条 S① 代码批起已含 openapi 契约门禁与文档纪律段，`check_openapi_contract.py` 不再需要单独跑；同日后半段 P3-010-03 把类型段由 1 段拆为 shared/server/web 3 段 → 8→10 段；2026-10-25 P3-011-06 把三条结构断言（模块图零环 / 端点分组 / 契约 schema 命名）接入 → 10→13 段，且规则测试段补齐 `request-schema-strict.test.mjs`）→ `python -X utf8 scripts/gen_status_panel.py`（面板刷新 + 三口径校验带）。两条全 exit=0 才算收口；面板生成器若被 Security Center 拦截转用户侧实跑（R-6 口径不变）。
+4. **门禁三连**（每轮收口即跑，缺一不可）：`node scripts/verify.mjs`（**十四段自检**，2026-10-24 条 Q ③ + 条 S① 代码批起已含 openapi 契约门禁与文档纪律段，`check_openapi_contract.py` 不再需要单独跑；同日后半段 P3-010-03 把类型段由 1 段拆为 shared/server/web 3 段 → 8→10 段；2026-10-25 P3-011-06 把三条结构断言（模块图零环 / 端点分组 / 契约 schema 命名）接入 → 10→13 段，且规则测试段补齐 `request-schema-strict.test.mjs`；同日 P3-012-01 把错误码表漂移断言（`check-error-codes.mjs`：shared 码表与 `x-error-code-registry` 的键与文案双向逐字比）接入 → 13→14 段）→ `python -X utf8 scripts/gen_status_panel.py`（面板刷新 + 三口径校验带）。两条全 exit=0 才算收口；面板生成器若被 Security Center 拦截转用户侧实跑（R-6 口径不变）。
 
 ## 1. 接口签名表（P3-010 的「签名」，下游按此引用）
 
@@ -43,6 +43,10 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 | `woPlugin` / `WO_RULE_NAMES` | `packages/config/rules/index.js` | `{ meta, rules }` / `['no-emoji','no-hardcoded-color','request-schema-strict']` | preset；新增规则必须同步登记（**2026-10-25 P3-011-06 补机检**：`check-workspace-deps.mjs` J 段三面双向断言，此前只有文字纪律） |
 | tsconfig 三段 | `packages/config/tsconfig.{base,web,server}.json` | base＝ES2023 strict 全开；web＝DOM+react-jsx+noEmit；server＝CommonJS+装饰器+node 类型 | `packages/shared`、后续 `apps/*` |
 | `@wo/shared` 出口 | `packages/shared/package.json` | `exports["."] = { types: dist/esm/index.d.ts, import: dist/esm/index.js, require: dist/cjs/index.js }` | 前后端（ESM/CJS 各取一支） |
+| `ERROR_CODE_MESSAGES` / `ErrorCode` / `ErrorBody` | `packages/shared/src/errors/codes.ts` | 30 条码表（`as const` 数字键 → 数字字面量联合）、`errorMessage` / `isErrorCode` / `errorCodeSegment`、四层矩阵行类型 `ErrorLayerRow`（HTTP status / WS close / UI 三档） | 服务端错误出口（`common/errors/error-registry.ts`）与前端错误呈现；**码表改动必须先改 openapi 再改此处**，`check-error-codes.mjs` 双向逐字比（verify 第十四段） |
+| `CONFIG_KEYS` / `ConfigKeySpec` / `ServerConfig` | `apps/server/src/config/{config-keys.ts,config.types.ts}` | 三分类**判别联合**（required 不得有默认值 / optional 必须有 / derived 不得声明 env）+ 键表（唯一登记点）+ 强类型配置 | `loadConfig`；下游引用键名走 `ConfigKeyName`，禁写 `'PORT'` 一类字面量（重复手写即漂移源） |
+| `loadConfig` / `ConfigLoadError` | `apps/server/src/config/config.loader.ts` | `(env: NodeJS.ProcessEnv, keys?: readonly ConfigKeySpec[]) => LoadedConfig`；失败抛 `ConfigLoadError{key,env,reason}`（reason = missing / invalid / unresolved） | P3-012-02 接线 bootstrap；单测直接注入 env，不改 `process.env` |
+| `ERROR_LAYER_MATRIX` / `buildErrorBody` | `apps/server/src/common/errors/error-registry.ts` | `Readonly<Partial<Record<ErrorCode, ErrorLayerRow>>>`（**取值刻意为空**，归 -04）/ `buildErrorBody(code, detail?, message?) => ErrorBody`（占位，归 -03） | 异常过滤器与前端错误呈现；-04 填满 30 条后去掉 `Partial`，漏填即成 tsc 错误 |
 | `fnv1a32` | `packages/shared/src/utils/fnv1a32.ts` | `(input: string) => number`（UTF-8 字节、FNV-1a、返回 uint32） | 协同配色/光标（前后端必须同值） |
 
 ## 2. P3-010 pnpm workspace 与 TS/ESLint/Prettier 基线
@@ -204,3 +208,34 @@ PN="C:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js"
 | happy path（health 200） | liveness 归本段 `-02`；**readiness 归 P3-016** | `GET /api/v1/health/ready` 由 D1-11 ③ 新定、2026-10-24 解冻窗口落盘，属 P3-016「启动断言三级国密与健康检查」；业务 happy path（login）归 P3-041。 |
 | A-STRICT 判据 1 的 ESLint 规则 | 规则文件落本段 `-05`；**`WO_RULE_NAMES` 登记回写 P3-010-02** | 规则目录 `packages/config/rules/` 是 P3-010-02 的产出物，而该批 `-04~11` 已于 2026-10-24 归并收口。回写动作挂在 `-05` 的通过判据内，并在 `-06` 收口时核对 §1「新增规则必须同步登记 `WO_RULE_NAMES`」。 |
 
+
+## 4. P3-012 配置 / 环境变量 / 统一错误码基线（七包，模板切分）
+
+**切分口径**：七包按 `接口与骨架 → 主路径 ×2 → 边界与错误 → 测试与自检 ×2 → 联调与收口` 切（模板切分，非实体重切，工时各 1.14h，和 8.0h 与工作项一致）。**锚点必须互不重叠**（§0 填表规则 ③），故 -02/-03 按「配置装载」与「错误体封装」两条互斥主路径分，-05/-06 按「配置单测」与「错误码单测」分。
+
+**判据基座**：① 工作项收口断言「缺必填配置时启动失败并指明键名；错误响应结构与 Spec §10 一致」——两条都是**工作项级**判定，末包强制全过；② 交付物模板句里的「**表结构骨架**」对本次不指 DB 表：数据库 10 表实体归 **P3-014**（与 §3.1 同一条边界），本工作项的「表」= 错误码表（`x-error-code-registry` ↔ `packages/shared/src/errors/codes.ts`）。
+
+**卡拦读口径（本段全程适用）**：D1-05 / D1-11 主卡在 Security Center 拦读名单内，§3.2 的任务书条目 + openapi registry + `main.ts` 头注是唯一可得的替代依据。**凡卡内裁决才能定的取值（四层矩阵逐码映射、必填键/派生键清单），一律留空并标注归属包**——猜一份看起来权威的取值比空着更坏（下游会按假映射实现）。
+
+| 包ID | 段 | 产出物路径 | 检查命令 | 通过判据 |
+|---|---|---|---|---|
+| **P3-012-01**（已完成） | 接口与骨架 | `packages/shared/src/errors/codes.ts`、`packages/shared/src/index.ts`、`apps/server/src/config/{config.types.ts,config-keys.ts,config.loader.ts}`、`apps/server/src/common/errors/{error-registry.ts,validation-codes.ts}`、`apps/server/src/common/not-implemented.ts`、`scripts/check-error-codes.mjs` | `node scripts/verify.mjs`（14/14，含错误码表漂移段） | 三 project `tsc` 全 exit=0；码表 **30 条双向逐字相等**；两个占位符号（`loadConfig` / `buildErrorBody`）**零调用点**（未接线）；`error-registry` 矩阵取值刻意为空 |
+| **P3-012-02** | 主路径 1/2 | `apps/server/src/config/config.loader.ts`（实现体）、`config-keys.ts`（按 D1-11 ①③ 补必填/派生键）、`apps/server/src/main.ts`（接线） | `node scripts/verify.mjs` → `PORT=3100 node apps/server/dist/main.js` → `curl 127.0.0.1:3100/api/v1/health`；反例：摘掉必填键再启动 | 缺必填键 → **退出码非 0 且日志含键名/环境变量名**；键齐时 health **200 且体 `status:ok`** |
+| **P3-012-03** | 主路径 2/2 | `error-registry.ts`（`buildErrorBody` 实现）、`filters/all-exceptions.filter.ts`（改用 registry 取文案） | `pnpm --filter @wo/server test` + 三条 curl（400 校验 / 404 / 强制 500） | 三出口错误体均为 `{code,message,detail}` 且 `code` 属码表；文案取自码表而非就地字面量 |
+| **P3-012-04** | 边界与错误 | `error-registry.ts`（`ERROR_LAYER_MATRIX` 填满 30 条、去掉 `Partial`）、`config.loader.ts`（`invalid` 分支） | `node scripts/verify.mjs`（去掉 `Partial` 后 tsc 强制 30 条齐）+ 逐条反例 | 30/30 条有行且 HTTP/WS/UI 三列皆有值；**无裸 500、无静默吞错**；每条错误分支映射到已登记码（不新造码） |
+| **P3-012-05** | 测试与自检 1/2 | `apps/server/src/config/*.spec.ts` | `pnpm --filter @wo/server test -- config` | 必填缺失 / 取值非法 / 可选缺失降级 各至少 1 例；**至少一条「错误输入必须抛」的反断言**存在且通过 |
+| **P3-012-06** | 测试与自检 2/2 | `apps/server/src/common/errors/*.spec.ts`、`packages/shared/validation-fixtures/`（错误体样本） | `pnpm --filter @wo/server test -- errors` + `node scripts/fixtures-run.mjs` | 逐码断言 `code`→`httpStatus`/`uiTier`；反断言存在；夹具样本不破坏既有 44 例 |
+| **P3-012-07** | 联调与收口 | 本文件 §4 执行记录 + `OPEN-DECISIONS` 遗留项 + `docs/phase3/backlog.csv` | `node scripts/verify.mjs && python -X utf8 scripts/gen_status_panel.py` | 上下游引用无异常；遗留项已登记且带归属包；**工作项收口断言两条实跑全过**（缺键启动失败 / 错误体合 §10） |
+
+**执行记录（P3-012-01，2026-10-25 交付）**
+
+- **交付面四块**：① `packages/shared/src/errors/codes.ts`——30 条码表逐字转录 + `ErrorCode` 数字字面量联合 + `errorCodeSegment` / `isErrorCode` / `errorMessage` + 四层矩阵**行类型** `ErrorLayerRow` + 构造面 `ErrorBody`；② `apps/server/src/config/`——三分类**判别联合**（`RequiredConfigKey` 不得有默认值 / `OptionalConfigKey` 必须有 / `DerivedConfigKey` 不得声明 env）+ 键表唯一登记点 + `loadConfig` 占位；③ `apps/server/src/common/errors/error-registry.ts`——全码表公共面 + 矩阵骨架（**空**）+ `buildErrorBody` 占位；④ `scripts/check-error-codes.mjs` 并接入 verify。
+- **verify 14/14 段通过**（实测耗时 ms）：格式 1891 / lint 5459 / tsc shared 1395 / tsc server 2925 / tsc web 1225 / RuleTester 1579 / 依赖面 311 / 模块图 266 / 端点分组 275 / schema 命名 249 / **错误码表 305** / 临时件 277 / 文档纪律 2580 / openapi 456。新增段是纯文本解析（零依赖、不写盘），代价与三条结构断言同量级。
+- **配套实跑**：根 `build` 四段链 exit=0（shared ESM+CJS 与新出口一并编译）；`jest` 6/6 绿（`validation-codes.ts` 改动未动管道行为）；`PORT=3100` 起 dist 服务，`GET /api/v1/health` → **200 且体 `{"status":"ok"}`**。
+- **「无重复手写」怎么落的**（包级断言第 2 条）：7xxx 字面量仍留在 `validation-codes.ts`（管道热点、已被单测覆盖，搬迁收益低于风险），但用 `as const satisfies Record<string, ErrorCode>` 挂到 shared 联合类型上——**写码表外的码即 tsc 报错**（反向验证 R4 见下）。全码表只在 shared 一处定义，服务端 `error-registry.ts` 只 import 不重写。
+- **反向验证五条（探针用后即还原，均复跑绿）**：R1 把 `2004` 文案改成「分享已存在（重复创建）」→ 漂移段 exit=1，逐条打印 openapi / codes.ts 两侧对照（**只比键集合的话这条探针会绿**，这是文案也要比的直接理由）；R2 删掉 `9002` → exit=1 报「openapi 有、codes.ts 无（1）：9002」；R3 把 `ERROR_CODE_MESSAGES` 改名（模拟结构漂移）→ exit=1 且命中防假绿分支「解析出 0 条」，未伪装成「零漂移」；R4 管道码 `7001 → 7101` → `tsc server` 报 **TS2322** 并把 30 个字面量联合整句列出；R5 给 `ErrorBody` 加可选字段 `traceId?: string`（不改契约）→ 编译期断言报 TS2322。
+- **R5 的中途修正（本包唯一返工，值得传承）**：`ErrorBody` 与 `ErrorSchema` 的一致性断言第一版只用「双向可赋值」，R5 探针**静默通过**——多出的**可选**字段不破坏结构兼容，两个方向都仍可赋值。补上 `KeysEqual`（`keyof` 双向包含）后同一探针才报 TS2322。**教训：把「可赋值」当「相等」是类型层最常见的假绿**，凡是断言「两份定义一致」的，键集合与可赋值要分开判。
+- **未接线取证（骨架期最容易翻车的地方）**：`grep -rn "loadConfig" apps/ --include=*.ts` 除定义文件外只命中两处**注释**（`config.types.ts` 的文档引用、`main.ts` 的「未接线」说明），**0 个调用点**；`NotImplementedError` 全仓恰好 2 个 `new`（`loadConfig` / `buildErrorBody`）。故 `main.ts` 行为零变更——唯一的运行期断言（health 200）与上包同值即为证据。
+- **刻意留空的三处（不是遗漏，是边界）**：① `ERROR_LAYER_MATRIX` 取值空（逐码 HTTP/WS/UI 映射是 D1-05 ②③④ 的裁决，归 -04）；② 键表只有 `PORT` / `LOG_LEVEL` 两键、全是 optional（必填键与派生键清单在 D1-11 卡内，卡拦读，归 -02）；③ `buildErrorBody` / `loadConfig` 均为占位（分别归 -03 / -02）。三处都在类型上可见（`Partial` / 判别联合 / `NotImplementedError`），不靠注释守。
+- **顺手兑现的归属订正**：`main.ts` 头注与 `PORT` 常量注释原把「配置键三分类」归 P3-016，与台账 D1-11「直接消费方 = P3-012」不符（P3-011-06 已登记 OPEN）。本包已订正为 P3-012，并在注释里留「骨架已落、未接线、接线归 -02」一句，避免下个包以为配置已经生效。
+- **踩坑（复发一次，须传承）**：源码注释里写 `↔`（U+2194）再次被 `wo/no-emoji` 拦下——本包在 `codes.ts` 的四层矩阵注释里写了三个箭头，lint 直接 5 errors（3 个箭头 + 2 个 `import type` 提示），`verify` 首跑 13/14。**只有源码面（含 `.mjs` 注释）受此约束，`.md` 不受限**；改写为「/」+ 括注即过。
