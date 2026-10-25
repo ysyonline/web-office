@@ -5,6 +5,19 @@
  * 不写字面量色值——`wo/no-hardcoded-color` 对 TS/TSX 执法，CSS 侧靠人工守同一约定。
  */
 
+/**
+ * 全局盒模型重置（SB-01 原有）。
+ *
+ * V1.2.1 起本项目多了一个不受控的第三方子树（Univer）。这条 `*` 规则会连带作用到它的
+ * 内部元素，是「表格尺寸错乱」的第一嫌疑（任务卡 §3 风险 1）。当前保留，理由与退路：
+ *
+ * - 保留：Univer 的样式产物本身按 `border-box` 直觉排版（列宽 = 含边框宽），
+ *   `border-box` 与之一致；先实测，不预先打补丁。
+ * - 退路：若出现列宽/行高偏差，改为 `.app` 作用域重置（`.app, .app *`），
+ *   再单独给 `.sheet-host` 内做一次 `box-sizing: inherit` 还原。
+ *
+ * 判定依据必须是真实渲染，不是读 CSS 推断。
+ */
 * {
   box-sizing: border-box;
 }
@@ -57,25 +70,24 @@ body {
   padding: var(--space-4);
 }
 
-.sheet-slot {
-  display: flex;
+/**
+ * Univer 宿主。
+ *
+ * 必须给**确定尺寸**：Univer 内部 canvas 按宿主 clientHeight/clientWidth 初始化，
+ * 高度为 0 或 `auto` 时表现为「只有工具栏、没有表格区」——这是最常见的假失败。
+ * 因此这里显式 100% 高度（父级 `.app-main` 已有 `flex:1` + `min-height:0`，链路闭合），
+ * 并去掉 SB-01 的居中、边框与圆角（那些是占位期视觉，会挤压 canvas 布局）。
+ */
+.sheet-host {
+  width: 100%;
   height: 100%;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
 }
 
-.sheet-slot-hint {
-  margin: 0;
-  color: var(--color-fg-2);
-  font-size: var(--font-size-base);
-}
-
-.sheet-slot-sub {
-  margin: var(--space-1) 0 0;
-  color: var(--color-muted);
-  font-size: var(--font-size-xs);
+/**
+ * 每次挂载引擎时由 `SheetHost` 动态创建的挂载点（StrictMode 下两个实例各占一个）。
+ * 单独一层的原因是让实例与 Univer 生成的 DOM 之间有一道可整体移除的边界。
+ */
+.sheet-mount {
+  width: 100%;
+  height: 100%;
 }

@@ -1,9 +1,11 @@
 /**
- * 页面壳（SB-01）。结构只有两段：顶栏 + 表格占位区。
+ * 页面壳。结构两段：顶栏 + 表格宿主。
  *
- * 表格区现在是空 div，SB-02 把 Univer 实例挂进来；本文件不预埋任何引擎相关代码，
- * 以免 SB-02 变成「改壳」而不是「挂载」。
+ * V1.2.1 起表格区不再是占位 div，而是 Univer 的真实宿主（`SheetHost`）。
+ * 本文件仍不感知引擎细节——挂载逻辑全在 `sheet/` 下，壳只负责布局。
  */
+import { SheetHost } from './sheet/SheetHost';
+
 export function App(): JSX.Element {
   return (
     <div className="app">
@@ -12,10 +14,7 @@ export function App(): JSX.Element {
         <span className="app-meta">本地演示</span>
       </header>
       <main className="app-main">
-        <div className="sheet-slot">
-          <p className="sheet-slot-hint">表格区域</p>
-          <p className="sheet-slot-sub">SB-02 在此挂载引擎</p>
-        </div>
+        <SheetHost />
       </main>
     </div>
   );

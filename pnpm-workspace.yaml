@@ -30,6 +30,12 @@ allowBuilds:
   # 若换到无预编译包的平台（如某些 ARM 信创发行版），这两条必须改判为 true 并重测。
   '@parcel/watcher': false
   unrs-resolver: false
+  # SB-02 引入（2026-10-25，@univerjs/protocol → @grpc/grpc-js → @grpc/proto-loader）。
+  # 其 postinstall 只读取上层 package.json 并打印版本方案不一致警告，不编译、不联网、
+  # 不写产物——读源码 scripts/postinstall.js 确认（首个 `if (!pkg.versionScheme) return` 后
+  # 仅 process.stderr.write）。按 ADR-005 最小构建面原则显式 false。
+  # 若升级到真正做代码生成/下载的 protobufjs 版本，此条必须改判为 true 并重测。
+  protobufjs: false
 # catalog 本包只登记 @univerjs/*；待 P3-030 引入时按实况补条目，不留空 catalog。
 # catalog:
 #   '@univerjs/*': 1.0.2
