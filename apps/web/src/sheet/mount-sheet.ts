@@ -39,6 +39,21 @@ export interface SheetHandle {
    * （preset 装配下的首次计算时机未验，见 V1.2.2 §3.3）。
    */
   getValueByA1: (a1: string) => CellValue | null;
+  /**
+   * 按 A1 记法取单元格公式文本（如 `'=SUM(A1:A2)'`），常量格返回空串。
+   *
+   * 用途是给「值变了」这件事定性：值变而公式未变 → 是重算；公式被写成常量 → 是覆写。
+   * 两者在只看 `getValue` 时无法区分。
+   */
+  getFormulaByA1: (a1: string) => string;
+  /**
+   * 按 A1 记法写入一个标量值（数字 / 布尔 / 字符串 / 公式），走 Univer 命令链而非直接改快照，
+   * 因此会**触发依赖重算**。
+   *
+   * 返回后**不代表已算完**：重算是命令链下游的异步动作（V1.2.3 实测序列见任务卡），
+   * 调用方须轮询目标格而不是「写完立刻读」。
+   */
+  setValueByA1: (a1: string, value: CellValue) => void;
 }
 
 /** dev-only 全局句柄的形状。生产构建不会挂，故用局部类型而非全局 declare。 */
@@ -66,6 +81,10 @@ export function mountSheet(container: HTMLElement, data?: Partial<IWorkbookData>
       univer.dispose();
     },
     getValueByA1: (a1) => workbook.getActiveSheet().getRange(a1).getValue(),
+    getFormulaByA1: (a1) => workbook.getActiveSheet().getRange(a1).getFormula(),
+    setValueByA1: (a1, value) => {
+      workbook.getActiveSheet().getRange(a1).setValue(value);
+    },
   };
 
   // dev-only：给 scripts/probe-web.mjs 经 CDP 读取的断言入口。
