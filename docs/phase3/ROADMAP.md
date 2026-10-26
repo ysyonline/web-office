@@ -171,6 +171,20 @@
 
 > 2026-10-26 决定：走第一条，私有仓库由用户本人建立，AI 不动远程配置；建好后由用户执行首次推送。
 
+> ✅ **2026-10-26 已解除**：远程 `git@github.com:ysyonline/web-office.git`（SSH），首次推送完成，
+> 本地与 `origin/main` 同指向 `f917a81`，295 个文件。远程由 GitHub 初始化生成（仅 1 个含
+> `README.md` 的占位提交），与本地 96 个提交无共同祖先，故用 `--allow-unrelated-histories`
+> **合并而非强推**——不销毁任何一条历史。
+>
+> ⚠️ **本机网络限制（换机器/换网络必读）**：对本机而言 GitHub 的 22 与 443 直连均被重置
+> （`kex_exchange_identification: Connection closed / reset by peer`，三次重试稳定失败），
+> 只有本地代理 `127.0.0.1:7890` 通。SSH 不读 `http_proxy`，Git for Windows 也没带 `connect.exe`，
+> 故在 `~/.ssh/config` 里给 `Host github.com` 加了 `ProxyCommand`，指向
+> `~/.ssh/ssh-connect-proxy.mjs`（一个最小 HTTP CONNECT 隧道，约 60 行，**不在本仓库内**——
+> 它依赖本机代理端口，属环境胶水而非项目代码）。
+> 验证：`ssh -T git@github.com` → `Hi ysyonline! You've successfully authenticated`。
+> 换网络后若直连恢复，删掉那行 `ProxyCommand` 即可。
+
 ## 11. 进度在哪看
 
 只看两处：本文 §8 的勾选表，和 `git log --oneline`。
