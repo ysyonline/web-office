@@ -84,6 +84,19 @@ export interface SheetHandle {
     endRow: number;
     endColumn: number;
   }>;
+  /**
+   * 用一份新快照**整体替换**当前工作簿内容（V2.1）。
+   *
+   * 实现是「销毁旧单元 + 建新单元」，不是原地改数据——因为 1.2.0 的 `FWorkbook`
+   * 没有 `setWorkbookData` 一类方法，只有 `save()` 导出。
+   *
+   * 实测（2026-10-26，Edge 122，四条判据见 V2.1 任务卡）：替换后 canvas 渲染根不受影响、
+   * 无未捕获异常、新快照的公式照常计算。**这正是 V2.1 敢让 `load` 异步的原因**——
+   * 界面可以先以空表同步立起来，数据后来的代价只是换一次单元，不需要重建实例。
+   *
+   * 所有取值器必须读 `current` 而非闭包里的初始 `workbook`，否则换单元后会静默读到旧单元。
+   */
+  replaceDoc: (doc: Partial<IWorkbookData>) => void;
 }
 
 /** dev-only 全局句柄的形状。生产构建不会挂，故用局部类型而非全局 declare。 */
@@ -106,23 +119,32 @@ export function mountSheet(container: HTMLElement, data?: Partial<IWorkbookData>
 
   const workbook = univerAPI.createWorkbook(data ?? {});
 
+  // 换单元会替换工作簿对象，故所有取值器都经由 `current` 间接访问——
+  // 直接闭包捕获初始 `workbook` 会在 replaceDoc 后静默读到已销毁的旧单元。
+  let current = workbook;
+
   const handle: SheetHandle = {
     dispose: () => {
       univer.dispose();
     },
-    getValueByA1: (a1) => workbook.getActiveSheet().getRange(a1).getValue(),
-    getFormulaByA1: (a1) => workbook.getActiveSheet().getRange(a1).getFormula(),
+    getValueByA1: (a1) => current.getActiveSheet().getRange(a1).getValue(),
+    getFormulaByA1: (a1) => current.getActiveSheet().getRange(a1).getFormula(),
     setValueByA1: (a1, value) => {
-      workbook.getActiveSheet().getRange(a1).setValue(value);
+      current.getActiveSheet().getRange(a1).setValue(value);
     },
-    getDisplayByA1: (a1) => workbook.getActiveSheet().getRange(a1).getDisplayValue(),
-    getRawValueByA1: (a1) => workbook.getActiveSheet().getRange(a1).getRawValue(),
-    getStyleByA1: (a1) => workbook.getActiveSheet().getRange(a1).getCellStyleData(),
+    getDisplayByA1: (a1) => current.getActiveSheet().getRange(a1).getDisplayValue(),
+    getRawValueByA1: (a1) => current.getActiveSheet().getRange(a1).getRawValue(),
+    getStyleByA1: (a1) => current.getActiveSheet().getRange(a1).getCellStyleData(),
     getMergedRanges: () =>
-      workbook
+      current
         .getActiveSheet()
         .getMergeData()
         .map((range) => range.getRange()),
+    replaceDoc: (doc) => {
+      // 旧单元必须先销毁：同 id 重复 createWorkbook 会留下两个单元，且 getActiveWorkbook 指向不确定。
+      univerAPI.disposeUnit(current.getId());
+      current = univerAPI.createWorkbook(doc);
+    },
   };
 
   // dev-only：给 scripts/probe-web.mjs 经 CDP 读取的断言入口。

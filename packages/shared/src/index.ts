@@ -10,6 +10,16 @@
  */
 export { fnv1a32 } from './utils/fnv1a32.js';
 
+// 文档数据源接口（V2.1，D5）：业务层与存储层之间唯一的缝。
+// 泛型 `TDoc` 是规则 H 的必然结果——shared 内不得 import Univer（连 type-only 也命中），
+// 故快照形状由消费方填实（web 侧 `DataSource<Partial<IWorkbookData>>`）。
+export type {
+  DataSource,
+  DataSourceChange,
+  DataSourceUnsubscribe,
+  DataSourceWriteResult,
+} from './data/data-source.js';
+
 // 业务错误码表（P3-012-01）：30 条码逐字对齐 openapi `x-error-code-registry`，
 // 机检见 scripts/check-error-codes.mjs（verify 第十四段）。
 // 四层矩阵（HTTP / WS close / UI 档位）在本文件只落**形状**，取值归 P3-012-04。

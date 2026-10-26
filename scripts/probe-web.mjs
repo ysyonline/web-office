@@ -18,6 +18,7 @@
  *   node scripts/probe-web.mjs --assert=A1=1,A2=2,A3=3 --formats
  *                                                  # 三格式共存断言（V1.3.1 判据）
  *   node scripts/probe-web.mjs --boundaries        # 边界三例断言（V1.3.2 判据）
+ *   node scripts/probe-web.mjs --data-source       # 数据源装配断言（V2.1 判据）
  *   node scripts/probe-web.mjs --port=9333 --url=http://127.0.0.1:5173/
  *
  * 退出码：0 表示 canvas 已出现且无 console error / 未捕获异常（给了 `--assert` 时还要求断言全过，
@@ -55,6 +56,7 @@ const SET_SPEC = argOf('set', '');
 const AFTER_SPEC = argOf('after', '');
 const DO_FORMATS = args.includes('--formats');
 const DO_BOUNDARIES = args.includes('--boundaries');
+const DO_DATA_SOURCE = args.includes('--data-source');
 const OUT_DIR = argOf('out', 'C:/tmp');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -464,6 +466,173 @@ if (DO_FORMATS) {
 }
 
 /**
+ * 数据源装配断言（V2.1）。
+ *
+ * 本段要防的假绿很具体：**「A1=1」既可以是「数据经 DataSource 流入」，也可以是
+ * 「demo 数据被直接塞给 mountSheet」**——两种实现画面完全一样。故判据不能只看值，
+ * 必须看装配轨迹（`__woAttachTrace`），它由装配层自己记录，业务代码无法伪造出
+ * 「先 mount 空表、后 replaceDoc」这个顺序。
+ *
+ * 四条判据：
+ * ① 轨迹必须含 `mount` 且**先于** `replace` —— 证明是「空表先立、数据后灌」，
+ *    而不是「等数据好了再挂」（后者正是交接件警告的结构风险，会撞碎 V1.2.1 的方案 C）；
+ * ② 轨迹必须含 `load:end` 与 `replace` —— 证明数据真的走了一次 `load` 并触发了换单元；
+ *    若只有 `load:null`，说明种子没进数据源，本段等于没测到主路径；
+ * ③ 换单元后 A3 仍为 3 —— 证明新快照的公式照常计算，不是把值当常量搬过去；
+ * ④ 全程 canvas 数 > 0 且无异常 —— 证明换单元没有拆掉渲染根（这是「不白屏」的机器判据）。
+ */
+const runDataSource = async () => {
+  const traceInfo = await evaluate(`(() => {
+    const t = window.__woAttachTrace;
+    if (!t) return { __missing: true };
+    return { events: t, canvases: [...document.querySelectorAll('canvas')].length };
+  })()`);
+
+  if (traceInfo.__missing) {
+    console.log('[数据源] window.__woAttachTrace 不存在，无法断言装配路径。先排查 dev 构建。');
+    return { pass: false };
+  }
+
+  const ev = traceInfo.events;
+  const idx = (kind) => ev.findIndex((e) => e.kind === kind);
+  const mountAt = idx('mount');
+  const loadStart = idx('load:start');
+  const loadEnd = idx('load:end');
+  const replace = idx('replace');
+
+  // 换单元后重新取值（不是复用载入态的快照）。
+  let a3 = null;
+  const deadline = Date.now() + 6000;
+  while (Date.now() < deadline) {
+    a3 = await evaluate(`window.__woSheet ? window.__woSheet.getValueByA1('A3') : '__noHandle__'`);
+    if (a3 !== null && a3 !== '__noHandle__') break;
+    await sleep(200);
+  }
+
+  const checks = [];
+  const add = (name, ok, detail) => checks.push({ name, ok, detail });
+
+  add(
+    '① 空表先挂、数据后灌（mount 早于 replace）',
+    mountAt >= 0 && replace > mountAt,
+    `mount@${ev[mountAt]?.at ?? '-'}ms｜replace@${ev[replace]?.at ?? '-'}ms`,
+  );
+  add(
+    '② 数据经 load 流入并触发换单元',
+    loadStart >= 0 && loadEnd >= 0 && replace > loadEnd,
+    `轨迹 ${ev.map((e) => e.kind).join(' → ')}`,
+  );
+  add('③ 换单元后公式照常计算', a3 === 3, `A3=${JSON.stringify(a3)}｜期望 3`);
+  add(
+    '④ 换单元未拆渲染根',
+    traceInfo.canvases > 0,
+    `canvas=${traceInfo.canvases}｜装配期异常已由末行控制台断言覆盖`,
+  );
+
+  for (const c of checks) console.log(`[数据源] ${c.ok ? 'OK ' : 'BAD'} ${c.name}｜${c.detail}`);
+
+  /**
+   * 接口语义断（V2.1 的「接口定稿」判据）。
+   *
+   * 为什么必须真调：`--data-source` 前四条只证明「装配走了 DataSource」，证明不了
+   * **这个接口好不好用**。而 V2.1 的判据就是「接口定稿」——若 `save`/`subscribe` 的语义
+   * 写错了，V2.2 写 IndexedDB 实现时才会发现，那时返工成本是现在的数倍。
+   *
+   * 全部在**独立 docId** 上做，不碰页面正在显示的文档：
+   * ① load 不存在的文档必须返回 null（不是抛错、不是空文档）——这是 V2.3「新文档降级空白表」的依据；
+   * ② save 后 load 能读回等价内容；
+   * ③ load 返回的是**副本**：改返回值不得影响已存的数据（否则 V2.2 反序列化后会行为突变）；
+   * ④ subscribe 能收到 save 事件，且 origin 为 local-save；
+   * ⑤ 取消订阅后不再收到事件；
+   * ⑥ 取消订阅幂等（重复调用不抛错）。
+   */
+  const contract = await evaluate(`(async () => {
+    const ds = window.__woDataSource;
+    if (!ds) return { __missing: true };
+    const id = 'probe-contract-' + Date.now();
+    const out = {};
+
+    // ① 不存在 → null
+    out.missingIsNull = (await ds.load(id)) === null;
+
+    // ② save → load 读回
+    const doc = { id, name: 'probe', sheets: {} };
+    const wr = await ds.save(id, doc);
+    out.saveReturnsTime = typeof wr.savedAt === 'number' && wr.savedAt > 0;
+    const back = await ds.load(id);
+    out.roundTrip = back && back.id === id && back.name === 'probe';
+
+    // ③ 返回值是副本：改它不影响存储
+    back.name = 'MUTATED';
+    const again = await ds.load(id);
+    out.isCopy = again.name === 'probe';
+
+    // ④ subscribe 收 local-save
+    const seen = [];
+    const off = ds.subscribe((c) => seen.push({ origin: c.origin, docId: c.docId }));
+    await ds.save(id, { id, name: 'second', sheets: {} });
+    out.gotEvent = seen.length === 1 && seen[0].origin === 'local-save' && seen[0].docId === id;
+
+    // ⑤ 取消后不再收
+    off();
+    await ds.save(id, { id, name: 'third', sheets: {} });
+    out.noEventAfterOff = seen.length === 1;
+
+    // ⑥ 取消幂等
+    let idempotent = true;
+    try { off(); off(); } catch { idempotent = false; }
+    out.offIdempotent = idempotent;
+
+    return out;
+  })()`);
+
+  if (contract.__missing) {
+    console.log('[数据源·接口] window.__woDataSource 不存在，无法验接口语义。');
+    return { pass: false };
+  }
+
+  const c2 = [];
+  const add2 = (name, ok, detail) => c2.push({ name, ok, detail });
+
+  add2(
+    '接口① load 不存在返回 null',
+    contract.missingIsNull === true,
+    `得 ${contract.missingIsNull}`,
+  );
+  add2(
+    '接口② save→load 往返一致',
+    contract.roundTrip === true && contract.saveReturnsTime === true,
+    `往返 ${contract.roundTrip}｜savedAt 有效 ${contract.saveReturnsTime}`,
+  );
+  add2('接口③ load 返回副本（改它不污染存储）', contract.isCopy === true, `得 ${contract.isCopy}`);
+  add2(
+    '接口④ subscribe 收到 local-save',
+    contract.gotEvent === true,
+    `origin/docId 匹配 ${contract.gotEvent}`,
+  );
+  add2(
+    '接口⑤ 取消订阅后不再收事件',
+    contract.noEventAfterOff === true,
+    `得 ${contract.noEventAfterOff}`,
+  );
+  add2(
+    '接口⑥ 取消订阅幂等',
+    contract.offIdempotent === true,
+    `重复调用不抛错 ${contract.offIdempotent}`,
+  );
+
+  for (const c of c2) console.log(`[数据源·接口] ${c.ok ? 'OK ' : 'BAD'} ${c.name}｜${c.detail}`);
+  return { pass: checks.every((c) => c.ok) && c2.every((c) => c.ok) };
+};
+
+let dataSourcePass = true;
+if (DO_DATA_SOURCE) {
+  const { pass } = await runDataSource();
+  dataSourcePass = pass;
+  console.log('[数据源截图]', await shoot(`${OUT_DIR}/probe-data-source.png`));
+}
+
+/**
  * 边界三例断言（V1.3.2）。
  *
  * 期望值在 Excel 语义下先定死，再由探针比对——「跑出多少记多少」正是本包要防的事
@@ -604,12 +773,14 @@ const pass =
   assertPass &&
   writePass &&
   formatPass &&
-  boundaryPass;
+  boundaryPass &&
+  dataSourcePass;
 const did = [
   ASSERT ? '取值断言全过' : '',
   SET_SPEC ? '写值后重算达标' : '',
   DO_FORMATS ? '三格式共存达标' : '',
   DO_BOUNDARIES ? '边界三例达标' : '',
+  DO_DATA_SOURCE ? '数据源装配达标' : '',
 ]
   .filter(Boolean)
   .join('，');

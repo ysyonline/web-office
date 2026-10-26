@@ -146,9 +146,14 @@ for (const p of pkgs) {
 }
 
 // H
+// 注：扫描的是**原始文本**，注释里的示例写法同样会命中（V2.1 实测：把被禁 import
+// 抄进注释当作反例，结果门禁变红）。这是有意的——一条写了却不用执行的示例，
+// 本质上是在教人抄它；宁可让写注释的人换一种说法。
+// 捕获组必须存在：早期版本无捕获组而报错信息里写 `hit[1]`，一旦命中只会打印
+// `不得 import undefined`，把「哪条规则被违反」这个最关键的信息丢掉。
 const sharedSrc = join(ROOT, 'packages/shared/src');
 const FORBIDDEN_IMPORT =
-  /from\s+['"](?:react|react-dom|@nestjs\/[^'"]+|@univerjs\/[^'"]+|yjs|y-protocols[^'"]*)['"]/;
+  /from\s+['"]((?:react|react-dom|@nestjs\/[^'"]+|@univerjs\/[^'"]+|yjs|y-protocols[^'"]*))['"]/;
 if (existsSync(sharedSrc)) {
   const walk = (dir) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
