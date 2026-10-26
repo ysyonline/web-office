@@ -26,6 +26,7 @@ import {
   LocaleType,
   mergeLocales,
   type CellValue,
+  type IStyleData,
   type IWorkbookData,
 } from '@univerjs/presets';
 
@@ -54,6 +55,35 @@ export interface SheetHandle {
    * 调用方须轮询目标格而不是「写完立刻读」。
    */
   setValueByA1: (a1: string, value: CellValue) => void;
+  /**
+   * 格式化的显示文本（如货币格返回 `'¥1,234.50'`）。
+   *
+   * 与 `getValue` 的区别就是「格式有没有被引擎还原」：值 1234.5 两种读法都拿得到，
+   * 只有显示文本能证明数字格式真的生效了。
+   */
+  getDisplayByA1: (a1: string) => string;
+  /**
+   * 未经格式化的原始值。
+   *
+   * 存在理由：带数字格式的格子上，`getValue` 与 `getRawValue` 会给出**不同的东西**
+   * （V1.3.1 实测：货币格 `getValue` 得 `'¥1,234.50'`，`getRawValue` 得 `1234.5`）。
+   * 需要判断「格式是否把值本身改了」时，必须两读对比，只读一个会得出相反结论。
+   */
+  getRawValueByA1: (a1: string) => CellValue | null | undefined | void;
+  /**
+   * 单元格样式原始数据（`bl` / `bg` / `n` 等）。
+   *
+   * 读原始 `IStyleData` 而非格式化后的 `TextStyleValue`：后者是富文本样式对象，
+   * 对单元格级 `bg` / `n` 的呈现不直观，断言「底色是不是那个令牌值」会绕。
+   */
+  getStyleByA1: (a1: string) => IStyleData | null;
+  /** 当前表全部合并区，行列下标从 0 起、闭区间。 */
+  getMergedRanges: () => Array<{
+    startRow: number;
+    startColumn: number;
+    endRow: number;
+    endColumn: number;
+  }>;
 }
 
 /** dev-only 全局句柄的形状。生产构建不会挂，故用局部类型而非全局 declare。 */
@@ -85,6 +115,14 @@ export function mountSheet(container: HTMLElement, data?: Partial<IWorkbookData>
     setValueByA1: (a1, value) => {
       workbook.getActiveSheet().getRange(a1).setValue(value);
     },
+    getDisplayByA1: (a1) => workbook.getActiveSheet().getRange(a1).getDisplayValue(),
+    getRawValueByA1: (a1) => workbook.getActiveSheet().getRange(a1).getRawValue(),
+    getStyleByA1: (a1) => workbook.getActiveSheet().getRange(a1).getCellStyleData(),
+    getMergedRanges: () =>
+      workbook
+        .getActiveSheet()
+        .getMergeData()
+        .map((range) => range.getRange()),
   };
 
   // dev-only：给 scripts/probe-web.mjs 经 CDP 读取的断言入口。

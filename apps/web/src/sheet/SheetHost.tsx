@@ -25,7 +25,8 @@
  */
 import { useEffect, useRef } from 'react';
 
-import { createDemoWorkbookData } from './demo-workbook';
+import { readTokenColor } from '../design/read-token';
+import { createDemoWorkbookData, DEMO_LAYOUT } from './demo-workbook';
 import { mountSheet, type SheetHandle } from './mount-sheet';
 
 /** 宿主节点 → 实例。StrictMode 二次挂载靠它命中复用，不重复创建。 */
@@ -49,7 +50,14 @@ export function SheetHost(): JSX.Element {
     mountPoint.className = 'sheet-mount';
     host.appendChild(mountPoint);
 
-    instances.set(host, mountSheet(mountPoint, createDemoWorkbookData()));
+    instances.set(
+      host,
+      mountSheet(
+        mountPoint,
+        // 底色从设计令牌取，不写字面量；令牌缺失会直接抛错（见 read-token.ts）
+        createDemoWorkbookData({ emphasisBg: readTokenColor(DEMO_LAYOUT.emphasis.tokenVar) }),
+      ),
+    );
   }, []);
 
   return <div className="sheet-host" ref={hostRef} />;

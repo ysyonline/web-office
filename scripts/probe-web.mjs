@@ -15,6 +15,9 @@
  *   node scripts/probe-web.mjs --assert=A1=1,A2=2,A3=3   # 按 A1 取值断言（走 dev 句柄）
  *   node scripts/probe-web.mjs --assert=A1=1,A2=2,A3=3 --set=A1=5 --after=A1=5,A3=7
  *                                                  # 写值 + 验证重算（V1.2.3 判据）
+ *   node scripts/probe-web.mjs --assert=A1=1,A2=2,A3=3 --formats
+ *                                                  # 三格式共存断言（V1.3.1 判据）
+ *   node scripts/probe-web.mjs --boundaries        # 边界三例断言（V1.3.2 判据）
  *   node scripts/probe-web.mjs --port=9333 --url=http://127.0.0.1:5173/
  *
  * 退出码：0 表示 canvas 已出现且无 console error / 未捕获异常（给了 `--assert` 时还要求断言全过，
@@ -50,6 +53,8 @@ const DO_EDIT = args.includes('--edit');
 const ASSERT = argOf('assert', '');
 const SET_SPEC = argOf('set', '');
 const AFTER_SPEC = argOf('after', '');
+const DO_FORMATS = args.includes('--formats');
+const DO_BOUNDARIES = args.includes('--boundaries');
 const OUT_DIR = argOf('out', 'C:/tmp');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -364,6 +369,174 @@ if (ASSERT) {
   console.log('[断言后截图]', await shoot(`${OUT_DIR}/probe-asserted.png`));
 }
 
+/**
+ * 三格式共存断言（V1.3.1）。
+ *
+ * 期望值在这里**重复写一份**（`demo-workbook.ts` 的 `DEMO_LAYOUT` 是另一份）：探针刻意不 import
+ * TS 源码——若从同一份常量取期望，就是「用被测对象证明被测对象」。代价是改布局要同步两处，
+ * 故 `DEMO_LAYOUT` 的注释里也写了「改布局必须同步本文件」。
+ *
+ * 断言四条，对应「三者互不破坏」：
+ * 1. 合并区只有一个，且正好是 A5:B6——不是「有一个合并区」就算过；
+ * 2. 合并区非左上格不存值（B6 为空），否则是「看着像合并、其实是四个格都写了字」；
+ * 3. 货币格显示 `¥1,234.50` 而值仍是 1234.5——格式生效且没有把值改成文本；
+ * 4. 加粗格 `bl=1` 且底色等于设计令牌当前值——底色真来自令牌，不是硬编码；
+ * 5. 兜底：A3 仍算出 3，格式没有破坏公式。
+ */
+const runFormats = async () => {
+  const state = await evaluate(`(() => {
+    const h = window.__woSheet;
+    if (!h) return { __missing: true };
+    const token = getComputedStyle(document.documentElement)
+      .getPropertyValue('--color-amber-50')
+      .trim();
+    return {
+      token,
+      merges: h.getMergedRanges(),
+      a3: h.getValueByA1('A3'),
+      currency: {
+        value: h.getValueByA1('C1'),
+        raw: h.getRawValueByA1('C1'),
+        display: h.getDisplayByA1('C1'),
+        style: h.getStyleByA1('C1'),
+      },
+      emphasis: h.getStyleByA1('A8'),
+      mergeTopLeft: h.getValueByA1('A5'),
+      mergeInner: h.getValueByA1('B6'),
+    };
+  })()`);
+
+  if (state && state.__missing) {
+    console.log('[格式] window.__woSheet 不存在，无法断言。先排查 dev 句柄。');
+    return { pass: false };
+  }
+
+  const checks = [];
+  const add = (name, ok, detail) => checks.push({ name, ok, detail });
+
+  const merges = state.merges ?? [];
+  const key = (r) => `${r.startRow},${r.startColumn},${r.endRow},${r.endColumn}`;
+  const got = merges.map(key).sort();
+  const wantKeys = ['4,0,5,1', '17,0,18,1'].sort();
+  const mergeOk = got.length === wantKeys.length && got.every((k, i) => k === wantKeys[i]);
+  add('合并区恰为 A5:B6 与 A18:B19', mergeOk, JSON.stringify(merges));
+
+  const innerEmpty = state.mergeInner === null || state.mergeInner === '' || state.mergeInner === 0;
+  add('合并区非左上格不存值', innerEmpty, `B6 = ${JSON.stringify(state.mergeInner)}`);
+
+  const cur = state.currency ?? {};
+  // 断言取 raw 而非 getValue：实测（V1.3.1）带数字格式的格子上
+  //   getValue → '¥1,234.50'（格式化文本）   getRawValue → 1234.5（数值）
+  // 若断言 getValue === 1234.5，永远红；若断言 getValue === '¥1,234.50'，等于把
+  // 「读数口径」写死成一个将来可能变的实现细节。故断言「数值没被改 + 显示已格式化」。
+  const curOk = cur.raw === 1234.5 && cur.display === '¥1,234.50';
+  add(
+    '货币格数值与显示',
+    curOk,
+    `getRawValue ${JSON.stringify(cur.raw)}｜显示 '${cur.display}'｜getValue ${JSON.stringify(cur.value)}（格式化文本，见卡 §3 实测）`,
+  );
+  add(
+    '货币格数字格式',
+    cur.style?.n?.pattern === '¥#,##0.00',
+    `n.pattern = ${JSON.stringify(cur.style?.n?.pattern)}`,
+  );
+
+  const em = state.emphasis ?? {};
+  add('加粗格 bl=1', em.bl === 1, `bl = ${JSON.stringify(em.bl)}`);
+  const bg = (em.bg?.rgb ?? '').toLowerCase();
+  add(
+    '加粗格底色来自设计令牌',
+    !!state.token && bg === state.token.toLowerCase(),
+    `bg = ${JSON.stringify(em.bg?.rgb)}｜令牌 ${JSON.stringify(state.token)}`,
+  );
+
+  add('公式未被格式破坏', state.a3 === 3, `A3 = ${JSON.stringify(state.a3)}`);
+
+  for (const c of checks) console.log(`[格式] ${c.ok ? 'OK ' : 'BAD'} ${c.name}｜${c.detail}`);
+  return { pass: checks.every((c) => c.ok) };
+};
+
+let formatPass = true;
+if (DO_FORMATS) {
+  const { pass } = await runFormats();
+  formatPass = pass;
+  console.log('[格式截图]', await shoot(`${OUT_DIR}/probe-formats.png`));
+}
+
+/**
+ * 边界三例断言（V1.3.2）。
+ *
+ * 期望值在 Excel 语义下先定死，再由探针比对——「跑出多少记多少」正是本包要防的事
+ * （ROADMAP §5：不许「看起来对」）。三例各自的 Excel 判据：
+ * ① 空单元格参与 SUM → 空按 0 计，10 + (空) + 20 = 30；
+ * ② 文本参与 SUM → 区域内文本一律忽略，连 `'5'` 也不折算，0 + 0 + 7 = 7；
+ * ③ 跨合并区求和 → 合并区只左上格存值，其余为空，SUM(A18:B19) = 3。
+ *
+ * 另加两条旁证，防止「结果碰巧对」：`'5'` 必须以**字符串**形态存着（被强转成数字就说明
+ * ② 的输入条件没成立，7 便不能归功于「忽略文本」）；合并区内部的 B19 必须为空
+ * （四格都写了 3 也会得到 3，但那是完全不同的语义）。
+ */
+const runBoundaries = async () => {
+  const refs = ['B10', 'B14', 'C18'];
+  let computed = {};
+  const deadline = Date.now() + 6000;
+  while (Date.now() < deadline) {
+    const snap = await readCells(refs);
+    if (snap && snap.__missing) {
+      console.log('[边界] window.__woSheet 不存在，无法断言。先排查 dev 句柄。');
+      return { pass: false };
+    }
+    computed = snap;
+    if (refs.every((r) => computed[r] !== null && computed[r] !== undefined)) break;
+    await sleep(200);
+  }
+
+  const extra = await evaluate(`(() => {
+    const h = window.__woSheet;
+    return { a15: h.getValueByA1('A15'), b19: h.getValueByA1('B19'), a18: h.getValueByA1('A18') };
+  })()`);
+
+  const checks = [];
+  const add = (name, ok, detail) => checks.push({ name, ok, detail });
+
+  add(
+    '① 空单元格参与 SUM',
+    computed.B10 === 30,
+    `B10=${JSON.stringify(computed.B10)}｜Excel 期望 30`,
+  );
+  add('② 文本参与 SUM', computed.B14 === 7, `B14=${JSON.stringify(computed.B14)}｜Excel 期望 7`);
+  add('③ 跨合并区求和', computed.C18 === 3, `C18=${JSON.stringify(computed.C18)}｜Excel 期望 3`);
+
+  // 旁证不作 pass 依据的替代，而是与主断言并列：条件不成立时主断言的结果无法归因。
+  add(
+    '旁证：文本格仍以字符串存值',
+    typeof extra.a15 === 'string' && extra.a15 === '5',
+    `A15=${JSON.stringify(extra.a15)}（${typeof extra.a15}）`,
+  );
+  add(
+    '旁证：合并区内部为空',
+    extra.b19 === null || extra.b19 === '' || extra.b19 === undefined,
+    `B19=${JSON.stringify(extra.b19)}`,
+  );
+
+  for (const c of checks) console.log(`[边界] ${c.ok ? 'OK ' : 'BAD'} ${c.name}｜${c.detail}`);
+  return { pass: checks.every((c) => c.ok) };
+};
+
+let boundaryPass = true;
+if (DO_BOUNDARIES) {
+  const { pass } = await runBoundaries();
+  boundaryPass = pass;
+  console.log('[边界截图]', await shoot(`${OUT_DIR}/probe-boundaries.png`));
+}
+
+/**
+ * 写值重算（V1.2.3）放在格式/边界之后。
+ *
+ * 执行顺序是有意的：本段会**改动页面状态**（A1 从 1 变 5、A3 随之变 7），而
+ * `--formats` / `--boundaries` 断言的是「载入态」。实测踩过：两者组合运行时，格式段的
+ * 「公式未被破坏 A3=3」变红——不是真有 bug，而是 A3 已被本段重算成 7。
+ */
 let writePass = true;
 if (SET_SPEC) {
   const { pass } = await runWriteStep(SET_SPEC, AFTER_SPEC);
@@ -429,8 +602,15 @@ const pass =
   errors.length === 0 &&
   exceptions.length === 0 &&
   assertPass &&
-  writePass;
-const did = [ASSERT ? '取值断言全过' : '', SET_SPEC ? '写值后重算达标' : '']
+  writePass &&
+  formatPass &&
+  boundaryPass;
+const did = [
+  ASSERT ? '取值断言全过' : '',
+  SET_SPEC ? '写值后重算达标' : '',
+  DO_FORMATS ? '三格式共存达标' : '',
+  DO_BOUNDARIES ? '边界三例达标' : '',
+]
   .filter(Boolean)
   .join('，');
 console.log(
