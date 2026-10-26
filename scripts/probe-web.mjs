@@ -20,7 +20,9 @@
  *   node scripts/probe-web.mjs --boundaries        # 边界三例断言（V1.3.2 判据）
  *   node scripts/probe-web.mjs --data-source       # 数据源装配断言（V2.1 判据）
  *   node scripts/probe-web.mjs --persist           # 持久化断言：编辑→落盘→重载后还在（V2.2 判据）
- *                                                  # 默认每次运行先清空 IndexedDB，加 --keep-storage 可保留
+ *   node scripts/probe-web.mjs --restore           # 视口断言：滚动→localStorage→重载后精确恢复（V2.3 判据）
+ *   node scripts/probe-web.mjs --degrade           # 降级断言：写坏库→重载不白屏且不覆盖原数据（V2.3 判据）
+ *                                                  # 默认每次运行先清空 IndexedDB + localStorage，加 --keep-storage 可保留
  *   node scripts/probe-web.mjs --port=9333 --url=http://127.0.0.1:5173/
  *
  * 退出码：0 表示 canvas 已出现且无 console error / 未捕获异常（给了 `--assert` 时还要求断言全过，
@@ -60,7 +62,18 @@ const DO_FORMATS = args.includes('--formats');
 const DO_BOUNDARIES = args.includes('--boundaries');
 const DO_DATA_SOURCE = args.includes('--data-source');
 const DO_PERSIST = args.includes('--persist');
+const DO_RESTORE = args.includes('--restore');
+const DO_DEGRADE = args.includes('--degrade');
 const OUT_DIR = argOf('out', 'C:/tmp');
+
+/**
+ * 预期内的 console error 前缀（V2.3 降级段）。
+ *
+ * 降级判据**故意**制造一次读失败，`SheetHost.onLoadError` 会打一条 error。
+ * 它不能算进「全程零 error」，但也不能因此放宽整个探针——只过滤逐字匹配的前缀，
+ * 其余任何 error 仍会让最终判定变红。
+ */
+const EXPECTED_ERROR_PREFIXES = [];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -76,6 +89,19 @@ await new Promise((resolve, reject) => {
   ws.onopen = resolve;
   ws.onerror = () => reject(new Error('CDP WebSocket 连接失败'));
 });
+
+/**
+ * 会话建立的墙钟时刻（epoch ms）。
+ *
+ * `Runtime.enable` 会把当前页面**历史** console 消息一并重放（带原始时间戳）——
+ * 那是上一次探针运行留在页面控制台里的条目，不是本次的失败。实测：`--degrade`
+ * 只真发生 1 次读失败，却收到 2 条文本相同的 error，两者时间戳相差 81s，
+ * 且页面轨迹 `__woAttachTrace` 只有 1 条 `load:error`。
+ *
+ * 故最终统计只认时间戳不早于此刻的条目；`runDegrade` 内部按 `logs.length` 切片，
+ * 重放条目都在切片之前，天然不受影响。
+ */
+const PROBE_STARTED_AT = Date.now();
 
 let seq = 0;
 const pending = new Map();
@@ -94,6 +120,8 @@ ws.onmessage = (ev) => {
   if (msg.method === 'Runtime.consoleAPICalled') {
     logs.push({
       type: msg.params.type,
+      /** CDP 时间戳（epoch ms）：排查「同一条错误是重放还是真发生两次」时唯一的区分依据。 */
+      at: msg.params.timestamp,
       text: msg.params.args
         .map((a) => a.value ?? a.description ?? a.type)
         .join(' ')
@@ -134,18 +162,22 @@ await send('Runtime.enable');
 await send('Page.enable');
 
 /**
- * 每次运行先清空 IndexedDB（V2.2 起数据是跨运行持久的，不清就会互相污染）。
+ * 每次运行先清空 IndexedDB + localStorage（V2.2 起文档跨运行持久，V2.3 起视口也是；
+ * 不清就会互相污染）。
  *
  * 为什么不在页面里 `indexedDB.deleteDatabase` 后再刷新：页面一加载就打开了连接，
  * deleteDatabase 会一直停在 `blocked` 上（连接不关，删除就排队），探针会卡死。
  * `Storage.clearDataForOrigin` 是浏览器层面的清除，不受页面连接影响。
  *
- * 注意它**不影响判据的有效性**：`--persist` 段证明的是「同一次运行内，编辑 → 落盘 →
- * 重载后还在」，清库只发生在运行开始之前。
+ * 注意它**不影响判据的有效性**：`--persist` / `--restore` 证明的是「同一次运行内，
+ * 编辑/滚动 → 落盘 → 重载后还在」，清库只发生在运行开始之前。
  */
 const ORIGIN = new URL(PAGE_URL).origin;
 if (!args.includes('--keep-storage')) {
-  await send('Storage.clearDataForOrigin', { origin: ORIGIN, storageTypes: 'indexeddb' });
+  await send('Storage.clearDataForOrigin', {
+    origin: ORIGIN,
+    storageTypes: 'indexeddb,local_storage',
+  });
 }
 
 await send('Page.navigate', { url: PAGE_URL });
@@ -1062,31 +1094,477 @@ const runPersist = async () => {
   return { pass: checks.every((c) => c.ok) };
 };
 
+/**
+ * 视口恢复断言（V2.3 判据）：滚动 → localStorage → **重载** → 精确恢复。
+ *
+ * ## 为什么用真实滚轮而不是直接调 `applyScrollState`
+ *
+ * 程序化 `scroll-view` 命令实测**不触发** `Event.Scroll`（V2.3 spike：events=0），
+ * 而持久化正是挂在滚动事件上的。直接调命令只能证明「恢复能滚」，证明不了
+ * 「用户滚动会被记住」。故本段用 CDP 发滚轮事件走完整链路；`getScrollState()`
+ * 在滚动后现读，期望值不硬编码（避免不同视口尺寸导致偶发红）。
+ *
+ * ## 三条防假绿
+ *
+ * ① 滚动后的视口必须非零，否则「恢复到 0,0」也会绿；
+ * ② 必须绕过应用代码直接读 localStorage，证明状态真的到了存储层；
+ * ③ 重载后逐字段比对，不能只比「行号相同」——offset 正是本包选精确像素的理由。
+ */
+const runRestore = async () => {
+  const checks = [];
+  const add = (name, ok, detail) => checks.push({ name, ok, detail });
+
+  const readCell = (ref) =>
+    evaluate(`(() => {
+      const h = window.__woSheet;
+      if (!h) return { __missing: true };
+      return { v: h.getValueByA1(${JSON.stringify(ref)}), f: h.getFormulaByA1(${JSON.stringify(ref)}) };
+    })()`);
+
+  const autosaveState = () =>
+    evaluate(`(() => {
+      const a = window.__woAttach;
+      return a ? a.autosaveState() : null;
+    })()`);
+
+  const readView = () =>
+    evaluate(`(() => {
+      const h = window.__woSheet;
+      return h ? h.getScrollState() : null;
+    })()`);
+
+  const readSavedView = () =>
+    evaluate(`(() => {
+      const raw = localStorage.getItem(${JSON.stringify(`wo.view.${PERSIST_DOC}`)});
+      if (raw === null) return null;
+      try { return JSON.parse(raw); } catch { return '__broken__'; }
+    })()`);
+
+  const sameView = (a, b) =>
+    !!a &&
+    !!b &&
+    a.offsetX === b.offsetX &&
+    a.offsetY === b.offsetY &&
+    a.sheetViewStartRow === b.sheetViewStartRow &&
+    a.sheetViewStartColumn === b.sheetViewStartColumn;
+
+  const waitCanvas = async () => {
+    for (let i = 0; i < 40; i += 1) {
+      const n = await evaluate(`document.querySelectorAll('canvas').length`);
+      if (n > 0) return true;
+      await sleep(500);
+    }
+    return false;
+  };
+
+  const waitLoaded = async (ms) => {
+    const deadline = Date.now() + ms;
+    while (Date.now() < deadline) {
+      const ok = await evaluate(
+        `!!window.__woSheet && !!window.__woAttach && window.__woAttach.isLoaded()`,
+      );
+      if (ok) return true;
+      await sleep(150);
+    }
+    return false;
+  };
+
+  const waitSaveQuiet = async (ms) => {
+    const deadline = Date.now() + ms;
+    while (Date.now() < deadline) {
+      const st = await autosaveState();
+      if (st && !st.dirty && !st.saving) return st;
+      await sleep(120);
+    }
+    return null;
+  };
+
+  const pollCell = async (ref, expect, ms) => {
+    const deadline = Date.now() + ms;
+    let last = null;
+    while (Date.now() < deadline) {
+      last = await readCell(ref);
+      if (last && !last.__missing && last.v === expect) return last;
+      await sleep(150);
+    }
+    return last;
+  };
+
+  const pollView = async (expect, ms) => {
+    const deadline = Date.now() + ms;
+    let last = null;
+    while (Date.now() < deadline) {
+      last = await readView();
+      if (sameView(last, expect)) return last;
+      await sleep(150);
+    }
+    return last;
+  };
+
+  const wheel = async (geom, deltaX, deltaY, modifiers = 0) => {
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseWheel',
+      x: geom.x,
+      y: geom.y,
+      deltaX,
+      deltaY,
+      modifiers,
+    });
+  };
+
+  // ---- 前置：内容与视口都从零开始，避免上一段/上一轮的残留 ---------------------
+  await waitLoaded(15000);
+  await sleep(500);
+  await evaluate(`localStorage.removeItem(${JSON.stringify(`wo.view.${PERSIST_DOC}`)})`);
+
+  await evaluate(`window.__woSheet.setValueByA1('A1', 42)`);
+  const quiet = await waitSaveQuiet(10000);
+  const a1Before = await pollCell('A1', 42, 5000);
+  add(
+    '前置：内容已落盘（A1=42）',
+    quiet !== null && a1Before && a1Before.v === 42,
+    `A1=${JSON.stringify(a1Before && a1Before.v)}｜dirty/saving=${quiet ? `${quiet.dirty}/${quiet.saving}` : 'null'}`,
+  );
+
+  const geom = await evaluate(`(() => {
+    const cs = [...document.querySelectorAll('canvas')]
+      .map((c) => c.getBoundingClientRect())
+      .filter((r) => r.width > 400 && r.height > 200);
+    if (!cs.length) return null;
+    const r = cs.sort((a, b) => b.width * b.height - a.width * a.height)[0];
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  })()`);
+  if (!geom) {
+    add('前置：能定位主网格', false, '没有面积足够大的 canvas');
+    for (const c of checks) console.log(`[恢复] ${c.ok ? 'OK ' : 'BAD'} ${c.name}｜${c.detail}`);
+    return { pass: false };
+  }
+
+  // ---- ① 真实滚轮：纵向 + 小偏移 + Shift 横向 --------------------------------
+  for (let i = 0; i < 8; i += 1) {
+    await wheel(geom, 0, 120);
+    await sleep(80);
+  }
+  for (let i = 0; i < 2; i += 1) {
+    await wheel(geom, 0, 7);
+    await sleep(80);
+  }
+  for (let i = 0; i < 4; i += 1) {
+    await wheel(geom, 0, 120, 8);
+    await sleep(80);
+  }
+
+  // 等滚动动画/惯性停稳：连续两次读数一致才算稳定。
+  let view = await readView();
+  for (let i = 0; i < 20; i += 1) {
+    await sleep(200);
+    const next = await readView();
+    if (sameView(next, view)) break;
+    view = next;
+  }
+  add(
+    '① 真实滚轮后视口非零（行/列/偏移都动过）',
+    !!view && view.sheetViewStartRow > 0 && view.sheetViewStartColumn > 0,
+    view
+      ? `row=${view.sheetViewStartRow} col=${view.sheetViewStartColumn} offset=${view.offsetX},${view.offsetY}`
+      : '视口不可读',
+  );
+
+  // ---- ② localStorage 里确有同一份视图状态 -----------------------------------
+  let saved = null;
+  for (let i = 0; i < 30; i += 1) {
+    saved = await readSavedView();
+    if (sameView(saved, view)) break;
+    await sleep(100);
+  }
+  add(
+    '② 视口已写入 localStorage（防抖窗口后，逐字段相等）',
+    sameView(saved, view),
+    `saved=${JSON.stringify(saved)}`,
+  );
+
+  // ---- ③④⑤ 重载：内容、公式、视口同时跨过页面生命周期 -----------------------
+  const beforeShot = await shoot(`${OUT_DIR}/probe-restore-before.png`);
+  await send('Page.reload');
+  const canvasBack = await waitCanvas();
+  const loadedBack = await waitLoaded(20000);
+  const a1Back = await pollCell('A1', 42, 12000);
+  const viewBack = await pollView(saved, 12000);
+  const a3Back = await pollCell('A3', 44, 6000);
+
+  add(
+    '③ 重载后 A1 仍为 42（内容跨过页面生命周期）',
+    canvasBack && loadedBack && a1Back && a1Back.v === 42,
+    `A1=${JSON.stringify(a1Back && a1Back.v)}｜loaded=${loadedBack}`,
+  );
+  add(
+    '④ 重载后视口逐字段相等（精确像素）',
+    sameView(viewBack, saved),
+    `got=${JSON.stringify(viewBack)}｜want=${JSON.stringify(saved)}`,
+  );
+  add(
+    '⑤ 重载后 A3 由公式算出 44（快照完整）',
+    a3Back && a3Back.v === 44 && a3Back.f === '=SUM(A1:A2)',
+    `A3=${JSON.stringify(a3Back && a3Back.v)}｜f=${JSON.stringify(a3Back && a3Back.f)}`,
+  );
+
+  for (const c of checks) console.log(`[恢复] ${c.ok ? 'OK ' : 'BAD'} ${c.name}｜${c.detail}`);
+  console.log('[恢复截图]', beforeShot, await shoot(`${OUT_DIR}/probe-restore.png`));
+  return { pass: checks.every((c) => c.ok) };
+};
+
+/**
+ * 读失败降级断言（V2.3 判据）：绕过应用写坏库记录 → 重载 → 不白屏、不覆盖。
+ *
+ * ## 为什么必须写坏库，而不是 mock `load` 抛错
+ *
+ * 「读失败降级」的真实路径是「库里有字节，但解析不了」。mock 掉 `load` 只能证明
+ * 调用方 try/catch 写得对，证明不了：① 损坏数据真的会走到 error 分支；
+ * ② 读失败后自动保存确实被 `loaded` 守卫关掉。后者是**最危险的一条**——
+ * 守卫一旦失守，用户随手改一格就会把仅存的损坏字节覆盖成空文档。
+ */
+const runDegrade = async () => {
+  const checks = [];
+  const add = (name, ok, detail) => checks.push({ name, ok, detail });
+
+  EXPECTED_ERROR_PREFIXES.push('[SheetHost] 数据源读取失败');
+
+  const traceCount = (kind) =>
+    evaluate(
+      `(window.__woAttachTrace || []).filter((e) => e.kind === ${JSON.stringify(kind)}).length`,
+    );
+
+  const waitTrace = async (kind, ms) => {
+    const deadline = Date.now() + ms;
+    while (Date.now() < deadline) {
+      if ((await traceCount(kind)) > 0) return true;
+      await sleep(150);
+    }
+    return false;
+  };
+
+  const waitCanvas = async () => {
+    for (let i = 0; i < 40; i += 1) {
+      const n = await evaluate(`document.querySelectorAll('canvas').length`);
+      if (n > 0) return true;
+      await sleep(500);
+    }
+    return false;
+  };
+
+  const readStored = () =>
+    evaluate(`(async () => {
+      const db = await new Promise((res, rej) => {
+        const r = indexedDB.open(${JSON.stringify(PERSIST_DB)});
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      });
+      const rec = await new Promise((res, rej) => {
+        const r = db.transaction(${JSON.stringify(PERSIST_STORE)}, 'readonly')
+          .objectStore(${JSON.stringify(PERSIST_STORE)})
+          .get(${JSON.stringify(PERSIST_DOC)});
+        r.onsuccess = () => res(r.result || null);
+        r.onerror = () => rej(r.error);
+      });
+      db.close();
+      return rec ? { found: true, doc: rec.doc, bytes: rec.bytes } : { found: false };
+    })()`);
+
+  const readState = () =>
+    evaluate(`(() => {
+      const h = window.__woSheet;
+      const host = document.querySelector('.sheet-host');
+      return {
+        hasHandle: !!h,
+        loaded: window.__woAttach ? window.__woAttach.isLoaded() : null,
+        a1: h ? h.getValueByA1('A1') : '__no_handle__',
+        view: h ? h.getScrollState() : null,
+        canvases: document.querySelectorAll('canvas').length,
+        host: host ? { w: host.clientWidth, h: host.clientHeight } : null,
+      };
+    })()`);
+
+  // ---- 前置：先有一份可读记录，再把 doc 字段写成非法 JSON ---------------------
+  const before = await readStored();
+  add(
+    '前置：库中已有可读记录',
+    before.found === true && typeof before.doc === 'string',
+    before.found ? `bytes=${before.bytes}` : '库里没有记录',
+  );
+
+  const corruptDoc = '{"broken":';
+  const bad = await evaluate(`(async () => {
+    const db = await new Promise((res, rej) => {
+      const r = indexedDB.open(${JSON.stringify(PERSIST_DB)});
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    const rec = await new Promise((res, rej) => {
+      const r = db.transaction(${JSON.stringify(PERSIST_STORE)}, 'readonly')
+        .objectStore(${JSON.stringify(PERSIST_STORE)})
+        .get(${JSON.stringify(PERSIST_DOC)});
+      r.onsuccess = () => res(r.result || null);
+      r.onerror = () => rej(r.error);
+    });
+    if (!rec) { db.close(); return { ok: false }; }
+    const badRec = {
+      ...rec,
+      doc: ${JSON.stringify(corruptDoc)},
+      bytes: ${new TextEncoder().encode(corruptDoc).length},
+      savedAt: Date.now(),
+      tabId: 'probe-degrade',
+    };
+    await new Promise((res, rej) => {
+      const tx = db.transaction(${JSON.stringify(PERSIST_STORE)}, 'readwrite');
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+      tx.objectStore(${JSON.stringify(PERSIST_STORE)}).put(badRec, ${JSON.stringify(PERSIST_DOC)});
+    });
+    db.close();
+    return { ok: true, doc: badRec.doc, bytes: badRec.bytes };
+  })()`);
+  add(
+    '前置：记录已写坏（doc 为非法 JSON）',
+    bad.ok === true && bad.doc === corruptDoc,
+    `bytes=${bad.bytes}`,
+  );
+
+  const logsBefore = logs.length;
+  const exceptionsBefore = exceptions.length;
+
+  // ---- 重载：读失败必须降级为空白表，而不是白屏 -----------------------------
+  await send('Page.reload');
+  const canvasBack = await waitCanvas();
+  const errSeen = await waitTrace('load:error', 15000);
+  await sleep(800);
+  const state = await readState();
+  const replaceCount = await traceCount('replace');
+
+  add(
+    '① 载入失败但 canvas 仍在（不白屏）',
+    canvasBack && state && state.canvases > 0 && state.host && state.host.w > 0 && state.host.h > 0,
+    state
+      ? `canvas=${state.canvases} host=${state.host ? `${state.host.w}x${state.host.h}` : 'null'}`
+      : '页面状态不可读',
+  );
+  add(
+    '② isLoaded=false 且 A1 为空（降级为空白表）',
+    errSeen &&
+      state &&
+      state.loaded === false &&
+      (state.a1 === null || state.a1 === undefined || state.a1 === ''),
+    state ? `loaded=${state.loaded} A1=${JSON.stringify(state.a1)}` : '页面状态不可读',
+  );
+  add(
+    '③ 读失败不恢复视口（保持左上角）',
+    state &&
+      state.view &&
+      state.view.sheetViewStartRow === 0 &&
+      state.view.sheetViewStartColumn === 0,
+    `view=${JSON.stringify(state && state.view)}`,
+  );
+  add(
+    '④ 读失败未触发 replace（空表是占位，不是新文档）',
+    replaceCount === 0,
+    `replace=${replaceCount}`,
+  );
+
+  // ---- 最危险的一条：此时编辑，自动保存必须保持关闭 -------------------------
+  // 基线必须在重载之后取：`__woAttachTrace` 随页面重建，旧页面的计数不能拿来比。
+  const savesBefore = await traceCount('save:end');
+  await evaluate(`window.__woSheet.setValueByA1('A1', 99)`);
+  await sleep(2500);
+  const savesAfter = await traceCount('save:end');
+  const auto = await evaluate(`(() => {
+    const a = window.__woAttach;
+    return a ? a.autosaveState() : null;
+  })()`);
+  const after = await readStored();
+
+  add(
+    '⑤ 自动保存保持关闭（改格后无新落盘）',
+    savesAfter === savesBefore && auto && !auto.dirty && !auto.saving,
+    `save:end +${savesAfter - savesBefore}｜dirty/saving=${auto ? `${auto.dirty}/${auto.saving}` : 'null'}`,
+  );
+  add(
+    '⑥ 原始损坏字节未被覆盖（逐字相等）',
+    after.found === true && after.doc === corruptDoc && after.bytes === bad.bytes,
+    after.found ? `doc=${JSON.stringify(after.doc)} bytes=${after.bytes}` : '记录消失',
+  );
+
+  const newErrors = logs.slice(logsBefore).filter((l) => l.type === 'error');
+  const expectedErrors = newErrors.filter((e) =>
+    EXPECTED_ERROR_PREFIXES.some((prefix) => e.text.includes(prefix)),
+  );
+  const unexpectedErrors = newErrors.filter(
+    (e) => !EXPECTED_ERROR_PREFIXES.some((prefix) => e.text.includes(prefix)),
+  );
+  add(
+    '⑦ 只出现一条预期读错误（无额外 error）',
+    expectedErrors.length === 1 && unexpectedErrors.length === 0,
+    `expected=${expectedErrors.length} unexpected=${unexpectedErrors.length}`,
+  );
+  add(
+    '⑧ 无未捕获异常',
+    exceptions.length === exceptionsBefore,
+    `新增 exception=${exceptions.length - exceptionsBefore}`,
+  );
+
+  for (const c of checks) console.log(`[降级] ${c.ok ? 'OK ' : 'BAD'} ${c.name}｜${c.detail}`);
+  console.log('[降级截图]', await shoot(`${OUT_DIR}/probe-degrade.png`));
+  return { pass: checks.every((c) => c.ok) };
+};
+
 let persistPass = true;
 if (DO_PERSIST) {
   const { pass } = await runPersist();
   persistPass = pass;
 }
 
-const errors = logs.filter((l) => l.type === 'error');
-console.log(
-  `[控制台] error=${errors.length} warning=${logs.filter((l) => l.type === 'warning').length} exception=${exceptions.length}`,
+let restorePass = true;
+if (DO_RESTORE) {
+  const { pass } = await runRestore();
+  restorePass = pass;
+}
+
+let degradePass = true;
+if (DO_DEGRADE) {
+  const { pass } = await runDegrade();
+  degradePass = pass;
+}
+
+const errors = logs.filter((l) => l.type === 'error' && l.at >= PROBE_STARTED_AT);
+const unexpectedErrors = errors.filter(
+  (e) => !EXPECTED_ERROR_PREFIXES.some((prefix) => e.text.includes(prefix)),
 );
-errors.slice(0, 8).forEach((e, i) => console.log(`  E${i + 1} ${e.text}`));
+const expectedErrors = errors.filter((e) =>
+  EXPECTED_ERROR_PREFIXES.some((prefix) => e.text.includes(prefix)),
+);
+console.log(
+  `[控制台] error=${errors.length}（预期 ${expectedErrors.length} / 意外 ${unexpectedErrors.length}）warning=${logs.filter((l) => l.type === 'warning').length} exception=${exceptions.length}`,
+);
+expectedErrors
+  .slice(0, 4)
+  .forEach((e) =>
+    console.log(`  （预期）@${new Date(e.at).toISOString().slice(11, 23)} ${e.text.slice(0, 120)}`),
+  );
+unexpectedErrors.slice(0, 8).forEach((e, i) => console.log(`  E${i + 1} ${e.text}`));
 exceptions.slice(0, 5).forEach((e, i) => console.log(`  X${i + 1} ${e}`));
 
 ws.close();
 
 const pass =
   structure.canvasCount > 0 &&
-  errors.length === 0 &&
+  unexpectedErrors.length === 0 &&
   exceptions.length === 0 &&
   assertPass &&
   writePass &&
   formatPass &&
   boundaryPass &&
   dataSourcePass &&
-  persistPass;
+  persistPass &&
+  restorePass &&
+  degradePass;
 const did = [
   ASSERT ? '取值断言全过' : '',
   SET_SPEC ? '写值后重算达标' : '',
@@ -1094,6 +1572,8 @@ const did = [
   DO_BOUNDARIES ? '边界三例达标' : '',
   DO_DATA_SOURCE ? '数据源装配达标' : '',
   DO_PERSIST ? '持久化达标' : '',
+  DO_RESTORE ? '视口精确恢复达标' : '',
+  DO_DEGRADE ? '读失败降级达标' : '',
 ]
   .filter(Boolean)
   .join('，');

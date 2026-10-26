@@ -30,6 +30,19 @@ import {
   type IWorkbookData,
 } from '@univerjs/presets';
 
+/**
+ * 视口滚动状态。
+ *
+ * 字段与 Univer `IScrollState` 同名，但只保留本包需要的四个——把引擎类型挡在句柄边界外，
+ * 存储层（`view-state.ts`）因此不依赖 Univer。
+ */
+export interface SheetScrollState {
+  offsetX: number;
+  offsetY: number;
+  sheetViewStartRow: number;
+  sheetViewStartColumn: number;
+}
+
 /** 挂载句柄：销毁 + 按 A1 取值。业务代码仍拿不到 engine 内部实例。 */
 export interface SheetHandle {
   dispose: () => void;
@@ -117,6 +130,26 @@ export interface SheetHandle {
    * @returns 取消订阅。幂等。
    */
   onChange: (listener: () => void) => () => void;
+  /**
+   * 当前视口滚动状态（起始行列 + 像素偏移）。
+   *
+   * 视图未就绪时返回 `null`：`getScrollState()` 依赖 render unit，首帧前调用会抛错。
+   * 调用方（含探针）必须把 `null` 当「还没有视口」，不能当「滚到 0」。
+   */
+  getScrollState: () => SheetScrollState | null;
+  /**
+   * 把视口滚到指定状态。
+   *
+   * 用 `sheet.command.scroll-view` 而非公开的 `scrollToCell`：后者把 offset 强制归零，
+   * 只能恢复到行/列粒度。命令在 render unit 尚未注册时返回 `false`，调用方需重试。
+   */
+  applyScrollState: (state: SheetScrollState) => Promise<boolean>;
+  /**
+   * 订阅视口滚动。回调给出滚动后的完整状态（引擎事件本身只给像素偏移）。
+   *
+   * @returns 取消订阅。幂等。
+   */
+  onScroll: (listener: (state: SheetScrollState) => void) => () => void;
 }
 
 /** dev-only 全局句柄的形状。生产构建不会挂，故用局部类型而非全局 declare。 */
@@ -159,13 +192,49 @@ export function mountSheet(container: HTMLElement, data?: Partial<IWorkbookData>
 
   wireChange(current);
 
+  /**
+   * 读视口状态。
+   *
+   * `getScrollState()` 内部要取 render unit + scroll manager；换单元后的首帧这些服务
+   * 可能尚未注册，会抛错而非返回 0。捕获后返回 `null`，让调用方区分「未就绪」与「在原点」。
+   */
+  const readScrollState = (): SheetScrollState | null => {
+    try {
+      const state = current.getActiveSheet().getScrollState();
+      return {
+        offsetX: state.offsetX,
+        offsetY: state.offsetY,
+        sheetViewStartRow: state.sheetViewStartRow,
+        sheetViewStartColumn: state.sheetViewStartColumn,
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const scrollListeners = new Set<(state: SheetScrollState) => void>();
+  let scrollSub: { dispose: () => void } | null = null;
+
+  /** 第一次有人订阅时才挂引擎事件；实例级事件，换单元不需要重挂。 */
+  const ensureScrollSubscription = (): void => {
+    if (scrollSub) return;
+    scrollSub = univerAPI.addEvent(univerAPI.Event.Scroll, () => {
+      const state = readScrollState();
+      if (!state) return;
+      for (const listener of scrollListeners) listener(state);
+    });
+  };
+
   const handle: SheetHandle = {
     dispose: () => {
       // 先拆监听再销毁实例：销毁过程中引擎还会发命令，此时回调若仍挂着，
       // 会对着已销毁的单元取快照（抛错或读到空文档）。
       commandSub?.dispose();
       commandSub = null;
+      scrollSub?.dispose();
+      scrollSub = null;
       changeListeners.clear();
+      scrollListeners.clear();
       univer.dispose();
     },
     getValueByA1: (a1) => current.getActiveSheet().getRange(a1).getValue(),
@@ -195,6 +264,25 @@ export function mountSheet(container: HTMLElement, data?: Partial<IWorkbookData>
       changeListeners.add(listener);
       return () => {
         changeListeners.delete(listener);
+      };
+    },
+    getScrollState: readScrollState,
+    applyScrollState: async (state) => {
+      const sheet = current.getActiveSheet();
+      return univerAPI.executeCommand<Record<string, string | number>, boolean>(
+        'sheet.command.scroll-view',
+        {
+          unitId: current.getId(),
+          sheetId: sheet.getSheetId(),
+          ...state,
+        },
+      );
+    },
+    onScroll: (listener) => {
+      ensureScrollSubscription();
+      scrollListeners.add(listener);
+      return () => {
+        scrollListeners.delete(listener);
       };
     },
   };

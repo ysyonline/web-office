@@ -123,8 +123,9 @@ export function createDemoWorkbookData(options: DemoWorkbookOptions): Partial<IW
       [DEMO_SHEET_ID]: {
         id: DEMO_SHEET_ID,
         name: 'Sheet1',
-        rowCount: 24,
-        columnCount: 15,
+        // V2.3：留出真实可滚动空间（视口一屏约 28 行），滚动恢复判据才有意义。
+        rowCount: 200,
+        columnCount: 30,
         mergeData: [
           {
             startRow: DEMO_LAYOUT.merge.startRow,

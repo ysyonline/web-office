@@ -42,7 +42,8 @@ import type { IWorkbookData } from '@univerjs/presets';
 import type { DataSource } from '@wo/shared';
 
 import { createAutosave, type AutosaveEventKind, type AutosaveState } from './autosave';
-import { mountSheet, type SheetHandle } from './mount-sheet';
+import { mountSheet, type SheetHandle, type SheetScrollState } from './mount-sheet';
+import { clearViewState, createViewStateWriter, readViewState } from './view-state';
 
 /** web 侧把泛型填实为 Univer 快照。规则 H 要求这个具体类型只能出现在 web 里。 */
 export type WorkbookDoc = Partial<IWorkbookData>;
@@ -131,6 +132,7 @@ interface AttachTraceEvent {
     | 'load:null'
     | 'load:error'
     | 'replace'
+    | 'view:restore'
     | AutosaveEventKind;
   docId: string;
   /** `performance.now()` 时刻，用于证明「空表先于数据」而非同批完成 */
@@ -190,6 +192,71 @@ export function attachDataSource(container: HTMLElement, options: AttachOptions)
     },
   });
 
+  const viewWriter = createViewStateWriter(docId);
+  let unsubscribeScroll: (() => void) | null = null;
+
+  /** 恢复完成后才开始订阅：避免恢复动作自己触发一次无意义的落盘。 */
+  const startViewPersistence = (): void => {
+    if (unsubscribeScroll !== null || disposed) return;
+    unsubscribeScroll = handle.onScroll((state) => viewWriter.schedule(state));
+  };
+
+  const sameViewState = (a: SheetScrollState, b: SheetScrollState): boolean =>
+    a.offsetX === b.offsetX &&
+    a.offsetY === b.offsetY &&
+    a.sheetViewStartRow === b.sheetViewStartRow &&
+    a.sheetViewStartColumn === b.sheetViewStartColumn;
+
+  /**
+   * 恢复视口（V2.3）。
+   *
+   * 必须在真实数据 `replaceDoc` 之后：新单元可能换了 sheetId，且 render unit 要等挂载完成。
+   * `applyScrollState` 在 render unit 未注册时返回 `false`，故重试约 600ms。
+   * **失败只放弃视口，不影响内容**——视口是可丢的 UI 状态，绝不能因此让表格白屏。
+   */
+  const restoreViewState = async (): Promise<void> => {
+    const saved = readViewState(docId);
+    if (saved === null) {
+      startViewPersistence();
+      return;
+    }
+
+    const maxAttempts = 30;
+    const retryMs = 20;
+    let attempts = 0;
+    let matched = false;
+
+    while (attempts < maxAttempts && !disposed) {
+      attempts += 1;
+      let applied = false;
+      try {
+        applied = await handle.applyScrollState(saved);
+      } catch {
+        applied = false;
+      }
+      if (disposed) return;
+
+      // 命令是同步派发的，但 render/scroll manager 的提交要等下一拍。
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, retryMs);
+      });
+      if (disposed) return;
+
+      const now = handle.getScrollState();
+      if (applied && now !== null && sameViewState(now, saved)) {
+        matched = true;
+        break;
+      }
+    }
+
+    trace({
+      kind: 'view:restore',
+      docId,
+      detail: matched ? `ok attempts=${attempts}` : `give-up attempts=${attempts}`,
+    });
+    startViewPersistence();
+  };
+
   /**
    * 编辑 → 自动保存的唯一入口。
    *
@@ -204,6 +271,8 @@ export function attachDataSource(container: HTMLElement, options: AttachOptions)
 
   /** 关页面/切后台的最后一脚。失败只留痕——此时已经没有界面可以提示了。 */
   const flushOnHide = (): void => {
+    // 视口是同步写，先落它；保存失败也只是「这次没存上」，不能挡住视口。
+    viewWriter.flush();
     if (!loaded) return;
     void autosave.flush().catch((error: unknown) => {
       console.error('[attachDataSource] 页面隐藏前保存失败', error);
@@ -240,6 +309,9 @@ export function attachDataSource(container: HTMLElement, options: AttachOptions)
         // prime 必须放在 loaded 之后：它把「当前快照」记为基线，
         // 拦掉载入时刻引擎自发命令引起的假改动。
         autosave.prime();
+        // 新文档没有历史视口；清掉同 id 的残留，避免把种子表滚到奇怪位置。
+        clearViewState(docId);
+        startViewPersistence();
         return;
       }
 
@@ -248,6 +320,7 @@ export function attachDataSource(container: HTMLElement, options: AttachOptions)
       trace({ kind: 'replace', docId });
       loaded = true;
       autosave.prime();
+      void restoreViewState();
     } catch (error) {
       // 读失败：空表保留，不让异常冒进 effect（那会卸载整棵子树 = 白屏）。
       // 注意此时**不**设 loaded：读失败后自动保存必须保持关闭，
@@ -268,6 +341,9 @@ export function attachDataSource(container: HTMLElement, options: AttachOptions)
       window.removeEventListener('pagehide', flushOnHide);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       unsubscribeChange();
+      unsubscribeScroll?.();
+      unsubscribeScroll = null;
+      viewWriter.stop();
       autosave.stop();
       handle.dispose();
     },

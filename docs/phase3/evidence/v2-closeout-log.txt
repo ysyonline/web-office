@@ -1,0 +1,85 @@
+[渲染结构] {
+  "host": {
+    "w": 1344,
+    "h": 728
+  },
+  "canvasCount": 3,
+  "canvases": [
+    {
+      "w": 1136,
+      "h": 27
+    },
+    {
+      "w": 0,
+      "h": 0
+    },
+    {
+      "w": 1344,
+      "h": 587
+    }
+  ],
+  "univerNodes": 335,
+  "bodyText": "协作表格 本地演示 开始 公式 视图 粘贴 常规 Sheet1 删除 复制 重命名 更改颜色 隐藏 取消隐藏 保护工作表 取消保护工作表 更改工作表权限 查看所有保护范围"
+}
+[截图] C:/tmp/probe-render.png
+[断言·写入前] OK  A1 期望 1（number）｜实得 1（number）｜首次非 null 于第 1 次轮询
+[断言·写入前] OK  A2 期望 2（number）｜实得 2（number）｜首次非 null 于第 1 次轮询
+[断言·写入前] OK  A3 期望 3（number）｜实得 3（number）｜首次非 null 于第 1 次轮询
+[断言后截图] C:/tmp/probe-asserted.png
+[格式] OK  合并区恰为 A5:B6 与 A18:B19｜[{"startRow":4,"startColumn":0,"endRow":5,"endColumn":1},{"startRow":17,"startColumn":0,"endRow":18,"endColumn":1}]
+[格式] OK  合并区非左上格不存值｜B6 = null
+[格式] OK  货币格数值与显示｜getRawValue 1234.5｜显示 '¥1,234.50'｜getValue "¥1,234.50"（格式化文本，见卡 §3 实测）
+[格式] OK  货币格数字格式｜n.pattern = "¥#,##0.00"
+[格式] OK  加粗格 bl=1｜bl = 1
+[格式] OK  加粗格底色来自设计令牌｜bg = "#fffbeb"｜令牌 "#fffbeb"
+[格式] OK  公式未被格式破坏｜A3 = 3
+[格式截图] C:/tmp/probe-formats.png
+[数据源] OK  ① 空表先挂、数据后灌（mount 早于 replace）｜mount@273ms｜replace@619ms
+[数据源] OK  ② 数据经 load 流入并触发换单元｜轨迹 mount → load:start → load:end → replace
+[数据源] OK  ③ 换单元后公式照常计算｜A3=3｜期望 3
+[数据源] OK  ④ 换单元未拆渲染根｜canvas=3｜装配期异常已由末行控制台断言覆盖
+[数据源·接口] OK  接口① load 不存在返回 null｜得 true
+[数据源·接口] OK  接口② save→load 往返一致｜往返 true｜savedAt 有效 true
+[数据源·接口] OK  接口③ load 返回副本（改它不污染存储）｜得 true
+[数据源·接口] OK  接口④ subscribe 收到 local-save｜origin/docId 匹配 true
+[数据源·接口] OK  接口⑤ 取消订阅后不再收事件｜得 true
+[数据源·接口] OK  接口⑥ 取消订阅幂等｜重复调用不抛错 true
+[数据源截图] C:/tmp/probe-data-source.png
+[边界] OK  ① 空单元格参与 SUM｜B10=30｜Excel 期望 30
+[边界] OK  ② 文本参与 SUM｜B14=7｜Excel 期望 7
+[边界] OK  ③ 跨合并区求和｜C18=3｜Excel 期望 3
+[边界] OK  旁证：文本格仍以字符串存值｜A15="5"（string）
+[边界] OK  旁证：合并区内部为空｜B19=null
+[边界截图] C:/tmp/probe-boundaries.png
+[持久化] OK  前置：新库种出演示数据（A1=1）｜A1=1
+[持久化] OK  前置：种子已写入 IndexedDB｜bytes=1750 savedAt=1793002250674
+[持久化] OK  ① 编辑后自动保存（节流窗口后落盘一次）｜save:end +1｜A1=42
+[持久化] OK  ② 库中记录已更新为 42｜a1.v=42 bytes=1799
+[持久化] OK  ③ 重载后 A1 仍为 42（内容真的跨过页面生命周期）｜A1=42
+[持久化] OK  ④ 重载后 A3 由公式算出 44（公式随内容一起存活）｜A3=44｜f="=SUM(A1:A2)"
+[持久化] OK  ⑤ 相邻两次改动只落盘一次（节流真的在合并）｜save:end +1（期望 1）｜A1=44
+[持久化] OK  ⑥ 重载后为最新值 44（最后一次改动必落盘）｜A1=44（若为 43/4 则是尾部丢失）
+[持久化] OK  ⑦ 全程无保存失败｜save:error 0 次
+[持久化截图] C:/tmp/probe-persist.png
+[恢复] OK  前置：内容已落盘（A1=42）｜A1=42｜dirty/saving=false/false
+[恢复] OK  ① 真实滚轮后视口非零（行/列/偏移都动过）｜row=40 col=15 offset=33,14
+[恢复] OK  ② 视口已写入 localStorage（防抖窗口后，逐字段相等）｜saved={"offsetX":33,"offsetY":14,"sheetViewStartRow":40,"sheetViewStartColumn":15}
+[恢复] OK  ③ 重载后 A1 仍为 42（内容跨过页面生命周期）｜A1=42｜loaded=true
+[恢复] OK  ④ 重载后视口逐字段相等（精确像素）｜got={"offsetX":33,"offsetY":14,"sheetViewStartRow":40,"sheetViewStartColumn":15}｜want={"offsetX":33,"offsetY":14,"sheetViewStartRow":40,"sheetViewStartColumn":15}
+[恢复] OK  ⑤ 重载后 A3 由公式算出 44（快照完整）｜A3=44｜f="=SUM(A1:A2)"
+[恢复截图] C:/tmp/probe-restore-before.png C:/tmp/probe-restore.png
+[降级] OK  前置：库中已有可读记录｜bytes=1799
+[降级] OK  前置：记录已写坏（doc 为非法 JSON）｜bytes=10
+[降级] OK  ① 载入失败但 canvas 仍在（不白屏）｜canvas=3 host=1344x728
+[降级] OK  ② isLoaded=false 且 A1 为空（降级为空白表）｜loaded=false A1=null
+[降级] OK  ③ 读失败不恢复视口（保持左上角）｜view={"offsetX":0,"offsetY":0,"sheetViewStartRow":0,"sheetViewStartColumn":0}
+[降级] OK  ④ 读失败未触发 replace（空表是占位，不是新文档）｜replace=0
+[降级] OK  ⑤ 自动保存保持关闭（改格后无新落盘）｜save:end +0｜dirty/saving=false/false
+[降级] OK  ⑥ 原始损坏字节未被覆盖（逐字相等）｜doc="{\"broken\":" bytes=10
+[降级] OK  ⑦ 只出现一条预期读错误（无额外 error）｜expected=1 unexpected=0
+[降级] OK  ⑧ 无未捕获异常｜新增 exception=0
+[降级截图] C:/tmp/probe-degrade.png
+[控制台] error=1（预期 1 / 意外 0）warning=0 exception=0
+  （预期）@08:11:02.823 [SheetHost] 数据源读取失败，已降级为空表 Error: [IndexedDbDataSource] 文档 wo-demo-book 反序列化失败（库中数据可能损坏）: SyntaxError: Unexpected end of
+
+探针通过：canvas 已渲染，无 error / 无未捕获异常，取值断言全过，三格式共存达标，边界三例达标，数据源装配达标，持久化达标，视口精确恢复达标，读失败降级达标。
