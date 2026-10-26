@@ -97,6 +97,26 @@ export interface SheetHandle {
    * 所有取值器必须读 `current` 而非闭包里的初始 `workbook`，否则换单元后会静默读到旧单元。
    */
   replaceDoc: (doc: Partial<IWorkbookData>) => void;
+  /**
+   * 导出当前工作簿的完整快照（V2.2 自动保存的数据来源）。
+   *
+   * 用 `FWorkbook.save()` 而非自己拼结构：它是引擎给出的**唯一对外序列化口径**，
+   * 与 `createWorkbook` 的入参同构，因此「存进去的」与「读出来的」天然一致。
+   * 自己拼结构会在引擎升级时静默丢字段。
+   */
+  getSnapshot: () => Partial<IWorkbookData>;
+  /**
+   * 订阅「工作簿内容被命令改动」。
+   *
+   * 语义是**可能多次、可能空报**：选区变化、纯重算也会触发命令。
+   * 调用方不能假定「收到一次 = 内容变了一次」，去重由调用方按快照哈希做
+   * （见 `autosave.ts`）。这样本方法不必维护命令白名单——白名单漏一条就丢一次保存。
+   *
+   * 换单元（`replaceDoc`）后监听会自动重新挂到新单元上；调用方无需重新订阅。
+   *
+   * @returns 取消订阅。幂等。
+   */
+  onChange: (listener: () => void) => () => void;
 }
 
 /** dev-only 全局句柄的形状。生产构建不会挂，故用局部类型而非全局 declare。 */
@@ -123,8 +143,29 @@ export function mountSheet(container: HTMLElement, data?: Partial<IWorkbookData>
   // 直接闭包捕获初始 `workbook` 会在 replaceDoc 后静默读到已销毁的旧单元。
   let current = workbook;
 
+  /**
+   * 改动监听：命令回调挂在**当前单元**上，换单元时必须拆旧挂新。
+   * 漏了重新挂的后果是「编辑照样发生、自动保存再也不触发」——从界面上完全看不出来。
+   */
+  const changeListeners = new Set<() => void>();
+  let commandSub: { dispose: () => void } | null = null;
+
+  const wireChange = (target: typeof current): void => {
+    commandSub?.dispose();
+    commandSub = target.onCommandExecuted(() => {
+      for (const listener of changeListeners) listener();
+    });
+  };
+
+  wireChange(current);
+
   const handle: SheetHandle = {
     dispose: () => {
+      // 先拆监听再销毁实例：销毁过程中引擎还会发命令，此时回调若仍挂着，
+      // 会对着已销毁的单元取快照（抛错或读到空文档）。
+      commandSub?.dispose();
+      commandSub = null;
+      changeListeners.clear();
       univer.dispose();
     },
     getValueByA1: (a1) => current.getActiveSheet().getRange(a1).getValue(),
@@ -142,8 +183,19 @@ export function mountSheet(container: HTMLElement, data?: Partial<IWorkbookData>
         .map((range) => range.getRange()),
     replaceDoc: (doc) => {
       // 旧单元必须先销毁：同 id 重复 createWorkbook 会留下两个单元，且 getActiveWorkbook 指向不确定。
+      commandSub?.dispose();
+      commandSub = null;
       univerAPI.disposeUnit(current.getId());
       current = univerAPI.createWorkbook(doc);
+      // 换单元后重新挂监听，否则后续编辑不会触发自动保存（界面看不出异常）。
+      wireChange(current);
+    },
+    getSnapshot: () => current.save() as Partial<IWorkbookData>,
+    onChange: (listener) => {
+      changeListeners.add(listener);
+      return () => {
+        changeListeners.delete(listener);
+      };
     },
   };
 

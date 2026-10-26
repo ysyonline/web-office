@@ -41,6 +41,7 @@
 import type { IWorkbookData } from '@univerjs/presets';
 import type { DataSource } from '@wo/shared';
 
+import { createAutosave, type AutosaveEventKind, type AutosaveState } from './autosave';
 import { mountSheet, type SheetHandle } from './mount-sheet';
 
 /** web 侧把泛型填实为 Univer 快照。规则 H 要求这个具体类型只能出现在 web 里。 */
@@ -59,6 +60,21 @@ export interface AttachOptions {
    * 而应带上默认行列数与表名——这份数据由调用方给，装配层不猜。
    */
   emptyDoc: () => WorkbookDoc;
+  /**
+   * `load` 返回 `null`（文档不存在）时，要写进库并显示的初始内容（V2.2）。
+   *
+   * 与 `emptyDoc` 的分工：`emptyDoc` 是**加载中**的占位骨架，只在界面存在几百毫秒，
+   * 从不落盘；`seedDoc` 是**新文档的真正初始内容**，会写进 `DataSource`。
+   * 二者不能合并——若让 `emptyDoc` 也落盘，那么「读失败」降级出的空表就会被当成
+   * 新文档写回库，把用户原有的数据覆盖掉。
+   */
+  seedDoc?: () => WorkbookDoc;
+  /** 自动保存节流：静默时长（ms），默认 400 */
+  autosaveDebounceMs?: number;
+  /** 自动保存节流：最迟落盘时长（ms），默认 1500 */
+  autosaveMaxWaitMs?: number;
+  /** 每次保存成功后的回调（显示「已保存 hh:mm」之类） */
+  onSaved?: (info: { savedAt: number; bytes?: number | undefined }) => void;
   /**
    * `load` 抛错时的处理。
    *
@@ -80,6 +96,15 @@ export interface SheetAttachment {
    * 只看 `handle` 有没有值，会把「空表的 null」误判成「加载失败」。
    */
   isLoaded: () => boolean;
+  /**
+   * 立刻把当前内容落盘并等它完成（V2.2）。
+   *
+   * 用途：`pagehide` 兜底、显式的「保存」按钮、以及探针断言。
+   * 注意**不是**「保存节流的替代」：正常路径靠自动保存，这里只是关页面前的最后一脚。
+   */
+  saveNow: () => Promise<void>;
+  /** 自动保存状态（脏、在飞、上次保存时刻），供状态栏与探针读取。 */
+  autosaveState: () => AutosaveState;
   /** 拆掉实例。V2.1 不在组件卸载时调用（沿用 V1.2.1 结论），留给多文档场景。 */
   detach: () => void;
 }
@@ -95,13 +120,23 @@ export interface SheetAttachment {
  * 也不参与任何业务判断。生产构建下 `import.meta.env.DEV === false`，整段被静态剔除。
  */
 interface AttachTraceEvent {
-  /** `mount` = 空表挂好；`load:start` / `load:end` / `load:null` / `load:error`；`replace` */
-  kind: 'mount' | 'load:start' | 'load:end' | 'load:null' | 'load:error' | 'replace';
+  /**
+   * `mount` = 空表挂好；`load:start` / `load:end` / `load:null` / `load:error`；`replace`；
+   * `save:start` / `save:end` / `save:skip` / `save:error`（V2.2 自动保存）。
+   */
+  kind:
+    | 'mount'
+    | 'load:start'
+    | 'load:end'
+    | 'load:null'
+    | 'load:error'
+    | 'replace'
+    | AutosaveEventKind;
   docId: string;
   /** `performance.now()` 时刻，用于证明「空表先于数据」而非同批完成 */
   at: number;
   /** replace 时记录被替换掉的单元 id，用于证明换单元真的发生过 */
-  detail?: string;
+  detail?: string | undefined;
 }
 
 type TraceWindow = Window & { __woAttachTrace?: AttachTraceEvent[] };
@@ -119,7 +154,7 @@ function trace(event: Omit<AttachTraceEvent, 'at'>): void {
  * 同步返回：实例与空表在这一刻就已就绪；真实数据随后异步灌入。
  */
 export function attachDataSource(container: HTMLElement, options: AttachOptions): SheetAttachment {
-  const { dataSource, docId, emptyDoc, onLoadError } = options;
+  const { dataSource, docId, emptyDoc, seedDoc, onLoadError, onSaved } = options;
 
   // 第 1 步：同步建实例 + 同步挂空表（与 V1.2.1 同构）。
   const handle = mountSheet(container, emptyDoc());
@@ -136,6 +171,50 @@ export function attachDataSource(container: HTMLElement, options: AttachOptions)
     console.error('[attachDataSource] load 失败，已降级为空表', error);
   };
 
+  const autosave = createAutosave<WorkbookDoc>({
+    dataSource,
+    docId,
+    getSnapshot: () => handle.getSnapshot(),
+    debounceMs: options.autosaveDebounceMs,
+    maxWaitMs: options.autosaveMaxWaitMs,
+    onSaved: (result) => {
+      onSaved?.({ savedAt: result.savedAt, bytes: result.bytes });
+    },
+    onError: (error) => {
+      // 保存失败不像读失败那样能降级：数据还在内存里，只是没落盘。
+      // 这里只留痕（trace + console），不弹窗、不阻断编辑——下一次改动会再试。
+      console.error('[attachDataSource] 自动保存失败，改动仍在内存中', error);
+    },
+    onEvent: (kind, detail) => {
+      trace({ kind, docId, detail });
+    },
+  });
+
+  /**
+   * 编辑 → 自动保存的唯一入口。
+   *
+   * `if (!loaded) return` 是**必须的**，不是保守：空表先挂起来、真实数据还没回来时，
+   * 引擎自己就会发一批命令（初始化、选区、格式）。若此时自动保存生效，就会把
+   * **空表**写进库，把用户原有数据直接覆盖掉——这是本包最危险的一处竞态。
+   */
+  const unsubscribeChange = handle.onChange(() => {
+    if (!loaded) return;
+    autosave.notifyChange();
+  });
+
+  /** 关页面/切后台的最后一脚。失败只留痕——此时已经没有界面可以提示了。 */
+  const flushOnHide = (): void => {
+    if (!loaded) return;
+    void autosave.flush().catch((error: unknown) => {
+      console.error('[attachDataSource] 页面隐藏前保存失败', error);
+    });
+  };
+  const onVisibilityChange = (): void => {
+    if (document.visibilityState === 'hidden') flushOnHide();
+  };
+  window.addEventListener('pagehide', flushOnHide);
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
   // 第 2 步：异步灌真实数据。
   void (async () => {
     try {
@@ -148,7 +227,19 @@ export function attachDataSource(container: HTMLElement, options: AttachOptions)
       // `null` = 文档不存在（新文档）。空表已经是正确形态，不必再灌一次。
       if (doc === null) {
         trace({ kind: 'load:null', docId });
+        if (seedDoc) {
+          // 新文档：写入初始内容并显示。先 replaceDoc 再 save——
+          // 反过来的话，save 期间界面还是空表，用户看到的是「闪一下空表」。
+          const seed = seedDoc();
+          handle.replaceDoc(seed);
+          trace({ kind: 'replace', docId, detail: 'seed' });
+          const result = await dataSource.save(docId, seed);
+          trace({ kind: 'save:end', docId, detail: `seed bytes=${result.bytes ?? '?'}` });
+        }
         loaded = true;
+        // prime 必须放在 loaded 之后：它把「当前快照」记为基线，
+        // 拦掉载入时刻引擎自发命令引起的假改动。
+        autosave.prime();
         return;
       }
 
@@ -156,8 +247,11 @@ export function attachDataSource(container: HTMLElement, options: AttachOptions)
       handle.replaceDoc(doc);
       trace({ kind: 'replace', docId });
       loaded = true;
+      autosave.prime();
     } catch (error) {
       // 读失败：空表保留，不让异常冒进 effect（那会卸载整棵子树 = 白屏）。
+      // 注意此时**不**设 loaded：读失败后自动保存必须保持关闭，
+      // 否则用户随手改一格就会把空表写进库，覆盖掉可能只是暂时读不出的原数据。
       if (disposed) return;
       trace({ kind: 'load:error', docId, detail: String(error) });
       reportError(error);
@@ -167,8 +261,14 @@ export function attachDataSource(container: HTMLElement, options: AttachOptions)
   return {
     handle,
     isLoaded: () => loaded,
+    saveNow: () => autosave.flush(),
+    autosaveState: () => autosave.state(),
     detach: () => {
       disposed = true;
+      window.removeEventListener('pagehide', flushOnHide);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      unsubscribeChange();
+      autosave.stop();
       handle.dispose();
     },
   };

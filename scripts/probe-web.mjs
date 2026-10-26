@@ -19,6 +19,8 @@
  *                                                  # 三格式共存断言（V1.3.1 判据）
  *   node scripts/probe-web.mjs --boundaries        # 边界三例断言（V1.3.2 判据）
  *   node scripts/probe-web.mjs --data-source       # 数据源装配断言（V2.1 判据）
+ *   node scripts/probe-web.mjs --persist           # 持久化断言：编辑→落盘→重载后还在（V2.2 判据）
+ *                                                  # 默认每次运行先清空 IndexedDB，加 --keep-storage 可保留
  *   node scripts/probe-web.mjs --port=9333 --url=http://127.0.0.1:5173/
  *
  * 退出码：0 表示 canvas 已出现且无 console error / 未捕获异常（给了 `--assert` 时还要求断言全过，
@@ -57,6 +59,7 @@ const AFTER_SPEC = argOf('after', '');
 const DO_FORMATS = args.includes('--formats');
 const DO_BOUNDARIES = args.includes('--boundaries');
 const DO_DATA_SOURCE = args.includes('--data-source');
+const DO_PERSIST = args.includes('--persist');
 const OUT_DIR = argOf('out', 'C:/tmp');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -129,6 +132,22 @@ const shoot = async (file) => {
 
 await send('Runtime.enable');
 await send('Page.enable');
+
+/**
+ * 每次运行先清空 IndexedDB（V2.2 起数据是跨运行持久的，不清就会互相污染）。
+ *
+ * 为什么不在页面里 `indexedDB.deleteDatabase` 后再刷新：页面一加载就打开了连接，
+ * deleteDatabase 会一直停在 `blocked` 上（连接不关，删除就排队），探针会卡死。
+ * `Storage.clearDataForOrigin` 是浏览器层面的清除，不受页面连接影响。
+ *
+ * 注意它**不影响判据的有效性**：`--persist` 段证明的是「同一次运行内，编辑 → 落盘 →
+ * 重载后还在」，清库只发生在运行开始之前。
+ */
+const ORIGIN = new URL(PAGE_URL).origin;
+if (!args.includes('--keep-storage')) {
+  await send('Storage.clearDataForOrigin', { origin: ORIGIN, storageTypes: 'indexeddb' });
+}
+
 await send('Page.navigate', { url: PAGE_URL });
 
 // Univer 首帧是异步的（引擎初始化 + canvas 挂载），轮询到 canvas 出现为止，最多 20s。
@@ -482,6 +501,30 @@ if (DO_FORMATS) {
  * ④ 全程 canvas 数 > 0 且无异常 —— 证明换单元没有拆掉渲染根（这是「不白屏」的机器判据）。
  */
 const runDataSource = async () => {
+  /**
+   * 先确保页面走的是「文档已存在」的主路径。
+   *
+   * 每次运行都清库，所以**首次载入必然是 `load:null` → 种种子**——此时判据②要断言的
+   * 「load 流入真实数据」根本没发生，报红是判据自己没准备好，不是装配有问题。
+   * 这里重载一次：库里已有种子，第二遍载入就会走 `load:end` → `replace`。
+   *
+   * 顺带这也验证了一件正事：**重载后确实从库里读回了内容**（否则第二遍还是 load:null）。
+   */
+  const sawLoadEnd = await evaluate(
+    `(window.__woAttachTrace || []).some((e) => e.kind === 'load:end')`,
+  );
+  if (!sawLoadEnd) {
+    await send('Page.reload');
+    const deadline0 = Date.now() + 12000;
+    while (Date.now() < deadline0) {
+      const ok = await evaluate(
+        `(window.__woAttachTrace || []).some((e) => e.kind === 'load:end')`,
+      );
+      if (ok) break;
+      await sleep(200);
+    }
+  }
+
   const traceInfo = await evaluate(`(() => {
     const t = window.__woAttachTrace;
     if (!t) return { __missing: true };
@@ -757,6 +800,274 @@ if (DO_EDIT) {
   }
 }
 
+/**
+ * 持久化断言（V2.2 判据）：编辑 → 自动保存 → **重载页面** → 内容还在。
+ *
+ * ## 为什么必须重载
+ *
+ * 「A1 变成 42」这件事，只在内存里也能成立（V1 就是这样）。H2 假设要的是「关掉再打开
+ * 还在」，所以唯一的证据是**把页面整个重新载入**，再从引擎读数。载入路径不经过内存里的
+ * 任何变量，只能来自 IndexedDB。
+ *
+ * ## 三个子判据，各自防一种假绿
+ *
+ * ① **落盘发生在节流窗口之后，且确实发生过**：等 `save:end` 轨迹，而不是等固定时间。
+ *    只看「A1=42」无法区分「存了」和「还没存但界面已经是 42」。
+ * ② **库里真有这份字节**：绕过应用代码直接 `indexedDB.open` 读记录，证明数据到了存储层，
+ *    而不是停在内存桩里。
+ * ③ **连打两下只存一次，且存的是最后一次**：两次改动间隔 120ms（小于 debounce 400ms），
+ *    应只见 1 次 `save:end`；重载后必须是最新那一下的值。这条同时证明节流生效
+ *    与「最后一次必落盘」，二者缺一都会露馅（前者会看到 2 次保存，后者会停在旧值）。
+ */
+const PERSIST_DB = 'wo-office';
+const PERSIST_STORE = 'docs';
+const PERSIST_DOC = 'wo-demo-book';
+
+const runPersist = async () => {
+  const checks = [];
+  const add = (name, ok, detail) => checks.push({ name, ok, detail });
+
+  const readCell = (ref) =>
+    evaluate(`(() => {
+      const h = window.__woSheet;
+      if (!h) return { __missing: true };
+      return { v: h.getValueByA1(${JSON.stringify(ref)}), f: h.getFormulaByA1(${JSON.stringify(ref)}) };
+    })()`);
+
+  const traceCount = (kind) =>
+    evaluate(
+      `(window.__woAttachTrace || []).filter((e) => e.kind === ${JSON.stringify(kind)}).length`,
+    );
+
+  const autosaveState = () =>
+    evaluate(`(() => {
+      const a = window.__woAttach;
+      return a ? a.autosaveState() : null;
+    })()`);
+
+  /**
+   * 等到「自动保存彻底静默」：dirty=false 且 saving=false，且期间至少新增过一次落盘。
+   *
+   * **不能只看第一个 `save:end` 就返回**——那是本包实际踩过的坑：
+   * 首笔落盘常常发生在第二笔输入的过程中，此时立刻 reload 会把第二笔直接截断，
+   * 于是「最后一次改动必落盘」看起来像失败了，其实是判据自己抢跑。
+   */
+  const waitSaved = async (prevSaves, ms) => {
+    const deadline = Date.now() + ms;
+    let saves = prevSaves;
+    while (Date.now() < deadline) {
+      saves = await traceCount('save:end');
+      const st = await autosaveState();
+      if (saves > prevSaves && st && !st.dirty && !st.saving) return { saves, state: st };
+      await sleep(120);
+    }
+    return { saves, state: null };
+  };
+
+  const waitCanvas = async () => {
+    for (let i = 0; i < 40; i += 1) {
+      const n = await evaluate(`document.querySelectorAll('canvas').length`);
+      if (n > 0) return true;
+      await sleep(500);
+    }
+    return false;
+  };
+
+  const pollCell = async (ref, expect, ms) => {
+    const deadline = Date.now() + ms;
+    let last = null;
+    while (Date.now() < deadline) {
+      const c = await readCell(ref);
+      last = c;
+      if (c && !c.__missing && c.v === expect) return c;
+      await sleep(150);
+    }
+    return last;
+  };
+
+  const key = async (k, code, vk, modifiers = 0) => {
+    for (const type of ['keyDown', 'keyUp']) {
+      await send('Input.dispatchKeyEvent', {
+        type,
+        key: k,
+        code,
+        windowsVirtualKeyCode: vk,
+        nativeVirtualKeyCode: vk,
+        modifiers,
+      });
+    }
+  };
+
+  /** 点 A1 + Ctrl+Home 归位。坐标只负责视觉选中，正确性由归位保证。 */
+  const focusA1 = async () => {
+    const geom = await evaluate(`(() => {
+      const cs = [...document.querySelectorAll('canvas')]
+        .map((c) => c.getBoundingClientRect())
+        .filter((r) => r.width > 400 && r.height > 200);
+      if (!cs.length) return null;
+      const r = cs.sort((a, b) => b.width * b.height - a.width * a.height)[0];
+      return { left: r.left, top: r.top };
+    })()`);
+    if (!geom) return false;
+    const x = Math.round(geom.left + 90);
+    const y = Math.round(geom.top + 32);
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+    await send('Input.dispatchMouseEvent', {
+      type: 'mousePressed',
+      x,
+      y,
+      button: 'left',
+      clickCount: 1,
+    });
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased',
+      x,
+      y,
+      button: 'left',
+      clickCount: 1,
+    });
+    await sleep(250);
+    await key('Home', 'Home', 36, 2);
+    await sleep(350);
+    return true;
+  };
+
+  const commit = async () => {
+    await sleep(150);
+    await key('Enter', 'Enter', 13);
+  };
+
+  /** 绕过应用代码直接读库：证明字节真的到了存储层。 */
+  const readStored = () =>
+    evaluate(`(async () => {
+      const db = await new Promise((res, rej) => {
+        const r = indexedDB.open(${JSON.stringify(PERSIST_DB)});
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      });
+      const rec = await new Promise((res, rej) => {
+        const r = db.transaction(${JSON.stringify(PERSIST_STORE)}, 'readonly')
+          .objectStore(${JSON.stringify(PERSIST_STORE)})
+          .get(${JSON.stringify(PERSIST_DOC)});
+        r.onsuccess = () => res(r.result || null);
+        r.onerror = () => rej(r.error);
+      });
+      db.close();
+      if (!rec) return { found: false };
+      const doc = JSON.parse(rec.doc);
+      const sid = (doc.sheetOrder && doc.sheetOrder[0]) || null;
+      const sheet = sid && doc.sheets ? doc.sheets[sid] : null;
+      const row = sheet && sheet.cellData ? sheet.cellData[0] : null;
+      const cell = row ? row[0] : null;
+      return {
+        found: true,
+        savedAt: rec.savedAt,
+        bytes: rec.bytes,
+        a1v: cell ? cell.v : null,
+        a1f: cell ? cell.f : null,
+      };
+    })()`);
+
+  // ---- 基线：种子数据必须先落库，否则后面的「编辑后还在」无法归因 -------------
+  const base = await pollCell('A1', 1, 12000);
+  add(
+    '前置：新库种出演示数据（A1=1）',
+    base && base.v === 1,
+    `A1=${JSON.stringify(base && base.v)}`,
+  );
+  const seeded = await readStored();
+  add(
+    '前置：种子已写入 IndexedDB',
+    seeded.found === true && seeded.bytes > 0,
+    seeded.found ? `bytes=${seeded.bytes} savedAt=${seeded.savedAt}` : '库里没有记录',
+  );
+
+  // ---- ① 编辑一次 → 等保存静默 → 值落地 ---------------------------------------
+  if (!(await focusA1())) {
+    add('前置：能定位主网格', false, '没有面积足够大的 canvas');
+    for (const c of checks) console.log(`[持久化] ${c.ok ? 'OK ' : 'BAD'} ${c.name}｜${c.detail}`);
+    return { pass: false };
+  }
+  const baseSaves = await traceCount('save:end');
+  await send('Input.insertText', { text: '42' });
+  await commit();
+  const first = await waitSaved(baseSaves, 10000);
+  const editedCell = await pollCell('A1', 42, 3000);
+  add(
+    '① 编辑后自动保存（节流窗口后落盘一次）',
+    first.saves - baseSaves === 1 && editedCell && editedCell.v === 42,
+    `save:end +${first.saves - baseSaves}｜A1=${JSON.stringify(editedCell && editedCell.v)}`,
+  );
+
+  // ---- ② 库里确有这份内容 ------------------------------------------------------
+  const stored = await readStored();
+  add(
+    '② 库中记录已更新为 42',
+    stored.found === true && stored.a1v === 42,
+    stored.found ? `a1.v=${JSON.stringify(stored.a1v)} bytes=${stored.bytes}` : '库里没有记录',
+  );
+
+  // ---- ③④ 重载：内容与公式都要还在（H2 的唯一证据） ---------------------------
+  await send('Page.reload');
+  const canvasBack = await waitCanvas();
+  const reloaded = await pollCell('A1', 42, 12000);
+  const reloadedA3 = await pollCell('A3', 44, 6000);
+  add(
+    '③ 重载后 A1 仍为 42（内容真的跨过页面生命周期）',
+    canvasBack && reloaded && reloaded.v === 42,
+    `A1=${JSON.stringify(reloaded && reloaded.v)}`,
+  );
+  add(
+    '④ 重载后 A3 由公式算出 44（公式随内容一起存活）',
+    reloadedA3 && reloadedA3.v === 44 && reloadedA3.f === '=SUM(A1:A2)',
+    `A3=${JSON.stringify(reloadedA3 && reloadedA3.v)}｜f=${JSON.stringify(reloadedA3 && reloadedA3.f)}`,
+  );
+
+  // ---- ⑤ 快速连打：只落盘一次，且落的是最后一次 -------------------------------
+  // 关键在「同一格内两个字符间隔 120ms」——这才是真实输入节奏。
+  // 若拿两次独立的「点击+输入+回车」当快速连打，两次之间已经隔了 ~750ms，
+  // 首笔落盘必然在第二次输入过程中发生，测到 2 次是应该的，不是节流失效。
+  await focusA1();
+  const base2 = await traceCount('save:end');
+  // 用命令链连打两次，而不是两次 insertText：后者实测有竞态（第二次注入偶尔丢失，
+  // 只进去一个字符），会让判据变成偶发红——**偶发红的判据等于没有判据**。
+  // setValue 同样走 Univer 命令链、同样触发 onCommandExecuted，
+  // 而本子判据要验的正是「相距 120ms 的两条命令会不会被合并成一次保存」。
+  await evaluate(`window.__woSheet.setValueByA1('A1', 43)`);
+  await sleep(120);
+  await evaluate(`window.__woSheet.setValueByA1('A1', 44)`);
+  const second = await waitSaved(base2, 10000);
+  const typed = await pollCell('A1', 44, 3000);
+  add(
+    '⑤ 相邻两次改动只落盘一次（节流真的在合并）',
+    second.saves - base2 === 1,
+    `save:end +${second.saves - base2}（期望 1）｜A1=${JSON.stringify(typed && typed.v)}`,
+  );
+
+  // ---- ⑥ 重载后必须是最新值 ---------------------------------------------------
+  await send('Page.reload');
+  await waitCanvas();
+  const lastWrite = await pollCell('A1', 44, 12000);
+  add(
+    '⑥ 重载后为最新值 44（最后一次改动必落盘）',
+    lastWrite && lastWrite.v === 44,
+    `A1=${JSON.stringify(lastWrite && lastWrite.v)}（若为 43/4 则是尾部丢失）`,
+  );
+
+  const errs = await traceCount('save:error');
+  add('⑦ 全程无保存失败', errs === 0, `save:error ${errs} 次`);
+
+  for (const c of checks) console.log(`[持久化] ${c.ok ? 'OK ' : 'BAD'} ${c.name}｜${c.detail}`);
+  console.log('[持久化截图]', await shoot(`${OUT_DIR}/probe-persist.png`));
+  return { pass: checks.every((c) => c.ok) };
+};
+
+let persistPass = true;
+if (DO_PERSIST) {
+  const { pass } = await runPersist();
+  persistPass = pass;
+}
+
 const errors = logs.filter((l) => l.type === 'error');
 console.log(
   `[控制台] error=${errors.length} warning=${logs.filter((l) => l.type === 'warning').length} exception=${exceptions.length}`,
@@ -774,13 +1085,15 @@ const pass =
   writePass &&
   formatPass &&
   boundaryPass &&
-  dataSourcePass;
+  dataSourcePass &&
+  persistPass;
 const did = [
   ASSERT ? '取值断言全过' : '',
   SET_SPEC ? '写值后重算达标' : '',
   DO_FORMATS ? '三格式共存达标' : '',
   DO_BOUNDARIES ? '边界三例达标' : '',
   DO_DATA_SOURCE ? '数据源装配达标' : '',
+  DO_PERSIST ? '持久化达标' : '',
 ]
   .filter(Boolean)
   .join('，');

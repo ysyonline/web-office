@@ -36,7 +36,7 @@
  */
 import { useEffect, useRef } from 'react';
 
-import { MemoryDataSource } from '../data/memory-data-source';
+import { IndexedDbDataSource } from '../data/indexeddb-data-source';
 import { readTokenColor } from '../design/read-token';
 import { attachDataSource, type SheetAttachment, type WorkbookDoc } from './attach-data-source';
 import { createDemoWorkbookData, DEMO_LAYOUT, DEMO_WORKBOOK_ID } from './demo-workbook';
@@ -45,29 +45,25 @@ import { createDemoWorkbookData, DEMO_LAYOUT, DEMO_WORKBOOK_ID } from './demo-wo
 const attachments = new WeakMap<HTMLElement, SheetAttachment>();
 
 /**
- * 演示用数据源（V2.2 换成 IndexedDB 实现时，只替换这一处）。
+ * 演示用数据源（V2.2 起是 IndexedDB，刷新与关标签页都不丢）。
  *
- * **种子在构造时同步写入**，不是「挂载后再 save」——后者会让首次 `load` 走「文档不存在」
- * 分支，等 save 完成时数据已不会被重新读取，表现为「空表一直空着」。
- * 构造式种子没有这个时序窗口。
+ * 与 V2.1 的内存桩相比只剩一处语义差别，但那处差别正是 H2 假设的全部：
+ * **数据在页面之外**。因此这里不再需要「构造时同步写入种子」——
+ * 库为空时由 `seedDoc` 在 `load` 返回 `null` 之后写入（见 `attach-data-source.ts`），
+ * 那是唯一能区分「新文档」与「读失败」的时机。
  */
-let demoSources: MemoryDataSource<WorkbookDoc> | null = null;
+let sharedSource: IndexedDbDataSource<WorkbookDoc> | null = null;
 
-function getDemoDataSource(): MemoryDataSource<WorkbookDoc> {
-  demoSources ??= new MemoryDataSource<WorkbookDoc>({
-    [DEMO_WORKBOOK_ID]: createDemoWorkbookData({
-      // 底色从设计令牌取，不写字面量；令牌缺失会直接抛错（见 read-token.ts）
-      emphasisBg: readTokenColor(DEMO_LAYOUT.emphasis.tokenVar),
-    }),
-  });
+function getDataSource(): IndexedDbDataSource<WorkbookDoc> {
+  sharedSource ??= new IndexedDbDataSource<WorkbookDoc>();
 
   // dev-only：给 `probe-web.mjs --data-source` 直接验 load/save/subscribe 三个方法的语义。
   // 生产构建整段被静态剔除。挂实例而非快照——探针要**调**它，不是读它。
   if (import.meta.env.DEV) {
-    (window as unknown as Record<string, unknown>).__woDataSource = demoSources;
+    (window as unknown as Record<string, unknown>).__woDataSource = sharedSource;
   }
 
-  return demoSources;
+  return sharedSource;
 }
 
 export function SheetHost(): JSX.Element {
@@ -88,24 +84,34 @@ export function SheetHost(): JSX.Element {
     mountPoint.className = 'sheet-mount';
     host.appendChild(mountPoint);
 
-    attachments.set(
-      host,
-      attachDataSource(mountPoint, {
-        dataSource: getDemoDataSource(),
-        docId: DEMO_WORKBOOK_ID,
-        /**
-         * `load` 尚未回来时立起来的那张表。
-         *
-         * 刻意**不带演示单元格**：若这里就填 demo 数据，「加载成功」与「降级空表」的界面
-         * 会一模一样，V2.3 的降级判据就失去区分能力。这里只给最小骨架，
-         * 让「空表 → 有数」这一步在画面上真的发生过。
-         */
-        emptyDoc: () => ({ id: DEMO_WORKBOOK_ID, name: '未命名' }),
-        onLoadError: (error) => {
-          console.error('[SheetHost] 数据源读取失败，已降级为空表', error);
-        },
-      }),
-    );
+    const attachment = attachDataSource(mountPoint, {
+      dataSource: getDataSource(),
+      docId: DEMO_WORKBOOK_ID,
+      /**
+       * `load` 尚未回来时立起来的那张表。
+       *
+       * 刻意**不带演示单元格**：若这里就填 demo 数据，「加载成功」与「降级空表」的界面
+       * 会一模一样，V2.3 的降级判据就失去区分能力。这里只给最小骨架，
+       * 让「空表 → 有数」这一步在画面上真的发生过。
+       */
+      emptyDoc: () => ({ id: DEMO_WORKBOOK_ID, name: '未命名' }),
+      /** 库为空（新文档）时才写入的初始内容。读失败不走这条路，否则会覆盖原数据。 */
+      seedDoc: () =>
+        createDemoWorkbookData({
+          // 底色从设计令牌取，不写字面量；令牌缺失会直接抛错（见 read-token.ts）
+          emphasisBg: readTokenColor(DEMO_LAYOUT.emphasis.tokenVar),
+        }),
+      onLoadError: (error) => {
+        console.error('[SheetHost] 数据源读取失败，已降级为空表', error);
+      },
+    });
+
+    attachments.set(host, attachment);
+
+    // dev-only：探针要主动触发保存/读状态（`--persist` 段），生产构建静态剔除。
+    if (import.meta.env.DEV) {
+      (window as unknown as Record<string, unknown>).__woAttach = attachment;
+    }
   }, []);
 
   return <div className="sheet-host" ref={hostRef} />;
