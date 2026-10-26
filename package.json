@@ -16,8 +16,7 @@
     "build": "tsc -p packages/shared/tsconfig.build.esm.json && tsc -p packages/shared/tsconfig.build.cjs.json && node packages/shared/scripts/postbuild.mjs && tsc -p apps/server/tsconfig.build.json",
     "test:rules": "node --test packages/config/rules/no-emoji.test.mjs packages/config/rules/no-hardcoded-color.test.mjs packages/config/rules/request-schema-strict.test.mjs",
     "check:deps": "node scripts/check-workspace-deps.mjs",
-    "verify": "node scripts/verify.mjs",
-    "ship": "node scripts/ship.mjs"
+    "verify": "node scripts/verify.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
