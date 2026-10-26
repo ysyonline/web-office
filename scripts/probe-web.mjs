@@ -12,11 +12,19 @@
  * 用法：
  *   node scripts/probe-web.mjs                     # 只检查渲染与报错
  *   node scripts/probe-web.mjs --edit              # 额外双击单元格并输入文本
+ *   node scripts/probe-web.mjs --assert=A1=1,A2=2,A3=3   # 按 A1 取值断言（走 dev 句柄）
  *   node scripts/probe-web.mjs --port=9333 --url=http://127.0.0.1:5173/
  *
- * 退出码：0 表示 canvas 已出现且无 console error / 未捕获异常；1 表示不满足。
+ * 退出码：0 表示 canvas 已出现且无 console error / 未捕获异常（给了 `--assert` 时还要求断言全过）；
+ * 1 表示不满足。
  *
- * ## 两条踩过的坑（别重犯）
+ * ## 断言为什么必须「轮询 + 记跃迁」（V1.2.2 的判据核心，别改成 sleep 固定值）
+ * `spike/formula-runtime-spike/REPORT.md` §1 B1/B2 已实证：浏览器端载入时**初算不冲缓存值**。
+ * 演示数据里 A3 只给 `f` 不给 `v`，因此 `null → 数字` 的跃迁本身就证明公式引擎算过；
+ * 若改成固定 sleep，就分不清「引擎算完了」和「还没算但碰巧读到了别的值」。
+ * 首次计算时机在 preset 装配下未验，故轮询上限给 6s（任务卡写的 3s 是单格预算，三格留余量）。
+ *
+ * ## 另外两条踩过的坑（别重犯）
  * 1. **端口不能选 9222**：WorkBuddy 自身 Electron 就占着它，`bind()` 会失败，探针会连到
  *    编辑器自己的窗口，采到的全是宿主日志（ServiceProxy / wbscrash），得出一份假报告。
  *    判断依据是 `/json/version` 的 UA：真 Edge 显示 `Edg/`，宿主显示 `WorkBuddy/`。
@@ -32,6 +40,7 @@ const argOf = (name, fallback) => {
 const CDP = argOf('port', '9333');
 const PAGE_URL = argOf('url', 'http://127.0.0.1:5173/');
 const DO_EDIT = args.includes('--edit');
+const ASSERT = argOf('assert', '');
 const OUT_DIR = argOf('out', 'C:/tmp');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -133,6 +142,86 @@ const structure = await evaluate(`(() => {
 console.log('[渲染结构]', JSON.stringify(structure, null, 2));
 console.log('[截图]', await shoot(`${OUT_DIR}/probe-render.png`));
 
+/**
+ * 按 A1 取值断言：轮询 dev 句柄直到「全部非 null」或超时，再与期望值逐字比较。
+ * 返回 { pass, results }，results 里带「第几次轮询首次非 null」，作为引擎确实算过的证据。
+ */
+const runAssertions = async (spec) => {
+  const checks = spec
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((pair) => {
+      const [ref, raw] = pair.split('=');
+      return { ref: ref.trim(), raw: (raw ?? '').trim(), expected: Number(raw) };
+    });
+  const refs = checks.map((c) => c.ref);
+  const deadline = Date.now() + 6000;
+  const seen = new Map(checks.map((c) => [c.ref, { value: undefined, poll: 0 }]));
+  let poll = 0;
+  let missing = false;
+
+  while (Date.now() < deadline) {
+    poll += 1;
+    const snap = await evaluate(`(() => {
+      const h = window.__woSheet;
+      if (!h) return { __missing: true };
+      const out = {};
+      for (const ref of ${JSON.stringify(refs)}) {
+        try { out[ref] = h.getValueByA1(ref); }
+        catch (e) { out[ref] = '__throw__' + (e && e.message ? ':' + e.message : ''); }
+      }
+      return out;
+    })()`);
+
+    if (snap && snap.__missing) {
+      missing = true;
+      break;
+    }
+
+    let pending = 0;
+    for (const { ref } of checks) {
+      const slot = seen.get(ref);
+      const v = snap?.[ref];
+      if (slot.value === undefined || slot.value === null) {
+        slot.value = v;
+        slot.poll = poll;
+      }
+      if (slot.value === null || slot.value === undefined) pending += 1;
+    }
+    if (pending === 0) break;
+    await sleep(200);
+  }
+
+  const results = checks.map(({ ref, raw, expected }) => {
+    const slot = seen.get(ref);
+    const value = slot.value;
+    const isNumber = typeof value === 'number';
+    const ok = isNumber && Math.abs(value - expected) < 1e-9;
+    return { ref, raw, expected, value, type: typeof value, poll: slot.poll, ok };
+  });
+
+  for (const r of results) {
+    const mark = r.ok ? 'OK ' : 'BAD';
+    console.log(
+      `[断言] ${mark} ${r.ref} 期望 ${r.raw}（number）｜实得 ${JSON.stringify(r.value)}（${r.type}）｜首次非 null 于第 ${r.poll} 次轮询`,
+    );
+  }
+  if (missing) {
+    console.log(
+      '[断言] window.__woSheet 不存在：dev 句柄未挂。检查 mountSheet 的 import.meta.env.DEV 分支，或当前跑的是生产构建。',
+    );
+  }
+  return { pass: !missing && results.every((r) => r.ok), results };
+};
+
+let assertPass = true;
+if (ASSERT) {
+  const { pass } = await runAssertions(ASSERT);
+  assertPass = pass;
+  console.log('[断言后截图]', await shoot(`${OUT_DIR}/probe-asserted.png`));
+}
+
 if (DO_EDIT) {
   // canvas 内的格子无法用选择器定位，只能按几何偏移点。列头高约 46、行头宽约 46。
   const box = await evaluate(`(() => {
@@ -186,6 +275,11 @@ exceptions.slice(0, 5).forEach((e, i) => console.log(`  X${i + 1} ${e}`));
 
 ws.close();
 
-const pass = structure.canvasCount > 0 && errors.length === 0 && exceptions.length === 0;
-console.log(pass ? '\n探针通过：canvas 已渲染，无 error / 无未捕获异常。' : '\n探针未通过。');
+const pass =
+  structure.canvasCount > 0 && errors.length === 0 && exceptions.length === 0 && assertPass;
+console.log(
+  pass
+    ? `\n探针通过：canvas 已渲染，无 error / 无未捕获异常${ASSERT ? '，取值断言全过' : ''}。`
+    : '\n探针未通过。',
+);
 process.exit(pass ? 0 : 1);

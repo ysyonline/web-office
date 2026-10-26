@@ -1,8 +1,8 @@
 /**
- * 表格宿主组件（V1.2.1）。
+ * 表格宿主组件（V1.2.1 建宿主，V1.2.2 载演示数据）。
  *
- * 职责边界：提供一个具备确定尺寸的 DOM 宿主，把引擎生命周期交给 React effect 管。
- * 不含任何表格业务逻辑——数据载入是 V1.2.2 的事。
+ * 职责边界：提供一个具备确定尺寸的 DOM 宿主，把引擎生命周期交给 React effect 管，
+ * 并把演示数据交给挂载函数。数据内容本身在 `demo-workbook.ts`，本组件不构造单元格。
  *
  * ## 生命周期取舍（实测取证，2026-10-25，Edge 122）
  *
@@ -25,6 +25,7 @@
  */
 import { useEffect, useRef } from 'react';
 
+import { createDemoWorkbookData } from './demo-workbook';
 import { mountSheet, type SheetHandle } from './mount-sheet';
 
 /** 宿主节点 → 实例。StrictMode 二次挂载靠它命中复用，不重复创建。 */
@@ -48,7 +49,7 @@ export function SheetHost(): JSX.Element {
     mountPoint.className = 'sheet-mount';
     host.appendChild(mountPoint);
 
-    instances.set(host, mountSheet(mountPoint));
+    instances.set(host, mountSheet(mountPoint, createDemoWorkbookData()));
   }, []);
 
   return <div className="sheet-host" ref={hostRef} />;

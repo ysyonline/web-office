@@ -1,10 +1,10 @@
 /**
- * Univer 表格引擎挂载（V1.2.1）。
+ * Univer 表格引擎挂载（V1.2.1 建实例，V1.2.2 载数据 + 取值句柄）。
  *
- * 只做「把一个空工作簿挂进给定 DOM 容器、并给出销毁手段」这一件事。
- * 不含 React——组件侧只负责在 effect 里调 `mountSheet`、cleanup 里调 `dispose`。
+ * 只做「把一个工作簿挂进给定 DOM 容器、给出销毁手段与按 A1 取值的手段」。
+ * 不含 React——组件侧只负责在 effect 里调 `mountSheet`。
  *
- * 两条设计取舍（实测依据见任务卡 V1.2.1 §2 订正段）：
+ * 三条设计取舍（实测依据见任务卡 V1.2.1 §2 订正段、V1.2.2 §3）：
  *
  * 1. **不配 `workerURL`**：preset 内部按 `useWorker = !!workerURL` 分流，不传时公式引擎
  *    走主线程（`notExecuteFormula: false`），公式照常计算；一旦传了 `workerURL` 却没同时
@@ -14,23 +14,43 @@
  * 2. **`container` 传 HTMLElement 而非 id 字符串**：`bootstrap` 里字符串分支走
  *    `document.getElementById`，查不到时会 `createElement` 出一个游离节点（不 append），
  *    表现为「实例建成功、界面不出现」。传元素可绕开这条静默失败路径。
+ *
+ * 3. **取值只走 facade，不读内部快照**：`fRange.getValue()` 是「当前已算出的值」的唯一对外口径。
+ *    直接翻 `Worksheet.getCellMatrix()` 会绕过公式结果层，读到的是缓存而非计算结果——
+ *    在「初算不冲缓存值」的前提下，那等于自证。
  */
 import { UniverSheetsCorePreset } from '@univerjs/preset-sheets-core';
 import zhCN from '@univerjs/preset-sheets-core/locales/zh-CN';
-import { createUniver, LocaleType, mergeLocales } from '@univerjs/presets';
+import {
+  createUniver,
+  LocaleType,
+  mergeLocales,
+  type CellValue,
+  type IWorkbookData,
+} from '@univerjs/presets';
 
-/** 挂载句柄：仅暴露销毁，避免业务代码持有 engine 内部实例。 */
+/** 挂载句柄：销毁 + 按 A1 取值。业务代码仍拿不到 engine 内部实例。 */
 export interface SheetHandle {
   dispose: () => void;
+  /**
+   * 按 A1 记法取当前单元格值（如 `'A3'`）。
+   *
+   * 值由公式引擎产出；**公式尚未算完时返回 `null`**，调用方须轮询而非假定即时可得
+   * （preset 装配下的首次计算时机未验，见 V1.2.2 §3.3）。
+   */
+  getValueByA1: (a1: string) => CellValue | null;
 }
 
+/** dev-only 全局句柄的形状。生产构建不会挂，故用局部类型而非全局 declare。 */
+type DevWindow = Window & { __woSheet?: SheetHandle };
+
 /**
- * 在 `container` 内创建并挂载一个空工作簿。
+ * 在 `container` 内创建并挂载一个工作簿。
  *
- * 不传工作簿数据：`Workbook` 构造函数在 `sheets` 为空时会自动补一张默认工作表
- * （`_parseWorksheetSnapshots` 的 `isEmptyObject(sheets)` 分支），因此 `{}` 即「一张空表」。
+ * @param data 工作簿数据。省略时 `Workbook` 构造函数会补一张默认空表
+ *   （`_parseWorksheetSnapshots` 的 `isEmptyObject(sheets)` 分支），即 V1.2.1 的空表行为。
  */
-export function mountSheet(container: HTMLElement): SheetHandle {
+export function mountSheet(container: HTMLElement, data?: Partial<IWorkbookData>): SheetHandle {
   const { univer, univerAPI } = createUniver({
     locale: LocaleType.ZH_CN,
     locales: {
@@ -39,11 +59,20 @@ export function mountSheet(container: HTMLElement): SheetHandle {
     presets: [UniverSheetsCorePreset({ container })],
   });
 
-  univerAPI.createWorkbook({});
+  const workbook = univerAPI.createWorkbook(data ?? {});
 
-  return {
+  const handle: SheetHandle = {
     dispose: () => {
       univer.dispose();
     },
+    getValueByA1: (a1) => workbook.getActiveSheet().getRange(a1).getValue(),
   };
+
+  // dev-only：给 scripts/probe-web.mjs 经 CDP 读取的断言入口。
+  // 生产构建 `import.meta.env.DEV === false`，此分支被静态剔除，不暴露任何运行时句柄。
+  if (import.meta.env.DEV) {
+    (window as DevWindow).__woSheet = handle;
+  }
+
+  return handle;
 }
