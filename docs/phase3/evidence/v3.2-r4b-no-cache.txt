@@ -1,0 +1,14 @@
+[协同] OK W0 两个独立标签页打开 ?collab=e2e-a 并进入 ready
+[协同] FAIL W1 两页都显示 3×3 播种（A1=1、A3=3） :: 页1 播种：等待超时（5000ms），最后一次={"A1":1,"A2":2,"A3":null}
+[协同] FAIL W2 页1 改 A1=5 → 页2 的 A3 在 3s 内变 7（且页2 未刷新） :: 页2 收到 A1=5：等待超时（3000ms），最后一次={"A1":1,"A3":null}
+[协同] FAIL W3 页2 改 A1=9 → 页1 的 A3 变 11（反向上行） :: 页1 收到 A1=9：等待超时（3000ms），最后一次={"A1":9,"A3":null}
+[协同] FAIL W4 页3 迟到进房：直接看到 A1=9、A3=11（历史回放） :: 页3 历史回放：等待超时（15000ms），最后一次={"A1":9,"A3":null}
+[协同] FAIL W5 静置后无回声环、无 error、命令次数有上界 :: 页2 收到页1 的 B1：等待超时（5000ms），最后一次={"B1":null}
+
+[协同] 5 条判据失败；库文件保留在 D:\code\qoder\web-office\var\wo.web.probe.db
+[协同] 服务端 stdout 尾部：
+
+[协同] 服务端 stderr 尾部：
+(node:47048) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+

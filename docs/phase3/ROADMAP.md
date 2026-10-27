@@ -110,7 +110,8 @@
   服务端每 doc 一个 `Y.Doc`（写穿：`Y.applyUpdate` → 落库 → 再广播），`file_snapshots` /
   `yjs_updates` 两张表 + 快照 GET/POST；浏览器 `?collab=<docId>` 双窗口内容同步。
   服务端探针 C0~C9 共 10 条、浏览器 W0~W5 共 6 条全绿，`verify` 14/14；
-  反向对照 R1/R2 实测变红后回退复绿（R3/R4 未跑，已在卡里标注）。
+  反向对照 R1~R4 全部实测后回退复绿；R4 实际红在 W4（迟到页把 LOAD 回放记成本地写入）而非预期的 W5，
+  W5 被签名缓存与同值跳过保护，已据此回填卡片 §4.8 并补记 R4b。
   证据 `evidence/v3.2-server-log.txt`、`evidence/v3.2-web-log.txt`、`evidence/v3.2-web-page{1,2,3}.png`，
   任务卡 `tasks/V3.2.md`
 - V3.3 **结构通道定序 + 光标与在线状态（awareness）** —— 任务卡 `tasks/V3.3.md`。
