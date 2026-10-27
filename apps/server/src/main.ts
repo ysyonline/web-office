@@ -49,7 +49,9 @@ async function bootstrap(): Promise<void> {
     Logger.warn(`配置降级：${line}`, 'Config');
   }
   app.setGlobalPrefix('api/v1');
-  await app.listen(config.port);
+  app.enableShutdownHooks();
+  // 无鉴权的 V3.1 服务只监听回环，避免把未做 ticket 的 WS 暴露到局域网。
+  await app.listen(config.port, '127.0.0.1');
   Logger.log(`HTTP 已就绪：http://127.0.0.1:${config.port}/api/v1/health`, 'Bootstrap');
 }
 

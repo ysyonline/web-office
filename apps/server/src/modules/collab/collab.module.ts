@@ -6,9 +6,12 @@
  */
 import { Module } from '@nestjs/common';
 
+import { WoDb } from '../../db/wo-db';
 import { CollabController } from './collab.controller';
+import { CollabWsService } from './collab-ws.service';
 
 @Module({
   controllers: [CollabController],
+  providers: [WoDb, CollabWsService],
 })
 export class CollabModule {}

@@ -1,0 +1,15 @@
+(node:49696) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+[服务] OK P0 health 是 JSON 且 body 精确为 {status:ok}
+[服务] OK P1 库落在仓库根 var/，包目录下没有 var/
+[服务] OK ① A/B 连 doc-a，ready 的 docId 与空历史正确
+[服务] OK ② A 发消息：A 只收 ack，B 收到广播
+[服务] OK ③ B 发消息：B 收 ack，A 收到广播（反向）
+[服务] OK ④ 旁路直读库：doc-a 恰两行且顺序正确
+[服务] OK ⑤ 表清单与列形状精确匹配
+[服务] OK ⑥ C 迟到进房，history 来自库且升序
+[服务] OK ⑦ doc-b 隔离：D 收不到 doc-a 的新消息（B/C 必须收到）
+[服务] OK ⑧ 坏帧关闭码 1003/1008，服务仍存活
+[服务] OK ⑨ 强杀进程后重开库：已 ack 的消息仍在
+
+[服务] 11 条判据全部通过
