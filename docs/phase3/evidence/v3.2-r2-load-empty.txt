@@ -1,0 +1,28 @@
+(node:57908) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+[服务] OK C0 health 是 JSON 且 body 精确为 {status:ok}
+[服务] OK C1 A/B 首连空 doc：LOAD(0/0) + caught-up，两端 doc 为空
+[服务] OK C2 A 写 A1=5：B 收到，A 不回显
+[服务] OK C3 B 写 A2=7：A 收到，两端 state vector 一致
+[服务] OK C4 旁路直读 yjs_updates：seq=[1,2] 且可独立还原 A1/A2
+[服务] OK C5 POST 快照 = {version:1,baseSeq:2}；GET 可解出 A1/A2；库内水位一致
+[服务] FAIL C6 再写 A3：seq=3；新连接收到 snapshot@2 + 恰 1 条增量，三方一致 :: G LOAD：实际 {"version":0,"baseSeq":0}，期望 {"version":1,"baseSeq":2}
+[服务] OK C7 doc-b 隔离：自己从 seq=1 开始，doc-a 不被串扰
+[服务] FAIL C8 强杀重启：库内行完整；新连接按 snapshot@2 + seq>2 重建 A1/A2/A3 :: I LOAD：实际 {"version":0,"baseSeq":0}，期望 {"version":1,"baseSeq":2}
+[服务]      0x01 AWARENESS → 1008
+[服务]      0x05 ROLE_UPGRADE → 1008
+[服务]      截断的 SYNC → 1003
+[服务]      未知 sync 子类型 → 1003
+[服务]      空帧 → 1003
+[服务]      文本帧 → 1008
+[服务] OK C9 补充：坏帧关闭码——未实现上行 1008、非法 lib0 1003、文本帧 1008
+
+[服务] 2 条判据失败；库文件保留在 D:\code\qoder\web-office\var\wo.collab.probe.db
+[服务] 服务端 stdout 尾部：
+
+[服务] 服务端 stderr 尾部：
+(node:59108) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:56924) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+

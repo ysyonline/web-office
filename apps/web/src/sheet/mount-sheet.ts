@@ -23,6 +23,7 @@ import { UniverSheetsCorePreset } from '@univerjs/preset-sheets-core';
 import zhCN from '@univerjs/preset-sheets-core/locales/zh-CN';
 import {
   createUniver,
+  ICommandService,
   LocaleType,
   mergeLocales,
   type CellValue,
@@ -41,6 +42,96 @@ export interface SheetScrollState {
   offsetY: number;
   sheetViewStartRow: number;
   sheetViewStartColumn: number;
+}
+
+/**
+ * 单元格内容补丁（协同内容通道的唯一数据形状）。
+ *
+ * `ref` 是 A1 地址，`v` 是标量值，`f` 是公式文本（常量格为空串）。刻意只有这两个字段：
+ * 样式/批注/富文本不在 V3.2 的内容通道内（结构通道归 V3.3），带上它们会让「两窗口
+ * 内容收敛」变成一条无法判定边界的断言。
+ */
+export interface CellPatch {
+  ref: string;
+  v: CellValue | null;
+  f: string;
+}
+
+/** 挂在 Univer 实例上的内部注入器（`__getInjector` 不在公开 facade 类型里）。 */
+interface InjectorLike {
+  get<T>(token: unknown): T;
+}
+
+/** `sheet.mutation.set-range-values` 的原始参数（只取本卡关心的两个 id 与矩阵）。 */
+interface SetRangeValuesParams {
+  unitId?: unknown;
+  subUnitId?: unknown;
+  cellValue?: unknown;
+}
+
+/** 0 基行列 → A1 记法（(0,0) → `'A1'`，(0,26) → `'AA1'`）。 */
+function toA1(row: number, col: number): string {
+  let name = '';
+  let n = col + 1;
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    name = String.fromCharCode(65 + rem) + name;
+    n = Math.floor((n - 1) / 26);
+  }
+  return `${name}${row + 1}`;
+}
+
+/**
+ * 引擎的单元格值 → 协议标量。
+ *
+ * 只放行 `string | number | boolean`：`CellPatch` 的边界就是「两窗口能逐字比对的东西」。
+ * `null`（清空）原样返回；富文本对象之类的结构返回 `undefined`，由调用方**整格跳过**——
+ * 压成 `null` 发出去会在对端把一格内容清空，属于静默数据毁坏。
+ */
+function toCellValue(raw: unknown): CellValue | null | undefined {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean') {
+    return raw;
+  }
+  return undefined;
+}
+
+/**
+ * 把 mutation 的 `cellValue` 矩阵展平成绝对地址补丁。
+ *
+ * 矩阵键是**绝对**行列（`SetRangeValuesCommand` 在派发 mutation 前已把相对矩阵换算成绝对坐标，
+ * 见其实现里 `cellValue.setValue(r, c, ...)` 一段），因此这里不再叠加 range 偏移。
+ * `cell === null` 是清空分支（mutation handler 的 `realDeleteValue`），记为 `{v: null, f: ''}`。
+ */
+function collectCells(raw: unknown): CellPatch[] {
+  const maybeMatrix = raw as { getMatrix?: () => unknown } | null;
+  const matrix = typeof maybeMatrix?.getMatrix === 'function' ? maybeMatrix.getMatrix() : raw;
+  if (matrix === null || typeof matrix !== 'object') return [];
+
+  const out: CellPatch[] = [];
+  for (const [rowKey, rowValue] of Object.entries(matrix as Record<string, unknown>)) {
+    const row = Number(rowKey);
+    if (!Number.isInteger(row) || rowValue === null || typeof rowValue !== 'object') continue;
+    for (const [colKey, cell] of Object.entries(rowValue as Record<string, unknown>)) {
+      const col = Number(colKey);
+      if (!Number.isInteger(col)) continue;
+
+      if (cell === null || cell === undefined) {
+        out.push({ ref: toA1(row, col), v: null, f: '' });
+        continue;
+      }
+      if (typeof cell !== 'object') continue;
+
+      const data = cell as { v?: unknown; f?: unknown };
+      const value = toCellValue(data.v);
+      const formula = typeof data.f === 'string' ? data.f : '';
+      // 不支持的值形状：整格跳过，宁可不同步也不能误清空。
+      if (value === undefined) continue;
+
+      out.push({ ref: toA1(row, col), v: value, f: formula });
+    }
+  }
+  return out;
 }
 
 /** 挂载句柄：销毁 + 按 A1 取值。业务代码仍拿不到 engine 内部实例。 */
@@ -150,6 +241,28 @@ export interface SheetHandle {
    * @returns 取消订阅。幂等。
    */
   onScroll: (listener: (state: SheetScrollState) => void) => () => void;
+  /**
+   * 订阅**用户来源**的单元格内容变更（协同内容通道出站，V3.2）。
+   *
+   * 只取 `sheet.mutation.set-range-values` 且不含公式重算标记的 mutation——闸门 2 实测：
+   * 公式重算写回也走同一 mutation id，靠 `fromFormula` / `applyFormulaCalculationResult`
+   * 两个执行选项区分。`doc.mutation.rich-text-editing` 是编辑过程的中间态，不在此列。
+   *
+   * 回调给出的 `CellPatch[]` 是该 mutation 矩阵展平后的绝对赋值；调用方负责去重/落 Y.Map。
+   * 用 `ICommandService` 而非 facade `onCommandExecuted`：后者丢执行选项（闸门 2），
+   * 无法把「用户编辑」与「公式重算写回」分开。
+   *
+   * @returns 取消订阅。幂等。
+   */
+  onCellMutation: (listener: (cells: CellPatch[]) => void) => () => void;
+  /**
+   * 把远端单元格变更应用到当前表（V3.2 入站）。
+   *
+   * 内部置 `applyingRemote` 守卫：`fromCollab` 不会穿透到下游 mutation（闸门 2 实测），
+   * 单靠执行选项无法阻止「远端回放 → 再次出站」的回声环，守卫是必需的。
+   * 执行用 `syncExecuteCommand`，让守卫在 mutation 同步派发期间始终为真。
+   */
+  applyRemoteCells: (cells: CellPatch[]) => void;
 }
 
 /** dev-only 全局句柄的形状。生产构建不会挂，故用局部类型而非全局 declare。 */
@@ -193,6 +306,76 @@ export function mountSheet(container: HTMLElement, data?: Partial<IWorkbookData>
   wireChange(current);
 
   /**
+   * 协同内容通道（V3.2）。**懒接线**：只有调用方订阅出站（`onCellMutation`）或应用远端
+   * （`applyRemoteCells`）时才去拿 `ICommandService`。V2 单用户路径从不调用这两个方法，
+   * 因此不新增任何引擎级监听——「不带 `?collab` 时 V2 一行不改」在运行时也成立。
+   */
+  const cellListeners = new Set<(cells: CellPatch[]) => void>();
+  let applyingRemote = false;
+  let mutationSub: { dispose: () => void } | null = null;
+
+  const ensureMutationWiring = (): void => {
+    if (mutationSub !== null) return;
+    const injector = (
+      univer as unknown as { __getInjector?: () => InjectorLike }
+    ).__getInjector?.();
+    if (injector === undefined) {
+      throw new Error('Univer 1.2.0 的 __getInjector 不可用：协同内容通道无法接线');
+    }
+    const commandService = injector.get<ICommandService>(ICommandService);
+    mutationSub = commandService.onMutationExecutedForCollab((info, options) => {
+      // 守卫最先判：远端回放派生的一切 mutation 到此为止（闸门 2：fromCollab 不穿透）。
+      if (applyingRemote) return;
+      if (info.id !== 'sheet.mutation.set-range-values') return;
+      if (options?.fromFormula === true || options?.applyFormulaCalculationResult === true) return;
+      if (options?.fromCollab === true) return;
+
+      const params = info.params as SetRangeValuesParams | undefined;
+      if (params === undefined || params.unitId !== current.getId()) return;
+      if (params.subUnitId !== current.getActiveSheet().getSheetId()) return;
+
+      const cells = collectCells(params.cellValue);
+      if (cells.length === 0) return;
+      for (const listener of cellListeners) listener(cells);
+    });
+  };
+
+  const applyRemoteCells = (cells: CellPatch[]): void => {
+    ensureMutationWiring();
+    applyingRemote = true;
+    try {
+      const sheet = current.getActiveSheet();
+      for (const patch of cells) {
+        const range = sheet.getRange(patch.ref).getRange();
+        /**
+         * 公式格只发 `{f}`、**不发 `v`**：`v` 与 `f` 并存时引擎不会在载入时纠正缓存
+         * （V1.2.2 实测，见 `demo-workbook.ts` 头），带上一个远端的旧值就等于把
+         * 「公式重算」换成了「显示缓存」。清空/常量格才发 `v`+`f:''`——此时 `f:''`
+         * 必须发，否则旧公式会留着，`v` 被公式重算覆盖成新结果。
+         */
+        const cell = patch.f === '' ? { v: patch.v, f: '' } : { f: patch.f };
+        univerAPI.syncExecuteCommand(
+          'sheet.command.set-range-values',
+          {
+            unitId: current.getId(),
+            subUnitId: sheet.getSheetId(),
+            range: {
+              startRow: range.startRow,
+              startColumn: range.startColumn,
+              endRow: range.startRow,
+              endColumn: range.startColumn,
+            },
+            value: { [range.startRow]: { [range.startColumn]: cell } },
+          },
+          { onlyLocal: true, fromCollab: true },
+        );
+      }
+    } finally {
+      applyingRemote = false;
+    }
+  };
+
+  /**
    * 读视口状态。
    *
    * `getScrollState()` 内部要取 render unit + scroll manager；换单元后的首帧这些服务
@@ -231,9 +414,12 @@ export function mountSheet(container: HTMLElement, data?: Partial<IWorkbookData>
       // 会对着已销毁的单元取快照（抛错或读到空文档）。
       commandSub?.dispose();
       commandSub = null;
+      mutationSub?.dispose();
+      mutationSub = null;
       scrollSub?.dispose();
       scrollSub = null;
       changeListeners.clear();
+      cellListeners.clear();
       scrollListeners.clear();
       univer.dispose();
     },
@@ -285,6 +471,14 @@ export function mountSheet(container: HTMLElement, data?: Partial<IWorkbookData>
         scrollListeners.delete(listener);
       };
     },
+    onCellMutation: (listener) => {
+      ensureMutationWiring();
+      cellListeners.add(listener);
+      return () => {
+        cellListeners.delete(listener);
+      };
+    },
+    applyRemoteCells,
   };
 
   // dev-only：给 scripts/probe-web.mjs 经 CDP 读取的断言入口。

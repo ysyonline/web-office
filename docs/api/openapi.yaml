@@ -535,7 +535,7 @@ paths:
       summary: 取最新服务端物化快照（gzip 压缩，含水位线 baseSeq）
       responses:
         '200':
-          description: 最新快照（服务端从 Yjs doc 物化生成，非客户端上传）
+          description: 最新快照（服务端从权威 Yjs doc 物化生成，非客户端上传；字节为 Yjs state update 经 gzip 的 Base64）
           content:
             application/json:
               schema:
@@ -548,8 +548,11 @@ paths:
       tags: [files]
       summary: 触发服务端物化快照点（无请求体；快照仅由服务端从权威 Yjs doc 生成）
       description: |
-        归属权契约（ADR-001 修订）：快照只能由服务端无头 Univer 从 Yjs doc 物化生成，
+        归属权契约（ADR-001 修订）：快照只能由服务端从权威 Yjs doc 物化生成，
         客户端无快照上传通道——杜绝坏客户端污染权威数据。
+        快照字节 = Yjs state update（Y.encodeStateAsUpdate）经 gzip(6)（2026-10-27 V3.2 裁决：
+        加载协议必须能据此重建 Y.Doc；Univer IWorkbookData 只在导入/导出时由服务端从 Yjs doc
+        派生，不落 file_snapshots）。
         物化原子性：生成快照与记录水位线 base_seq 在同一数据库事务内完成。
       responses:
         '201':
@@ -985,7 +988,7 @@ paths:
           1. 服务端校验 ticket 对应的用户身份与该文件的编辑权限；失败则以 close code 4401（未认证）/ 4403（无权限）关闭。
           2. 连接建立后服务端立即执行「加载协议」：
              a. 取该文件最新已物化快照 snapshot@base_seq（file_snapshots 最大 version 行）；
-             b. 发送 [LOAD] 帧（应用层自定义帧，见 frame-protocol）：{ version, baseSeq, snapshot(gzip+Base64) }；
+             b. 发送 [LOAD] 帧（应用层自定义帧，见 frame-protocol）：{ version, baseSeq, snapshot(Yjs state update 经 gzip 的 Base64) }；
              c. 紧接着发送 [SYNC_STEP1] 并在客户端应答的 [SYNC_STEP2]（差量 update）中补齐 seq > base_seq 的增量；
              d. 增量顺序保证：服务端按 seq 升序投递 yjs_updates 中 seq > base_seq 的记录 + 广播在线增量。
           加载协议（固定语义）：snapshot@base_seq + updates WHERE seq > base_seq。
@@ -1018,7 +1021,7 @@ paths:
             - UPDATE: 增量 update（本产品自定义：客户端 mutation 出站统一走 UPDATE 帧）
           - 0x01 AWARENESS：y-protocols awareness 状态（光标/选区/在线用户，JSON 经 lib0 编码）
           - 0x02 PING（应用层心跳，30s 间隔，90s 无响应断开）
-          - 0x03 LOAD（应用层，握手阶段服务端下发）：{ version, baseSeq, snapshot } 快照载荷（gzip+Base64）
+          - 0x03 LOAD（应用层，握手阶段服务端下发）：{ version, baseSeq, snapshot } 快照载荷（Yjs state update 经 gzip 的 Base64）
           - 0x04 CONTROL（应用层，服务端下发控制指令）：
             - doc-rebuild（导入互斥协议，见 /files/{id}/import 端点说明）
             - session-invalidated（会话失效：随 4411 关闭帧前置下发，客户端应清本地会话并引导重登）
@@ -1459,7 +1462,7 @@ components:
       properties:
         snapshot:
           type: string
-          description: Univer IWorkbookData 经 gzip 压缩再 Base64 的字符串（服务端物化产物；上限 gzip 后 32MB，体积依据见 spike REPORT 附录 A）
+          description: Yjs state update（Y.encodeStateAsUpdate 产物）经 gzip(6) 压缩再 Base64 的字符串（服务端物化产物；上限 gzip 后 32MB，体积依据见 spike REPORT 附录 A）
         version:
           type: integer
           format: int64

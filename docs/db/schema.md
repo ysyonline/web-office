@@ -178,7 +178,9 @@ export class FileSnapshotEntity {
                    // 加载协议「snapshot@base_seq + updates WHERE seq > base_seq」无边界丢失。
 
   @Column({ type: 'bytea' })
-  snapshot: Buffer; // Univer IWorkbookData -> JSON -> gzip(6) 二进制（P0-1 修订：原 text 裸 JSON 改 gzip bytea；
+  snapshot: Buffer; // Yjs state update（Y.encodeStateAsUpdate 产物）-> gzip(6) 二进制（v1.8 裁决，2026-10-27：
+                    // 协同快照必须能重建 Y.Doc，故存 CRDT 状态，不存 Univer IWorkbookData；Univer 工作簿形态
+                    // 只在导入/导出时由服务端从 Yjs doc 派生，不落本表。P0-1 修订沿用：原 text 裸 JSON 改 gzip bytea；
                     // 体积依据 spike REPORT 附录 A：100 万格 gzip ~4.7MB，上限 gzip 后 32MB）
 
   @Column({ type: 'uuid', name: 'created_by' })
@@ -495,3 +497,4 @@ export class SharePermissionEntity {
 | v1.6 | 2026-10-21 | 3.7 LicenseEntity 并入 max_seen_at 列（时钟回拨检测：已见最大时间戳持久化，有效期判定取 max(系统时钟, max_seen_at)，回拨 >24h 审计告警不误杀） | 外部评审分支 D（license design.md v1.4 §2.4）；变更分类：小改（加列，10 表边界不变） |
 | v1.7 | 2026-10-21 | 新增 §7 验证状态与金仓真机锚点：三层验证状态（CI/契约冒烟/全量回归）+ M1 冒烟断言清单五条 + TypeORM 0.3.27 version() 解析静态核对（金仓串整串入 driver.version，isGeneratedColumnsSupported 误判为 false 但零消费方零影响；RETURNING 自动发射为真机必验项）+ 环境获取路径与责任方 + 金仓进 CI 否决论证 | 外部评审分支 F（金仓真机验证缺位，评审人「顺序倒置」判定成立）；裁决方案 b（M1 提前锚点） |
 | v1.7.1 | 2026-10-21 | §7.4 环境获取路径补评审人线索（下载试用入口路径/开发版 365 天 vs 标准 90 天授权差异/官方 Docker 镜像介质可申请/热线 400-601-1188——申请时应指定开发版）；§7.5 措辞修正（「无公开镜像」→「无公共 registry 镜像 + 官方提供可申请下载介质」，CI 重评口扩为三条件含私有 registry 路径） | 外部评审收尾轮（金仓获取线索 + 措辞精度） |
+| v1.8 | 2026-10-27 | §3.4 `snapshot` 列口径裁决：由「Univer IWorkbookData → JSON → gzip」改为 **Yjs state update（`Y.encodeStateAsUpdate`）→ gzip(6)**。理由：加载协议 `snapshot@base_seq + seq>base_seq` 的差量同步必须基于同一份 Y.Doc，Univer workbook JSON 无法重建 CRDT 历史；Univer 工作簿形态降为导入/导出时从 Yjs doc 派生的交付轨描述，不落 `file_snapshots`。与 D1-06 ①（原本即写 Yjs state）、openapi SnapshotResponse（同批修正）对齐；D1-04 的「snapshot」指 Univer 工作簿投影，非本表列，语义分行 | V3.2 任务卡 §0 闸门 1 裁决（D1-06 vs schema vs openapi 三处矛盾收敛） |

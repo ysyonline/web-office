@@ -16,9 +16,12 @@
     "@nestjs/platform-express": "11.2.7",
     "@nestjs/swagger": "11.4.7",
     "@wo/shared": "workspace:*",
+    "lib0": "0.2.119",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "ws": "8.22.0",
+    "y-protocols": "1.0.7",
+    "yjs": "13.6.33",
     "zod": "4.6.7"
   },
   "devDependencies": {
